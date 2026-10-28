@@ -69,4 +69,4 @@ The demo is meant to be hosted at **https://jin35.github.io/Apeiron/**
 
 The Vite `base` is `./`, so the same build works locally and under the `/Apeiron/` project path.
 
-**This repository is private.** GitHub Free does not serve Pages for private repositories. Publishing needs either a **public** repository or **GitHub Pro / Team / Enterprise**. After that, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions** (the workflow does not flip that setting itself). The deploy job is already in place for that path.
+**This repository is public.** Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions** (the workflow does not flip that setting itself). The deploy job publishes `dist/` on each push to `main`.
