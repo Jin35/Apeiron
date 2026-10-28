@@ -1,0 +1,96 @@
+export type Camera = {
+  /** World point at the center of the viewport. */
+  x: number;
+  y: number;
+  /** CSS pixels per world unit. */
+  scale: number;
+};
+
+export type ScreenPoint = {
+  x: number;
+  y: number;
+};
+
+/** Practical clamp so the demo can move past the last visibility band. */
+export const MIN_SCALE = 0.012;
+export const MAX_SCALE = 80;
+
+export function clampScale(scale: number): number {
+  if (!Number.isFinite(scale)) return MIN_SCALE;
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+}
+
+export function worldPoint(
+  camera: Camera,
+  screenX: number,
+  screenY: number,
+  viewW: number,
+  viewH: number,
+): ScreenPoint {
+  return {
+    x: camera.x + (screenX - viewW / 2) / camera.scale,
+    y: camera.y + (screenY - viewH / 2) / camera.scale,
+  };
+}
+
+/**
+ * Change scale by `factor`, keeping the world point under `anchor`
+ * pinned to `target` afterwards. Rotation is not represented.
+ * When `anchor` and `target` match, this is zoom-toward-pointer.
+ */
+export function retarget(
+  camera: Camera,
+  anchor: ScreenPoint,
+  target: ScreenPoint,
+  viewW: number,
+  viewH: number,
+  factor: number,
+): Camera {
+  if (!Number.isFinite(factor) || factor <= 0) return camera;
+  const scale = clampScale(camera.scale * factor);
+  const world = worldPoint(camera, anchor.x, anchor.y, viewW, viewH);
+  return {
+    scale,
+    x: world.x - (target.x - viewW / 2) / scale,
+    y: world.y - (target.y - viewH / 2) / scale,
+  };
+}
+
+export function zoomAt(
+  camera: Camera,
+  screenX: number,
+  screenY: number,
+  viewW: number,
+  viewH: number,
+  factor: number,
+): Camera {
+  const point = { x: screenX, y: screenY };
+  return retarget(camera, point, point, viewW, viewH, factor);
+}
+
+/** Screen-pixel drag. Content follows the pointer; the camera moves opposite. */
+export function panBy(camera: Camera, dx: number, dy: number): Camera {
+  return {
+    x: camera.x - dx / camera.scale,
+    y: camera.y - dy / camera.scale,
+    scale: camera.scale,
+  };
+}
+
+export type ViewBounds = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+export function viewBounds(camera: Camera, viewW: number, viewH: number): ViewBounds {
+  const halfW = viewW / 2 / camera.scale;
+  const halfH = viewH / 2 / camera.scale;
+  return {
+    left: camera.x - halfW,
+    right: camera.x + halfW,
+    top: camera.y - halfH,
+    bottom: camera.y + halfH,
+  };
+}
