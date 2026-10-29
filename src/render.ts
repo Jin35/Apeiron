@@ -1,7 +1,12 @@
 import { viewBounds, type Camera } from './camera';
 import { gridStep } from './grid';
 import type { CanvasObject, TextStyle } from './model';
-import { visibilityAlpha } from './visibility';
+
+/** One object to paint, with the alpha to use. */
+type VisibleObject = {
+  object: CanvasObject;
+  alpha: number;
+};
 
 const PLATE = '#171b22';
 const FRAME = 'rgba(240, 215, 140, 0.45)';
@@ -10,7 +15,10 @@ const DEFAULT_FONT = '"Iowan Old Style", Palatino, Georgia, serif';
 type SpacedContext = CanvasRenderingContext2D & { letterSpacing: string };
 
 export type Renderer = {
-  draw(camera: Camera, objects: CanvasObject[]): void;
+  /** Paint `visible` with the alpha already on each entry. */
+  draw(camera: Camera, visible: readonly VisibleObject[]): void;
+  /** Fetch image bytes. Drawing does not depend on the fetch having finished. */
+  warm(srcs: readonly string[]): void;
   size(): { width: number; height: number };
 };
 
@@ -42,7 +50,11 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     return { width: rect.width, height: rect.height };
   }
 
-  function draw(camera: Camera, objects: CanvasObject[]) {
+  function warm(srcs: readonly string[]) {
+    for (const src of srcs) imageFor(src);
+  }
+
+  function draw(camera: Camera, visible: readonly VisibleObject[]) {
     const { width: viewW, height: viewH } = size();
     if (viewW < 1 || viewH < 1) return;
 
@@ -64,14 +76,11 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     ctx.translate(-camera.x, -camera.y);
     drawGrid(ctx, camera, viewW, viewH);
 
-    for (const object of objects) {
-      if (object.payload.type === 'image') imageFor(object.payload.src);
-    }
-
-    const sorted = [...objects].sort((a, b) => a.visibility.maxScale - b.visibility.maxScale);
-    for (const object of sorted) {
-      const alpha = visibilityAlpha(object.visibility, camera.scale);
-      if (alpha <= 0.01) continue;
+    // Coarser bands (smaller maxScale) sit under finer ones. Alpha is the caller's.
+    const sorted = [...visible].sort(
+      (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
+    );
+    for (const { object, alpha } of sorted) {
       ctx.globalAlpha = alpha;
       if (object.payload.type === 'image') {
         drawImageObject(ctx, camera.scale, object, imageFor(object.payload.src));
@@ -82,7 +91,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     ctx.restore();
   }
 
-  return { draw, size };
+  return { draw, warm, size };
 }
 
 function drawGrid(

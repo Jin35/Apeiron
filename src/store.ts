@@ -27,6 +27,8 @@ export interface SceneStore {
   query(query: SceneQuery): VisibleObject[];
   /** Objects above the HUD cutoff (0.02), anywhere in the world. */
   countInBand(scale: number): number;
+  /** Every image src in the dataset. The shell warms the renderer from this. */
+  imageSources(): readonly string[];
 }
 
 /** Linear scan of a fixed object list. */
@@ -46,6 +48,13 @@ export function createMemoryStore(objects: readonly CanvasObject[]): SceneStore 
         if (alpha > DRAW_ALPHA) visible.push({ object, alpha });
       }
       return visible;
+    },
+    imageSources() {
+      const srcs: string[] = [];
+      for (const object of objects) {
+        if (object.payload.type === 'image') srcs.push(object.payload.src);
+      }
+      return srcs;
     },
   };
 }
