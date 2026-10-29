@@ -429,6 +429,70 @@ describe('createRenderer', () => {
     expect((ctx as RecordedContext).drawImages).toEqual([1]);
   });
 
+  it('fades by relative zoom and does not draw or fetch at alpha 0', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
+    const fitScale = 4;
+    const front = imageObject('phone', 'images/smartphone.webp', visibility);
+    front.fade = { fadeOut: [1, 2] };
+    if (front.payload.type === 'image') front.payload.frame = false;
+    const part = imageObject('battery', 'images/smartphone/battery.webp', visibility);
+    part.fade = { fadeIn: [1, 2] };
+    if (part.payload.type === 'image') part.payload.frame = false;
+
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'phone',
+      visible: [visible(front, 1)],
+    });
+    expect(images).toHaveLength(0);
+    expect(paintsOf(ctx)).toEqual([]);
+    expect(strokeRectsOf(ctx)).toEqual([]);
+
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 1.2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'phone',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    for (const image of images) {
+      image.complete = true;
+      image.naturalWidth = 8;
+      image.naturalHeight = 8;
+    }
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 1.2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'phone',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    // Image draws record alpha on drawImage. 10 world units at r = 1.2 (scale 4.8) is 48px.
+    const drawn = (ctx as RecordedContext).drawImages;
+    expect(drawn).toEqual([expect.closeTo(0.2), expect.closeTo(0.8)]);
+    expect(strokeRectsOf(ctx).at(-1)).toEqual({ x: 376, y: 276, w: 48, h: 48 });
+
+    const drawnBefore = drawn.length;
+    const strokesBefore = strokeRectsOf(ctx).length;
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 3 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'phone',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    expect(drawn.slice(drawnBefore)).toEqual([1]);
+    expect(strokeRectsOf(ctx)).toHaveLength(strokesBefore);
+  });
+
   it('sizes the bitmap from the frame and does not measure the canvas', () => {
     const ctx = recordingContext();
     const canvas = canvasFor(ctx);

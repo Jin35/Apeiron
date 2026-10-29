@@ -875,6 +875,44 @@ describe('theme chrome', () => {
     expect(shell.images.map((image) => image.src)).toEqual([expect.stringContaining('images/smartphone.webp')]);
   });
 
+  it('hides a fully faded label and shows it once the zoom passes the fade', () => {
+    const band = { minScale: 0.01, maxScale: 10000 };
+    const front: CanvasObject = {
+      id: 'front',
+      x: 0,
+      y: 0,
+      visibility: band,
+      fade: { fadeOut: [1, 2] },
+      payload: { type: 'text', text: 'Front', style: { fontSize: 12 }, width: 80, height: 40 },
+    };
+    const part: CanvasObject = {
+      id: 'part',
+      x: 0,
+      y: 0,
+      parentId: 'front',
+      visibility: band,
+      fade: { fadeIn: [1, 2] },
+      payload: { type: 'text', text: 'Part', style: { fontSize: 12 }, width: 20, height: 10 },
+    };
+    const store = createMemoryStore([part, front]);
+    const limits = deriveCameraLimits(store.contentBoxes(), 800, 600);
+    const shell = harness({
+      store,
+      reduceMotion: true,
+      opening: { x: 0, y: 0, scale: limits.fitScale },
+    });
+
+    expect(shell.labels.texts()).toEqual(['Front']);
+    expect(shell.status.textContent).toContain('1 visible');
+    expect(shell.zoomIn.disabled).toBe(false);
+
+    shell.clickIn();
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(limits.fitScale * 2);
+    expect(shell.labels.texts()).toEqual(['Part']);
+    expect(shell.status.textContent).toContain('1 visible');
+  });
+
   it('applies a pack theme to the page background, HUD, and theme-color', () => {
     const doc = themeDocument();
     harness({ document: doc as unknown as Document, theme: paperTheme });

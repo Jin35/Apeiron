@@ -44,6 +44,18 @@ export type ImagePayload = {
   frame?: boolean;
 };
 
+/**
+ * Opacity from zoom relative to the opening fit scale.
+ * `r = camera.scale / fitScale`. Each pair is `[start, end]` in that ratio.
+ * Between the ends the blend is linear in `r`. At and below `start`, `fadeOut`
+ * is opaque and `fadeIn` is transparent. At and above `end`, they swap.
+ * This is not a time animation, so a reduced-motion setting does not change it.
+ */
+export type ZoomFade = {
+  fadeOut?: readonly [number, number];
+  fadeIn?: readonly [number, number];
+};
+
 export type CanvasObject = {
   id: string;
   /**
@@ -56,5 +68,11 @@ export type CanvasObject = {
   /** When set, `x` and `y` are parent-local. */
   parentId?: string;
   visibility: VisibilityRange;
+  /**
+   * Optional opacity from zoom relative to the opening fit scale.
+   * The renderer evaluates it. The store uses the same curve so a fully
+   * transparent object is not hit-tested and is left out of `query`.
+   */
+  fade?: ZoomFade;
   payload: TextPayload | ImagePayload;
 };

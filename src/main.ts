@@ -47,17 +47,23 @@ export function mountShell(
     const height = rect.height;
     const camera = zoomAnim.camera;
     const limitsNow = activeLimits(width, height);
-    const shown = store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale });
+    const fitScale = width > 0 && height > 0 ? limitsNow.fitScale : undefined;
+    const shown = store.query({
+      bounds: viewBounds(camera, width, height),
+      scale: camera.scale,
+      ...(fitScale !== undefined ? { fitScale } : {}),
+    });
     renderer.draw({
       camera,
       width,
       height,
       visible: shown,
       theme,
+      ...(fitScale !== undefined ? { fitScale } : {}),
       ...(selectedId ? { selectedId } : {}),
     });
     if (labelList) syncLabelList(labelList, shown);
-    const visible = store.countInBand(camera.scale);
+    const visible = store.countInBand(camera.scale, fitScale);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);
@@ -93,7 +99,10 @@ export function mountShell(
     if (command.type === 'selectAt') {
       const camera = zoomAnim.camera;
       const world = worldPoint(camera, command.x, command.y, rect.width, rect.height);
-      selectedId = store.hitTest(world, camera)?.id ?? null;
+      const viewW = rect.width;
+      const viewH = rect.height;
+      const fitScale = viewW > 0 && viewH > 0 ? activeLimits(viewW, viewH).fitScale : undefined;
+      selectedId = store.hitTest(world, camera, fitScale)?.id ?? null;
       frame(now);
       return;
     }
@@ -108,7 +117,10 @@ export function mountShell(
     frame(now);
   }
 
-  /** Text labels from this frame's `query`, in that order. Not a live region. */
+  /**
+   * Text labels from this frame's `query`, in that order. Not a live region.
+   * Fully transparent objects are already absent, so their labels are too.
+   */
   function syncLabelList(list: HTMLElement, shown: readonly VisibleObject[]): void {
     const texts: string[] = [];
     const ids: string[] = [];

@@ -1,4 +1,5 @@
 import type { Camera, ContentBox, ViewBounds } from './camera';
+import { displayOpacity } from './fade';
 import type { CanvasObject } from './model';
 import { visibilityAlpha } from './visibility';
 
@@ -20,29 +21,49 @@ const IMAGE_PAD_CSS_PX = IMAGE_STROKE_CSS_PX / 2 + TEXT_PAD_CSS_PX;
 export type SceneQuery = {
   bounds: ViewBounds;
   scale: number;
+  /**
+   * Opening fit scale (s0) for this viewport. Zoom fade is `scale / fitScale`.
+   * Omit it and a `fade` on an object is not applied.
+   */
+  fitScale?: number;
 };
 
 export type VisibleObject = {
   object: CanvasObject;
-  /** Result of visibilityAlpha at the query scale. */
+  /**
+   * Result of visibilityAlpha at the query scale. Zoom fade is not folded in;
+   * the renderer multiplies it by `fade` and this `fitScale`.
+   */
   alpha: number;
 };
 
 export interface SceneStore {
-  /** In band, on screen, alpha above the draw cutoff (0.01). */
+  /**
+   * In band, on screen, and still visible after zoom fade (display alpha above 0.01).
+   * `alpha` on each entry is the visibility band only.
+   */
   query(query: SceneQuery): VisibleObject[];
-  /** In band, anywhere in the world, alpha above the HUD cutoff (0.02). */
-  countInBand(scale: number): number;
+  /**
+   * In band, anywhere in the world, display alpha above the HUD cutoff (0.02).
+   * `fitScale` is the opening fit; omit it and zoom fade is not applied.
+   */
+  countInBand(scale: number, fitScale?: number): number;
   /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
   /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
   subscribe(onChange: () => void): () => void;
   /**
    * Object that would be drawn at `camera.scale` whose unpadded authored box
-   * contains `worldPoint`. The CSS pad is for culling, not for hits. When
-   * several overlap, the greater `maxScale` wins and a tie goes to the later one.
+   * contains `worldPoint`. The CSS pad is for culling, not for hits. Display
+   * alpha at or below the draw cutoff is skipped, including a zoom fade to 0.
+   * When several overlap, the greater `maxScale` wins and a tie goes to the later one.
+   * `fitScale` is the opening fit; omit it and zoom fade is not applied.
    */
-  hitTest(worldPoint: { x: number; y: number }, camera: Camera): CanvasObject | null;
+  hitTest(
+    worldPoint: { x: number; y: number },
+    camera: Camera,
+    fitScale?: number,
+  ): CanvasObject | null;
   /**
    * World boxes of every placed object, parent chain already flattened.
    * A missing parent or a cycle is absent, same as `query`. The shell derives
@@ -84,10 +105,10 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
   }
 
   return {
-    countInBand(scale) {
+    countInBand(scale, fitScale) {
       let count = 0;
       for (const { object } of entries) {
-        if (visibilityAlpha(object.visibility, scale) > HUD_ALPHA) count += 1;
+        if (shownAlpha(object, scale, fitScale) > HUD_ALPHA) count += 1;
       }
       return count;
     },
@@ -95,7 +116,7 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       const visible: VisibleObject[] = [];
       for (const entry of entries) {
         const alpha = visibilityAlpha(entry.object.visibility, query.scale);
-        if (alpha <= DRAW_ALPHA) continue;
+        if (displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale) <= DRAW_ALPHA) continue;
         if (!intersects(query.bounds, padBox(entry, query.scale))) continue;
         visible.push({ object: entry.object, alpha });
       }
@@ -114,10 +135,10 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
         listeners.delete(onChange);
       };
     },
-    hitTest(worldPoint, camera) {
+    hitTest(worldPoint, camera, fitScale) {
       let best: Entry | undefined;
       for (const entry of entries) {
-        if (visibilityAlpha(entry.object.visibility, camera.scale) <= DRAW_ALPHA) continue;
+        if (shownAlpha(entry.object, camera.scale, fitScale) <= DRAW_ALPHA) continue;
         if (!containsPoint(entry.box, worldPoint)) continue;
         if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
           best = entry;
@@ -138,6 +159,11 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       }));
     },
   };
+}
+
+/** Visibility band times zoom fade. The cutoff compares this, not the band alone. */
+function shownAlpha(object: CanvasObject, scale: number, fitScale: number | undefined): number {
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale);
 }
 
 function minorSize(object: CanvasObject): number {
@@ -200,6 +226,7 @@ function atWorld(object: CanvasObject, x: number, y: number): CanvasObject {
     x,
     y,
     visibility: object.visibility,
+    ...(object.fade ? { fade: object.fade } : {}),
     payload: object.payload,
   };
 }

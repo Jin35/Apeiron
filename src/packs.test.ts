@@ -1,21 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { bootFromLocation, openingCameraFor, resolvePack } from '../content/packs';
-import { PHONE_WIDTH_MM, smartphoneObjects, smartphonePack, smartphoneSprite } from '../content/smartphone';
+import {
+  partSprites,
+  PHONE_WIDTH_MM,
+  smartphoneObjects,
+  smartphonePack,
+  smartphoneSprite,
+} from '../content/smartphone';
 import { initialCameraFor } from './bootstrap';
 import { applyCameraCommand, deriveCameraLimits, viewBounds } from './camera';
 import { demoPack, titleFitWidth } from './demo';
+import type { ImagePayload } from './model';
 import { createMemoryStore } from './store';
 import { darkTheme, paperTheme } from './theme';
 import { visibilityAlpha } from './visibility';
 
-function phonePayload() {
-  const phone = smartphoneObjects[0];
+function phoneObject() {
+  const phone = smartphoneObjects.find((object) => object.id === 'phone');
   if (!phone || phone.payload.type !== 'image') throw new Error('expected the phone image');
-  return phone.payload;
+  return phone;
+}
+
+function phonePayload(): ImagePayload {
+  const payload = phoneObject().payload;
+  if (payload.type !== 'image') throw new Error('expected the phone image');
+  return payload;
 }
 
 describe('smartphone pack', () => {
-  it('is the default, on paper, with one centered phone and no labels', () => {
+  it('is the default, on paper, with a centered phone and parts parented to it', () => {
     expect(resolvePack('').id).toBe('smartphone');
     expect(resolvePack('').pack).toBe(smartphonePack);
     expect(resolvePack('?scale=2').pack.theme).toBe(paperTheme);
@@ -23,13 +36,22 @@ describe('smartphone pack', () => {
     expect(paperTheme.grid).toBeUndefined();
     expect(smartphonePack.theme).toBe(paperTheme);
     expect(smartphonePack.limits).toBeUndefined();
-    expect(smartphoneObjects).toHaveLength(1);
     expect(smartphoneObjects.some((object) => object.payload.type === 'text')).toBe(false);
+    expect(smartphoneObjects.map((object) => object.id)).toEqual([
+      'midframe',
+      'battery',
+      'logic-board',
+      'camera-module',
+      'loudspeaker',
+      'haptic-motor',
+      'phone',
+    ]);
 
-    const phone = smartphoneObjects[0];
-    expect(phone?.id).toBe('smartphone');
-    expect(phone?.x).toBe(0);
-    expect(phone?.y).toBe(0);
+    const phone = phoneObject();
+    expect(phone.x).toBe(0);
+    expect(phone.y).toBe(0);
+    expect(phone.parentId).toBeUndefined();
+    expect(phone.fade).toEqual({ fadeOut: [1, 2] });
     const payload = phonePayload();
     expect(payload.src).toBe('images/smartphone.webp');
     expect(payload.frame).toBe(false);
@@ -40,6 +62,33 @@ describe('smartphone pack', () => {
     expect(opaqueWidth).toBeCloseTo(PHONE_WIDTH_MM);
     expect(opaqueHeight).toBeGreaterThan(140);
     expect(opaqueHeight).toBeLessThan(150);
+
+    const parts: Array<[string, { width: number; height: number; opaqueWidth: number; opaqueHeight: number }, number, number, number]> = [
+      ['midframe', partSprites.midframe, PHONE_WIDTH_MM, 0, 0],
+      ['battery', partSprites.battery, 50, -9.8, 16.6],
+      ['logic-board', partSprites.logicBoard, 26, 19.8, -45.2],
+      ['camera-module', partSprites.cameraModule, 22, -21.5, -59.5],
+      ['loudspeaker', partSprites.loudspeaker, 14, -12, 65.8],
+      ['haptic-motor', partSprites.hapticMotor, 15, 12, 65.8],
+    ];
+    for (const [id, sprite, opaqueMm, x, y] of parts) {
+      const part = smartphoneObjects.find((object) => object.id === id);
+      if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
+      expect(part.parentId).toBe('phone');
+      expect(part.fade).toEqual({ fadeIn: [1, 2] });
+      expect(part.x).toBe(x);
+      expect(part.y).toBe(y);
+      expect(part.payload.frame).toBe(false);
+      expect(part.payload.height / part.payload.width).toBeCloseTo(sprite.height / sprite.width);
+      const partOpaqueWidth = (part.payload.width * sprite.opaqueWidth) / sprite.width;
+      const partOpaqueHeight = (part.payload.height * sprite.opaqueHeight) / sprite.height;
+      expect(partOpaqueWidth).toBeCloseTo(opaqueMm);
+      expect(part.payload.width / 2).toBeLessThanOrEqual(payload.width / 2);
+      expect(part.payload.height / 2).toBeLessThanOrEqual(payload.height / 2);
+      expect(Math.abs(part.x) + part.payload.width / 2).toBeLessThanOrEqual(payload.width / 2 + 1e-9);
+      expect(Math.abs(part.y) + part.payload.height / 2).toBeLessThanOrEqual(payload.height / 2 + 1e-9);
+      expect(partOpaqueHeight / partOpaqueWidth).toBeCloseTo(sprite.opaqueHeight / sprite.opaqueWidth);
+    }
   });
 
   it('fits the opening camera to the phone on a desktop and a narrow viewport', () => {
@@ -52,7 +101,9 @@ describe('smartphone pack', () => {
       const payload = phonePayload();
       expect(opening).toMatchObject({ x: 0, y: 0 });
       expect(opening.scale).toBeCloseTo(limits.minScale);
-      expect(visibilityAlpha(smartphoneObjects[0]!.visibility, opening.scale)).toBe(1);
+      expect(opening.scale).toBeCloseTo(limits.fitScale);
+      expect(limits.maxScale / limits.fitScale).toBeGreaterThan(3);
+      expect(visibilityAlpha(phoneObject().visibility, opening.scale)).toBe(1);
 
       const cssW = payload.width * opening.scale;
       const cssH = payload.height * opening.scale;
