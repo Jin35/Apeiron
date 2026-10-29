@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
 import { zoomAt } from './camera';
 import { demoObjects } from './demo';
@@ -32,7 +33,7 @@ function recordingContext(draws: { n: number }): CanvasRenderingContext2D {
   });
 }
 
-function harness() {
+function harness(options?: { search?: string; innerWidth?: number }) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
   const canvasListeners = new Map<string, Listener[]>();
@@ -106,9 +107,9 @@ function harness() {
   }
 
   vi.stubGlobal('window', {
-    innerWidth: 1280,
+    innerWidth: options?.innerWidth ?? 1280,
     devicePixelRatio: 1,
-    location: { search: '' },
+    location: { search: options?.search ?? '' },
     addEventListener(type: string, handler: Listener) {
       const list = windowListeners.get(type) ?? [];
       list.push(handler);
@@ -300,5 +301,20 @@ describe('frame loop', () => {
     shell.flush();
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(scale);
     expect(shell.pending.size).toBe(0);
+  });
+
+  it('opens on the fitted camera, and a scale query replaces it', () => {
+    const phone = harness({ innerWidth: 390 });
+    const fitted = initialCameraFor(390);
+    expect(Number(phone.status.dataset.scale)).toBeCloseTo(fitted.scale);
+    expect(phone.status.dataset).toMatchObject({ x: '0', y: '-80' });
+    expect(fitted.scale).toBeLessThan(0.06);
+    const visible = createMemoryStore(demoObjects).countInBand(fitted.scale);
+    expect(phone.status.textContent).toBe(`×${Number(fitted.scale).toFixed(3)} · ${visible} visible`);
+
+    const wharf = harness({ search: '?scale=2&x=-3012&y=-1112' });
+    const count = createMemoryStore(demoObjects).countInBand(2);
+    expect(wharf.status.textContent).toBe(`×2.00 · ${count} visible`);
+    expect(wharf.status.dataset).toMatchObject({ scale: '2', x: '-3012', y: '-1112' });
   });
 });
