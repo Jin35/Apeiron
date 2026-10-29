@@ -3,7 +3,7 @@ import { clampScale, MAX_SCALE, MIN_SCALE, panBy, retarget, zoomAt, type Camera 
 import { demoObjects, initialCameraFor } from './demo';
 import { attachGestures, ZOOM_STEP } from './gestures';
 import { createRenderer } from './render';
-import { visibilityAlpha } from './visibility';
+import { createMemoryStore } from './store';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#canvas');
 const statusEl = document.querySelector<HTMLElement>('#status');
@@ -23,6 +23,7 @@ let drawing = false;
 let pending = false;
 
 const renderer = createRenderer(surface, () => publish());
+const store = createMemoryStore(demoObjects);
 
 function formatScale(scale: number): string {
   if (scale >= 10) return scale.toFixed(1);
@@ -31,11 +32,7 @@ function formatScale(scale: number): string {
 }
 
 function countVisible(scale: number): number {
-  let count = 0;
-  for (const object of demoObjects) {
-    if (visibilityAlpha(object.visibility, scale) > 0.02) count += 1;
-  }
-  return count;
+  return store.countInBand(scale);
 }
 
 function cameraFromLocation(fallback: Camera): Camera {
