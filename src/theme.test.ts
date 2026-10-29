@@ -5,7 +5,7 @@ describe('themes', () => {
   it('keeps the demo dark look', () => {
     expect(darkTheme).toMatchObject({
       background: '#101318',
-      grid: 'rgba(232, 228, 217, 0.08)',
+      grid: { color: 'rgba(232, 228, 217, 0.08)' },
       ink: '#f0d78c',
       accent: '#f0d78c',
       ui: '#f3efe6',
@@ -34,6 +34,7 @@ describe('themes', () => {
     expect(contrast(paperTheme.accent, paperTheme.background)).toBeGreaterThanOrEqual(4.5);
     expect(paperTheme.paper?.vignette).toBeTruthy();
     expect(paperTheme.paper?.grain).toBeTruthy();
+    expect(paperTheme.grid).toBeUndefined();
     expect(themeProperties(paperTheme)['color-scheme']).toBe('light');
     expect(themeProperties(paperTheme)['--muted']).toBe(paperTheme.ui);
   });

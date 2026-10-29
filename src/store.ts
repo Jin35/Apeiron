@@ -1,4 +1,4 @@
-import type { Camera, ViewBounds } from './camera';
+import type { Camera, ContentBox, ViewBounds } from './camera';
 import type { CanvasObject } from './model';
 import { visibilityAlpha } from './visibility';
 
@@ -43,6 +43,12 @@ export interface SceneStore {
    * several overlap, the greater `maxScale` wins and a tie goes to the later one.
    */
   hitTest(worldPoint: { x: number; y: number }, camera: Camera): CanvasObject | null;
+  /**
+   * World boxes of every placed object, parent chain already flattened.
+   * A missing parent or a cycle is absent, same as `query`. The shell derives
+   * camera limits from this; the pad used for culling is not included.
+   */
+  contentBoxes(): readonly ContentBox[];
 }
 
 /**
@@ -124,7 +130,22 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       entries = placedEntries(next);
       notify();
     },
+    contentBoxes() {
+      return entries.map((entry) => ({
+        box: entry.box,
+        maxScale: entry.object.visibility.maxScale,
+        size: minorSize(entry.object),
+      }));
+    },
   };
+}
+
+function minorSize(object: CanvasObject): number {
+  const { width, height } = object.payload;
+  const w = Number.isFinite(width) ? Math.abs(width) : 0;
+  const h = Number.isFinite(height) ? Math.abs(height) : 0;
+  if (w > 0 && h > 0) return Math.min(w, h);
+  return Math.max(w, h);
 }
 
 /**

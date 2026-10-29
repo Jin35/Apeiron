@@ -7,7 +7,12 @@
  * target immediately.
  */
 
-import { applyCameraCommand, zoomAt, type Camera, type CameraCommand } from './camera';
+import {
+  applyCameraCommand,
+  type Camera,
+  type CameraCommand,
+  type ResolvedCameraLimits,
+} from './camera';
 
 export const BUTTON_ZOOM_MS = 150;
 
@@ -40,9 +45,16 @@ export function pressButtonZoom(
   viewW: number,
   viewH: number,
   now: number,
+  limits?: ResolvedCameraLimits,
 ): ButtonZoom {
   const base = committedCamera(state);
-  const to = zoomAt(base, viewW / 2, viewH / 2, viewW, viewH, factor);
+  const to = applyCameraCommand(
+    base,
+    { type: 'zoomAt', x: viewW / 2, y: viewH / 2, factor },
+    viewW,
+    viewH,
+    limits,
+  );
   if (to.scale === base.scale && to.x === base.x && to.y === base.y) return state;
   const previous = state.segments[state.segments.length - 1];
   const segment: ZoomSegment = {
@@ -81,7 +93,8 @@ export function cancelButtonZoom(state: ButtonZoom): ButtonZoom {
  * `panBy`, `zoomAt`, and `retarget` run on the camera on screen, then
  * `cancelButtonZoom` drops the queue. `zoomStep` queues a 150ms step
  * from the committed camera, so a second click does not resample the
- * in-between scale. `settleZoomStep` keeps that target and drops the blend.
+ * in-between scale. The target is clamped to `limits` before the blend, so
+ * the step does not overshoot. `settleZoomStep` keeps that target and drops the blend.
  */
 export function applyButtonZoomCommand(
   state: ButtonZoom,
@@ -89,14 +102,14 @@ export function applyButtonZoomCommand(
   viewW: number,
   viewH: number,
   now: number,
-  options?: { settleZoomStep?: boolean },
+  options?: { settleZoomStep?: boolean; limits?: ResolvedCameraLimits },
 ): ButtonZoom {
   if (command.type === 'zoomStep') {
-    const queued = pressButtonZoom(state, command.factor, viewW, viewH, now);
+    const queued = pressButtonZoom(state, command.factor, viewW, viewH, now, options?.limits);
     if (!options?.settleZoomStep || queued.segments.length === 0) return queued;
     return createButtonZoom(committedCamera(queued));
   }
-  const next = applyCameraCommand(state.camera, command, viewW, viewH);
+  const next = applyCameraCommand(state.camera, command, viewW, viewH, options?.limits);
   // The command already ran on the camera that was on screen. Cancel keeps
   // that camera and drops the queue (the same settle as createButtonZoom).
   return cancelButtonZoom({ camera: next, segments: state.segments });

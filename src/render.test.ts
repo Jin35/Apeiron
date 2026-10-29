@@ -541,11 +541,35 @@ describe('createRenderer', () => {
     });
 
     expect(darkTheme.background).toBe('#101318');
-    expect(darkTheme.grid).toBe('rgba(232, 228, 217, 0.08)');
+    expect(darkTheme.grid?.color).toBe('rgba(232, 228, 217, 0.08)');
     expect(darkTheme.ink).toBe('#f0d78c');
     expect(fillStylesOf(ctx)[0]).toBe('#101318');
     expect(strokeStylesOf(ctx)[0]).toBe('rgba(232, 228, 217, 0.08)');
     expect(gradientsOf(ctx)).toBe(0);
+  });
+
+  it('draws a grid only when the theme provides one', () => {
+    const bare = recordingContext();
+    createRenderer(canvasFor(bare), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: paperTheme,
+      visible: [],
+    });
+    expect(paperTheme.grid).toBeUndefined();
+    expect(strokeStylesOf(bare)).toEqual([]);
+
+    const ruled = recordingContext();
+    const theme: Theme = { ...paperTheme, grid: { color: 'rgba(1, 2, 3, 0.4)' } };
+    createRenderer(canvasFor(ruled), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme,
+      visible: [],
+    });
+    expect(strokeStylesOf(ruled)).toEqual(['rgba(1, 2, 3, 0.4)']);
   });
 
   it('fills the theme background and ink, and keeps a text color override', () => {
