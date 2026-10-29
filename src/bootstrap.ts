@@ -7,13 +7,17 @@ import { clampScale, type Camera } from './camera';
  */
 export const initialCamera: Camera = { x: 0, y: -80, scale: 0.1 };
 
-/** Approximate on-screen width of the title at scale 1, including letter-spacing. */
-const TITLE_WORLD_WIDTH = 6300;
-
-/** Desktop keeps `initialCamera`. Narrow viewports zoom out so the title fits. */
-export function initialCameraFor(viewWidth: number): Camera {
+/**
+ * Desktop keeps `initialCamera`. A narrow viewport zooms out so a title
+ * `titleWorldWidth` world units wide fits in about 86% of the view.
+ * The caller passes that width. Scale does not drop below 0.04.
+ */
+export function initialCameraFor(viewWidth: number, titleWorldWidth: number): Camera {
   const width = viewWidth > 0 ? viewWidth : 1280;
-  const fitted = (width * 0.86) / TITLE_WORLD_WIDTH;
+  const fitted =
+    titleWorldWidth > 0 && Number.isFinite(titleWorldWidth)
+      ? (width * 0.86) / titleWorldWidth
+      : initialCamera.scale;
   const scale = Math.min(initialCamera.scale, Math.max(0.04, fitted));
   return { x: initialCamera.x, y: initialCamera.y, scale };
 }

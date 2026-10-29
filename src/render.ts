@@ -1,6 +1,6 @@
 import { viewBounds, type Camera } from './camera';
 import { gridStep } from './grid';
-import type { CanvasObject, TextStyle } from './model';
+import type { CanvasObject, TextPayload } from './model';
 
 /** One object to paint, with the alpha to use. */
 type VisibleObject = {
@@ -146,16 +146,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       if (object.payload.type === 'image') {
         drawImageObject(ctx, camera, viewW, viewH, object, imageFor(object.payload.src));
       } else {
-        drawTextObject(
-          ctx,
-          camera,
-          viewW,
-          viewH,
-          object.x,
-          object.y,
-          object.payload.text,
-          object.payload.style,
-        );
+        drawTextObject(ctx, camera, viewW, viewH, object.x, object.y, object.payload);
       }
     }
     ctx.restore();
@@ -242,6 +233,9 @@ function drawImageObject(
   strokeCrossingEdges(ctx, left, top, left + cssW, top + cssH, viewW, viewH);
 }
 
+/** Halo stroke as a fraction of the font size. Counted when the ink is fitted to the box. */
+const TEXT_HALO = 0.055;
+
 function drawTextObject(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
@@ -249,26 +243,62 @@ function drawTextObject(
   viewH: number,
   x: number,
   y: number,
-  label: string,
-  style: TextStyle,
+  payload: TextPayload,
 ) {
+  const { text: label, style, width, height } = payload;
+  if (!(width > 0) || !(height > 0)) return;
   const screenFont = style.fontSize * camera.scale;
   if (!(screenFont > 0) || screenFont > MAX_SCREEN_FONT_PX) return;
+
   const family = style.fontFamily ?? DEFAULT_FONT;
   const weight = style.fontWeight ?? '500';
+  const spaced = ctx as SpacedContext;
   ctx.font = `${weight} ${screenFont}px ${family}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  (ctx as SpacedContext).letterSpacing = style.letterSpacing ?? '0px';
+  spaced.letterSpacing = style.letterSpacing ?? '0px';
+
+  const fontPx = screenFont * textFit(ctx, label, screenFont, width * camera.scale, height * camera.scale);
+  if (fontPx !== screenFont) ctx.font = `${weight} ${fontPx}px ${family}`;
+
   ctx.strokeStyle = 'rgba(10, 12, 16, 0.75)';
-  ctx.lineWidth = screenFont * 0.055;
+  ctx.lineWidth = fontPx * TEXT_HALO;
   const sx = worldToCssX(x, camera, viewW);
   const sy = worldToCssY(y, camera, viewH);
   ctx.strokeText(label, sx, sy);
   ctx.fillStyle = style.color;
   ctx.fillText(label, sx, sy);
-  (ctx as SpacedContext).letterSpacing = '0px';
+  spaced.letterSpacing = '0px';
+}
+
+/**
+ * Uniform scale that keeps the ink inside the authored box. It never exceeds 1:
+ * `fontSize` is the size when the glyphs already fit, and the demo boxes are
+ * the old overestimate, so those labels stay at `fontSize`. A context with no
+ * usable `measureText` also stays at 1.
+ */
+function textFit(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  fontPx: number,
+  boxW: number,
+  boxH: number,
+): number {
+  if (!(boxW > 0) || !(boxH > 0) || !(fontPx > 0) || typeof ctx.measureText !== 'function') return 1;
+  const metrics = ctx.measureText(label);
+  if (!metrics || !(metrics.width > 0)) return 1;
+  const stroke = fontPx * TEXT_HALO;
+  const ascent = metrics.actualBoundingBoxAscent;
+  const descent = metrics.actualBoundingBoxDescent;
+  const inkH =
+    typeof ascent === 'number' && typeof descent === 'number' && ascent + descent > 0
+      ? ascent + descent + stroke
+      : fontPx + stroke;
+  const inkW = metrics.width + stroke;
+  const fit = Math.min(boxW / inkW, boxH / inkH);
+  if (!Number.isFinite(fit) || !(fit > 0)) return 1;
+  return Math.min(1, fit);
 }
 
 /** `(world - camera) * scale + view / 2`, in CSS pixels. */

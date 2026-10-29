@@ -4,17 +4,30 @@ import { MAX_SCALE, MIN_SCALE } from './camera';
 
 describe('opening camera', () => {
   it('keeps the desktop view and zooms out so the title fits on a narrow viewport', () => {
-    expect(initialCameraFor(1440)).toEqual(initialCamera);
-    expect(initialCameraFor(0)).toEqual(initialCamera);
-    const phone = initialCameraFor(390);
+    const title = 6300;
+    expect(initialCameraFor(1440, title)).toEqual(initialCamera);
+    expect(initialCameraFor(0, title)).toEqual(initialCamera);
+    const phone = initialCameraFor(390, title);
     expect(phone).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
     expect(phone.scale).toBeLessThan(0.06);
-    expect(phone.scale * 6300).toBeLessThan(360);
-    expect(initialCameraFor(200).scale).toBe(0.04);
+    expect(phone.scale * title).toBeLessThan(360);
+    expect(initialCameraFor(200, title).scale).toBe(0.04);
+  });
+
+  it('fits the scale to the title width it is given', () => {
+    const phone = initialCameraFor(390, 6300);
+    const wider = initialCameraFor(390, 7000);
+    expect(wider.scale).toBeLessThan(phone.scale);
+    expect(wider.scale).toBeCloseTo((390 * 0.86) / 7000);
+    expect(wider).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
+
+    const desktop = initialCameraFor(1440, 20000);
+    expect(desktop.scale).toBeLessThan(initialCamera.scale);
+    expect(desktop.scale).toBeCloseTo((1440 * 0.86) / 20000);
   });
 
   it('opens on the query string and clamps scale the same way as zoom', () => {
-    const fallback = initialCameraFor(1440);
+    const fallback = initialCameraFor(1440, 6300);
     expect(cameraFromLocation(fallback, '')).toEqual(fallback);
     expect(cameraFromLocation(fallback, '?scale=0&x=1&y=2')).toEqual(fallback);
     expect(cameraFromLocation(fallback, '?scale=nope')).toEqual(fallback);

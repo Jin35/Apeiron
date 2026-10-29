@@ -19,6 +19,12 @@ type TextCall = Xy & { text: string };
 
 type RectCall = { x: number; y: number; w: number; h: number };
 
+type TextMetricsLike = {
+  width: number;
+  actualBoundingBoxAscent?: number;
+  actualBoundingBoxDescent?: number;
+};
+
 type RecordedContext = CanvasRenderingContext2D & {
   paints: Paint[];
   transforms: TransformCall[];
@@ -43,7 +49,9 @@ class FakeImage {
 
 const images: FakeImage[] = [];
 
-function recordingContext(): RecordedContext {
+function recordingContext(options?: {
+  measureText?: (text: string) => TextMetricsLike | undefined;
+}): RecordedContext {
   const state = { globalAlpha: 1 };
   const paints: Paint[] = [];
   const transforms: TransformCall[] = [];
@@ -66,6 +74,9 @@ function recordingContext(): RecordedContext {
         return (a: number, b: number, c: number, d: number, e: number, f: number) => {
           transforms.push([a, b, c, d, e, f]);
         };
+      }
+      if (prop === 'measureText') {
+        return options?.measureText ?? (() => undefined);
       }
       if (prop === 'fillText') {
         return (text: string, x: number, y: number) => {
@@ -123,7 +134,7 @@ function textObject(id: string, visibility: VisibilityRange): CanvasObject {
     x: 0,
     y: 0,
     visibility,
-    payload: { type: 'text', text: id, style: { fontSize: 12, color: '#fff' } },
+    payload: { type: 'text', text: id, style: { fontSize: 12, color: '#fff' }, width: 40, height: 16 },
   };
 }
 
@@ -401,7 +412,71 @@ describe('createRenderer', () => {
     ]);
     expect(strokeRectsOf(ctx)).toEqual([]);
   });
+
+  it('scales text down so the ink fits the authored box', () => {
+    const advance = 200;
+    const ascent = 30;
+    const descent = 10;
+    const ctx = recordingContext({
+      measureText: () => ({ width: advance, actualBoundingBoxAscent: ascent, actualBoundingBoxDescent: descent }),
+    });
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const natural = 12 * camera.scale;
+    const boxW = 10 * camera.scale;
+    const boxH = 8 * camera.scale;
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(sizedLabel('tight', 12, 10, 8), 1)],
+    });
+
+    const drawn = fontPx(fontsOf(ctx).at(-1));
+    expect(drawn).toBeLessThan(natural);
+    const stroke = drawn * 0.055;
+    const scale = drawn / natural;
+    const inkW = advance * scale + stroke;
+    const inkH = (ascent + descent) * scale + stroke;
+    expect(inkW).toBeLessThanOrEqual(boxW + 1e-6);
+    expect(inkH).toBeLessThanOrEqual(boxH + 1e-6);
+    expect(Math.min(boxW - inkW, boxH - inkH)).toBeCloseTo(0, 4);
+    expect(fillTextsOf(ctx)).toEqual([{ text: 'tight', x: 400, y: 300 }]);
+    expect(lineWidthsOf(ctx).at(-1)).toBeCloseTo(drawn * 0.055);
+  });
+
+  it('does not scale text up to fill a larger authored box', () => {
+    const ctx = recordingContext({
+      measureText: () => ({ width: 20, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 4 }),
+    });
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(sizedLabel('loose', 12, 400, 200), 1)],
+    });
+
+    expect(fontsOf(ctx)).toEqual([expect.stringContaining('48px')]);
+    expect(fillTextsOf(ctx)).toEqual([{ text: 'loose', x: 400, y: 300 }]);
+  });
 });
+
+function fontPx(font: string | undefined): number {
+  const match = /(\d+(?:\.\d+)?)px/.exec(font ?? '');
+  return match ? Number(match[1]) : Number.NaN;
+}
+
+function sizedLabel(id: string, fontSize: number, width: number, height: number): CanvasObject {
+  return {
+    id,
+    x: 0,
+    y: 0,
+    visibility: { minScale: 1, maxScale: 16 },
+    payload: { type: 'text', text: id, style: { fontSize, color: '#fff' }, width, height },
+  };
+}
 
 function labelAt(id: string, x: number, y: number, fontSize: number): CanvasObject {
   return {
@@ -409,7 +484,7 @@ function labelAt(id: string, x: number, y: number, fontSize: number): CanvasObje
     x,
     y,
     visibility: { minScale: 1, maxScale: 2 },
-    payload: { type: 'text', text: id, style: { fontSize, color: '#fff' } },
+    payload: { type: 'text', text: id, style: { fontSize, color: '#fff' }, width: 4, height: 4 },
   };
 }
 
