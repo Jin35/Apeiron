@@ -3,6 +3,7 @@ import type { Camera } from './camera';
 import type { CanvasObject, VisibilityRange } from './model';
 import { createRenderer } from './render';
 import type { VisibleObject } from './store';
+import { darkTheme, paperTheme, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
 
 const camera: Camera = { x: 0, y: 0, scale: 4 };
@@ -31,9 +32,11 @@ type RecordedContext = CanvasRenderingContext2D & {
   fonts: string[];
   lineWidths: number[];
   strokeStyles: string[];
+  fillStyles: string[];
   fillTexts: TextCall[];
   strokeRects: RectCall[];
   fillRects: RectCall[];
+  gradients: number;
 };
 
 class FakeImage {
@@ -59,9 +62,11 @@ function recordingContext(options?: {
   const fonts: string[] = [];
   const lineWidths: number[] = [];
   const strokeStyles: string[] = [];
+  const fillStyles: string[] = [];
   const fillTexts: TextCall[] = [];
   const strokeRects: RectCall[] = [];
   const fillRects: RectCall[] = [];
+  const gradients = { n: 0 };
   const ctx = new Proxy({} as RecordedContext, {
     get(_target, prop) {
       if (prop === 'paints') return paints;
@@ -69,9 +74,17 @@ function recordingContext(options?: {
       if (prop === 'fonts') return fonts;
       if (prop === 'lineWidths') return lineWidths;
       if (prop === 'strokeStyles') return strokeStyles;
+      if (prop === 'fillStyles') return fillStyles;
       if (prop === 'fillTexts') return fillTexts;
       if (prop === 'strokeRects') return strokeRects;
       if (prop === 'fillRects') return fillRects;
+      if (prop === 'gradients') return gradients.n;
+      if (prop === 'createRadialGradient') {
+        return () => {
+          gradients.n += 1;
+          return { addColorStop() {} };
+        };
+      }
       if (prop === 'globalAlpha') return state.globalAlpha;
       if (prop === 'setTransform') {
         return (a: number, b: number, c: number, d: number, e: number, f: number) => {
@@ -105,6 +118,7 @@ function recordingContext(options?: {
       if (prop === 'font' && typeof value === 'string') fonts.push(value);
       if (prop === 'lineWidth' && typeof value === 'number') lineWidths.push(value);
       if (prop === 'strokeStyle' && typeof value === 'string') strokeStyles.push(value);
+      if (prop === 'fillStyle' && typeof value === 'string') fillStyles.push(value);
       return true;
     },
   });
@@ -174,6 +188,14 @@ function lineWidthsOf(ctx: CanvasRenderingContext2D): number[] {
 
 function strokeStylesOf(ctx: CanvasRenderingContext2D): string[] {
   return (ctx as RecordedContext).strokeStyles;
+}
+
+function fillStylesOf(ctx: CanvasRenderingContext2D): string[] {
+  return (ctx as RecordedContext).fillStyles;
+}
+
+function gradientsOf(ctx: CanvasRenderingContext2D): number {
+  return (ctx as RecordedContext).gradients;
 }
 
 function fillTextsOf(ctx: CanvasRenderingContext2D): TextCall[] {
@@ -507,6 +529,65 @@ describe('createRenderer', () => {
       selectedId: 'other',
     });
     expect(strokeRectsOf(missing)).toEqual([]);
+  });
+
+  it('uses the demo dark background and grid when the frame has no theme', () => {
+    const ctx = recordingContext();
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [],
+    });
+
+    expect(darkTheme.background).toBe('#101318');
+    expect(darkTheme.grid).toBe('rgba(232, 228, 217, 0.08)');
+    expect(darkTheme.ink).toBe('#f0d78c');
+    expect(fillStylesOf(ctx)[0]).toBe('#101318');
+    expect(strokeStylesOf(ctx)[0]).toBe('rgba(232, 228, 217, 0.08)');
+    expect(gradientsOf(ctx)).toBe(0);
+  });
+
+  it('fills the theme background and ink, and keeps a text color override', () => {
+    const ctx = recordingContext();
+    const theme: Theme = { ...paperTheme, grid: undefined };
+    const plain: CanvasObject = {
+      id: 'plain',
+      x: 0,
+      y: 0,
+      visibility: { minScale: 1, maxScale: 16 },
+      payload: { type: 'text', text: 'plain', style: { fontSize: 12 }, width: 40, height: 16 },
+    };
+    const override: CanvasObject = {
+      id: 'override',
+      x: 10,
+      y: 0,
+      visibility: { minScale: 1, maxScale: 8 },
+      payload: {
+        type: 'text',
+        text: 'override',
+        style: { fontSize: 12, color: '#f0d78c', fontFamily: 'monospace' },
+        width: 40,
+        height: 16,
+      },
+    };
+
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme,
+      visible: [visible(plain, 1), visible(override, 1)],
+    });
+
+    expect(fillStylesOf(ctx)[0]).toBe(paperTheme.background);
+    expect(fillStylesOf(ctx)).toContain(paperTheme.ink);
+    expect(fillStylesOf(ctx)).toContain('#f0d78c');
+    expect(fillStylesOf(ctx)).toContain(paperTheme.paper?.grain);
+    expect(strokeStylesOf(ctx)[0]).toBe('rgba(10, 12, 16, 0.75)');
+    expect(fontsOf(ctx).some((font) => font.includes(paperTheme.displayFont))).toBe(true);
+    expect(fontsOf(ctx).some((font) => font.includes('monospace'))).toBe(true);
+    expect(gradientsOf(ctx)).toBe(1);
   });
 });
 

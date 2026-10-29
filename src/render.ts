@@ -1,6 +1,7 @@
 import { viewBounds, type Camera } from './camera';
 import { gridStep } from './grid';
 import type { CanvasObject, TextPayload } from './model';
+import { darkTheme, withAlpha, type Theme } from './theme';
 
 /** One object to paint, with the alpha to use. */
 type VisibleObject = {
@@ -9,8 +10,6 @@ type VisibleObject = {
 };
 
 const PLATE = '#171b22';
-const FRAME = 'rgba(240, 215, 140, 0.45)';
-const DEFAULT_FONT = '"Iowan Old Style", Palatino, Georgia, serif';
 
 /** Grid hairline and plate frame, in CSS pixels. */
 const GRID_LINE_PX = 1;
@@ -18,7 +17,10 @@ const PLATE_LINE_PX = 1.25;
 
 /** Selection outline. Screen pixels, so it stays a hairline at any zoom. */
 const SELECT_LINE_PX = 2;
-const SELECT_ACCENT = 'rgba(240, 215, 140, 0.9)';
+/** Selection stroke is the accent at this alpha. Gold on the dark pack. */
+const SELECT_ALPHA = 0.9;
+/** Plate frame is the accent, fainter than the selection. */
+const FRAME_ALPHA = 0.45;
 
 /**
  * A screen font above this is not submitted. Atlas labels peak near 185px,
@@ -50,6 +52,8 @@ export type RenderFrame = {
   visible: readonly VisibleObject[];
   /** Set when the shell has a selection. Stroked if that object is in `visible`. */
   selectedId?: string;
+  /** Pack look. Omitted frames use the demo dark theme. */
+  theme?: Theme;
 };
 
 export type Renderer = {
@@ -124,6 +128,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
 
   function draw(frame: RenderFrame) {
     const { camera, width: viewW, height: viewH, visible } = frame;
+    const theme = frame.theme ?? darkTheme;
     if (viewW < 1 || viewH < 1) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -137,11 +142,12 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     // Device pixels per CSS pixel only. World positions are converted below
     // in float64; a world scale here is a float32 matrix and drifts at deep zoom.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#101318';
+    ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, viewW, viewH);
+    drawPaper(ctx, theme, viewW, viewH);
 
     ctx.save();
-    drawGrid(ctx, camera, viewW, viewH);
+    drawGrid(ctx, theme, camera, viewW, viewH);
 
     // Coarser bands (smaller maxScale) sit under finer ones. Alpha is the caller's.
     const sorted = [...visible].sort(
@@ -150,14 +156,14 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     for (const { object, alpha } of sorted) {
       ctx.globalAlpha = alpha;
       if (object.payload.type === 'image') {
-        drawImageObject(ctx, camera, viewW, viewH, object, imageFor(object.payload.src));
+        drawImageObject(ctx, theme, camera, viewW, viewH, object, imageFor(object.payload.src));
       } else {
-        drawTextObject(ctx, camera, viewW, viewH, object.x, object.y, object.payload);
+        drawTextObject(ctx, theme, camera, viewW, viewH, object.x, object.y, object.payload);
       }
     }
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
-      if (selected) drawSelection(ctx, camera, viewW, viewH, selected.object);
+      if (selected) drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
     }
     ctx.restore();
   }
@@ -165,8 +171,48 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
   return { draw };
 }
 
+/** Vignette plus a deterministic speck field. No image asset. */
+function drawPaper(ctx: CanvasRenderingContext2D, theme: Theme, viewW: number, viewH: number) {
+  const paper = theme.paper;
+  if (!paper) return;
+
+  const vignette = ctx.createRadialGradient(
+    viewW / 2,
+    viewH / 2,
+    Math.min(viewW, viewH) * 0.2,
+    viewW / 2,
+    viewH / 2,
+    Math.hypot(viewW, viewH) * 0.55,
+  );
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(1, paper.vignette);
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, viewW, viewH);
+
+  ctx.fillStyle = paper.grain;
+  const cols = Math.max(1, Math.floor(viewW));
+  const rows = Math.max(1, Math.floor(viewH));
+  const count = Math.min(700, Math.round((viewW * viewH) / 2800));
+  for (let i = 0; i < count; i += 1) {
+    const x = speck(i) % cols;
+    const y = speck(i + 100003) % rows;
+    const size = speck(i + 17) % 7 === 0 ? 2 : 1;
+    ctx.fillRect(x, y, size, size);
+  }
+}
+
+function speck(n: number): number {
+  let x = n | 0;
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d);
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b);
+  x ^= x >>> 16;
+  return x >>> 0;
+}
+
 function drawSelection(
   ctx: CanvasRenderingContext2D,
+  theme: Theme,
   camera: Camera,
   viewW: number,
   viewH: number,
@@ -180,17 +226,19 @@ function drawSelection(
   const cssH = height * camera.scale;
   if (!(cssW > 0) || !(cssH > 0)) return;
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = SELECT_ACCENT;
+  ctx.strokeStyle = withAlpha(theme.accent, SELECT_ALPHA);
   ctx.lineWidth = SELECT_LINE_PX;
   ctx.strokeRect(left, top, cssW, cssH);
 }
 
 function drawGrid(
   ctx: CanvasRenderingContext2D,
+  theme: Theme,
   camera: Camera,
   viewW: number,
   viewH: number,
 ) {
+  if (!theme.grid) return;
   const step = gridStep(camera.scale);
   if (!(step > 0) || !Number.isFinite(step)) return;
   const bounds = viewBounds(camera, viewW, viewH);
@@ -199,7 +247,7 @@ function drawGrid(
   const j0 = Math.floor(bounds.top / step);
   const j1 = Math.ceil(bounds.bottom / step);
   ctx.beginPath();
-  ctx.strokeStyle = 'rgba(232, 228, 217, 0.08)';
+  ctx.strokeStyle = theme.grid;
   ctx.lineWidth = GRID_LINE_PX;
   const limit = 120;
   const top = worldToCssY(bounds.top, camera, viewH);
@@ -221,6 +269,7 @@ function drawGrid(
 
 function drawImageObject(
   ctx: CanvasRenderingContext2D,
+  theme: Theme,
   camera: Camera,
   viewW: number,
   viewH: number,
@@ -242,7 +291,7 @@ function drawImageObject(
     if (image.complete && image.naturalWidth > 0) {
       ctx.drawImage(image, left, top, cssW, cssH);
     }
-    ctx.strokeStyle = FRAME;
+    ctx.strokeStyle = withAlpha(theme.accent, FRAME_ALPHA);
     ctx.lineWidth = PLATE_LINE_PX;
     ctx.strokeRect(left, top, cssW, cssH);
     return;
@@ -260,7 +309,7 @@ function drawImageObject(
       ctx.drawImage(image, sx, sy, sw, sh, fill.x, fill.y, fill.w, fill.h);
     }
   }
-  strokeCrossingEdges(ctx, left, top, left + cssW, top + cssH, viewW, viewH);
+  strokeCrossingEdges(ctx, theme, left, top, left + cssW, top + cssH, viewW, viewH);
 }
 
 /** Halo stroke as a fraction of the font size. Counted when the ink is fitted to the box. */
@@ -268,6 +317,7 @@ const TEXT_HALO = 0.055;
 
 function drawTextObject(
   ctx: CanvasRenderingContext2D,
+  theme: Theme,
   camera: Camera,
   viewW: number,
   viewH: number,
@@ -280,7 +330,7 @@ function drawTextObject(
   const screenFont = style.fontSize * camera.scale;
   if (!(screenFont > 0) || screenFont > MAX_SCREEN_FONT_PX) return;
 
-  const family = style.fontFamily ?? DEFAULT_FONT;
+  const family = style.fontFamily ?? theme.displayFont;
   const weight = style.fontWeight ?? '500';
   const spaced = ctx as SpacedContext;
   ctx.font = `${weight} ${screenFont}px ${family}`;
@@ -297,7 +347,7 @@ function drawTextObject(
   const sx = worldToCssX(x, camera, viewW);
   const sy = worldToCssY(y, camera, viewH);
   ctx.strokeText(label, sx, sy);
-  ctx.fillStyle = style.color;
+  ctx.fillStyle = style.color ?? theme.ink;
   ctx.fillText(label, sx, sy);
   spaced.letterSpacing = '0px';
 }
@@ -377,6 +427,7 @@ type Segment = { x1: number; y1: number; x2: number; y2: number };
 
 function strokeCrossingEdges(
   ctx: CanvasRenderingContext2D,
+  theme: Theme,
   left: number,
   top: number,
   right: number,
@@ -392,7 +443,7 @@ function strokeCrossingEdges(
   ].filter((edge): edge is Segment => edge !== null);
   if (edges.length === 0) return;
 
-  ctx.strokeStyle = FRAME;
+  ctx.strokeStyle = withAlpha(theme.accent, FRAME_ALPHA);
   ctx.lineWidth = PLATE_LINE_PX;
   ctx.beginPath();
   let prevX = Number.NaN;

@@ -8,6 +8,7 @@ import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
 import type { CanvasObject } from './model';
 import { createMemoryStore, type SceneStore } from './store';
+import { darkTheme, paperTheme, themeProperties, type Theme } from './theme';
 
 type Listener = (event: Event) => void;
 
@@ -27,6 +28,9 @@ function recordingContext(draws: { n: number }): CanvasRenderingContext2D {
           draws.n += 1;
         };
       }
+      if (prop === 'createRadialGradient') {
+        return () => ({ addColorStop() {} });
+      }
       return () => {};
     },
     set() {
@@ -40,6 +44,8 @@ function harness(options?: {
   innerWidth?: number;
   store?: SceneStore;
   reduceMotion?: boolean;
+  theme?: Theme;
+  document?: Document;
 }) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
@@ -65,6 +71,7 @@ function harness(options?: {
     setPointerCapture() {},
     getContext: () => ctx,
     getBoundingClientRect: () => rect,
+    ownerDocument: options?.document,
     addEventListener(type: string, handler: Listener) {
       const list = canvasListeners.get(type) ?? [];
       list.push(handler);
@@ -168,6 +175,7 @@ function harness(options?: {
     zoomOut as unknown as HTMLButtonElement,
     options?.store,
     labels as unknown as HTMLElement,
+    options?.theme,
   );
 
   return {
@@ -693,6 +701,63 @@ describe('frame loop', () => {
     expect(store.countInBand(0.1)).toBe(4);
   });
 });
+
+describe('theme chrome', () => {
+  it('applies the demo dark theme when none is passed', () => {
+    const doc = themeDocument();
+    harness({ document: doc as unknown as Document });
+
+    expect(doc.vars).toEqual(themeProperties(darkTheme));
+    expect(doc.vars['--bg']).toBe('#101318');
+    expect(doc.vars['--ui']).toBe('#f3efe6');
+    expect(doc.vars['--accent']).toBe('#f0d78c');
+    expect(doc.vars['--muted']).toBe('#8b95a3');
+    expect(doc.vars['--line']).toBe('rgba(240, 215, 140, 0.45)');
+    expect(doc.vars['--button-bg']).toBe('rgba(16, 19, 24, 0.86)');
+    expect(doc.vars['--button-hover']).toBe('rgba(36, 40, 48, 0.94)');
+    expect(doc.vars['--body-font']).toBe('ui-sans-serif, system-ui, sans-serif');
+    expect(doc.vars['color-scheme']).toBe('dark');
+    expect(doc.meta.content).toBe('#101318');
+  });
+
+  it('applies a pack theme to the page background, HUD, and theme-color', () => {
+    const doc = themeDocument();
+    harness({ document: doc as unknown as Document, theme: paperTheme });
+
+    expect(doc.vars).toEqual(themeProperties(paperTheme));
+    expect(doc.vars['--bg']).toBe(paperTheme.background);
+    expect(doc.vars['--ui']).toBe(paperTheme.ui);
+    expect(doc.vars['--accent']).toBe(paperTheme.accent);
+    expect(doc.vars['--muted']).toBe(paperTheme.ui);
+    expect(doc.vars['--body-font']).toBe(paperTheme.bodyFont);
+    expect(doc.vars['color-scheme']).toBe('light');
+    expect(doc.meta.content).toBe(paperTheme.background);
+  });
+});
+
+function themeDocument() {
+  const vars: Record<string, string> = {};
+  const meta = {
+    content: '#101318',
+    setAttribute(name: string, value: string) {
+      if (name === 'content') this.content = value;
+    },
+  };
+  return {
+    vars,
+    meta,
+    documentElement: {
+      style: {
+        setProperty(name: string, value: string) {
+          vars[name] = value;
+        },
+      },
+    },
+    querySelector(selector: string) {
+      return selector === 'meta[name="theme-color"]' ? meta : null;
+    },
+  };
+}
 
 function pointerAt(pointerType: string, clientX: number, clientY: number) {
   return {

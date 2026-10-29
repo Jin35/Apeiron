@@ -1,18 +1,20 @@
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
 import { MAX_SCALE, MIN_SCALE, viewBounds, worldPoint } from './camera';
-import { demoObjects, titleFitWidth } from './demo';
+import { demoPack, titleFitWidth } from './demo';
 import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore, type SceneStore, type VisibleObject } from './store';
+import { applyTheme, themeFromSearch, type Theme } from './theme';
 
 export function mountShell(
   surface: HTMLCanvasElement,
   status: HTMLElement,
   zoomInButton: HTMLButtonElement,
   zoomOutButton: HTMLButtonElement,
-  store: SceneStore = createMemoryStore(demoObjects),
+  store: SceneStore = createMemoryStore(demoPack.objects),
   labelList?: HTMLElement,
+  theme: Theme = demoPack.theme,
 ): void {
   let zoomAnim = createButtonZoom(
     cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
@@ -28,6 +30,7 @@ export function mountShell(
 
   status.removeAttribute('aria-live');
   labelList?.removeAttribute('aria-live');
+  if (surface.ownerDocument) applyTheme(surface.ownerDocument, theme);
 
   const renderer = createRenderer(surface, () => invalidate());
 
@@ -43,6 +46,7 @@ export function mountShell(
       width,
       height,
       visible: shown,
+      theme,
       ...(selectedId ? { selectedId } : {}),
     });
     if (labelList) syncLabelList(labelList, shown);
@@ -157,5 +161,14 @@ if (typeof document !== 'undefined') {
   if (!canvas || !statusEl || !zoomIn || !zoomOut || !labels) {
     throw new Error('Apeiron markup is missing');
   }
-  mountShell(canvas, statusEl, zoomIn, zoomOut, undefined, labels);
+  // The store defaults to the demo pack. `?theme=paper` previews paperTheme in dev.
+  mountShell(
+    canvas,
+    statusEl,
+    zoomIn,
+    zoomOut,
+    undefined,
+    labels,
+    themeFromSearch(window.location.search, { fallback: demoPack.theme }),
+  );
 }
