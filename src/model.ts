@@ -37,6 +37,11 @@ export type ImagePayload = {
   src: string;
   width: number;
   height: number;
+  /**
+   * Dark plate and hairline frame. Omit for an atlas plate.
+   * A cut-out photograph sets this false so the page shows through.
+   */
+  frame?: boolean;
 };
 
 export type CanvasObject = {

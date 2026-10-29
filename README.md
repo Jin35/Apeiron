@@ -21,7 +21,7 @@ npm run build
 npm run preview
 ```
 
-On a phone-width window the opening scale is a little smaller so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
+The default pack is Smartphone. On the archipelago atlas (`?pack=archipelago`), a phone-width window opens a little further out so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
 
 ## Objects and depth
 
