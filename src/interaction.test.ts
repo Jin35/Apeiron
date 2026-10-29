@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CameraCommand } from './camera';
-import { ZOOM_STEP, wheelZoomFactor } from './gestures';
-import { attachInteraction } from './interaction';
+import { DOUBLE_TAP_MS, ZOOM_STEP, wheelZoomFactor } from './gestures';
+import { attachInteraction, type SceneCommand } from './interaction';
 
 type Listener = (event: Event) => void;
 
@@ -30,7 +29,7 @@ function harness() {
   const windowListeners = listenerMap();
   const zoomInListeners = listenerMap();
   const zoomOutListeners = listenerMap();
-  const commands: CameraCommand[] = [];
+  const commands: SceneCommand[] = [];
 
   const canvas = {
     classList: { add() {}, remove() {} },
@@ -87,6 +86,7 @@ function harness() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -160,7 +160,8 @@ describe('attachInteraction', () => {
     ]);
   });
 
-  it('emits zoomAt for a touch double-tap and ignores a mouse double-click', () => {
+  it('emits zoomAt for a touch double-tap and selectAt for mouse clicks', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const touch = harness();
     const tap = { pointerType: 'touch', pointerId: 1, clientX: 140, clientY: 95 };
     touch.pointer('pointerdown', tap);
@@ -168,6 +169,7 @@ describe('attachInteraction', () => {
     expect(touch.commands).toEqual([]);
     touch.pointer('pointerdown', tap);
     touch.pointer('pointerup', tap);
+    vi.advanceTimersByTime(DOUBLE_TAP_MS);
     expect(touch.commands).toEqual([{ type: 'zoomAt', x: 100, y: 80, factor: ZOOM_STEP }]);
 
     const mouse = harness();
@@ -176,7 +178,60 @@ describe('attachInteraction', () => {
     mouse.pointer('pointerup', click);
     mouse.pointer('pointerdown', click);
     mouse.pointer('pointerup', click);
-    expect(mouse.commands).toEqual([]);
+    expect(mouse.commands).toEqual([
+      { type: 'selectAt', x: 100, y: 80 },
+      { type: 'selectAt', x: 100, y: 80 },
+    ]);
+  });
+
+  it('emits selectAt for a mouse click and not for a drag', () => {
+    const click = harness();
+    const down = { pointerType: 'mouse', pointerId: 1, clientX: 140, clientY: 95 };
+    click.pointer('pointerdown', down);
+    click.pointer('pointerup', down);
+    expect(click.commands).toEqual([{ type: 'selectAt', x: 100, y: 80 }]);
+
+    const drag = harness();
+    const start = { pointerType: 'mouse', pointerId: 1, clientX: 140, clientY: 95 };
+    drag.pointer('pointerdown', start);
+    drag.pointer('pointermove', { ...start, clientX: 180, clientY: 95 });
+    drag.pointer('pointerup', { ...start, clientX: 180, clientY: 95 });
+    expect(drag.commands).toEqual([{ type: 'panBy', dx: 40, dy: 0 }]);
+  });
+
+  it('emits selectAt for a touch tap only after DOUBLE_TAP_MS', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { commands, pointer } = harness();
+    const tap = { pointerType: 'touch', pointerId: 1, clientX: 140, clientY: 95 };
+    pointer('pointerdown', tap);
+    pointer('pointerup', tap);
+    expect(commands).toEqual([]);
+    vi.advanceTimersByTime(DOUBLE_TAP_MS - 1);
+    expect(commands).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(commands).toEqual([{ type: 'selectAt', x: 100, y: 80 }]);
+  });
+
+  it('does not emit selectAt for a touch drag', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { commands, pointer } = harness();
+    const start = { pointerType: 'touch', pointerId: 1, clientX: 50, clientY: 80 };
+    pointer('pointerdown', start);
+    pointer('pointermove', { ...start, clientX: 80, clientY: 70 });
+    pointer('pointerup', { ...start, clientX: 80, clientY: 70 });
+    vi.advanceTimersByTime(DOUBLE_TAP_MS);
+    expect(commands).toEqual([{ type: 'panBy', dx: 30, dy: -10 }]);
+  });
+
+  it('does not emit a settled tap after detach', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { commands, detach, pointer } = harness();
+    const tap = { pointerType: 'touch', pointerId: 1, clientX: 140, clientY: 95 };
+    pointer('pointerdown', tap);
+    pointer('pointerup', tap);
+    detach();
+    vi.advanceTimersByTime(DOUBLE_TAP_MS);
+    expect(commands).toEqual([]);
   });
 
   it('emits zoomAt for a two-finger tap', () => {

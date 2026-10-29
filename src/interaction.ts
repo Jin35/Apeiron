@@ -1,5 +1,5 @@
 /**
- * Turns pointer, wheel, touch, and +/− input into camera commands.
+ * Turns pointer, wheel, touch, and +/− input into session commands.
  * Points on a command are canvas-local CSS pixels. This module does not
  * read the camera, the store, or the renderer.
  */
@@ -7,9 +7,12 @@
 import type { CameraCommand } from './camera';
 import { attachGestures, ZOOM_STEP } from './gestures';
 
+/** Camera motion, or a click / settled tap. `selectAt` does not move the camera. */
+export type SceneCommand = CameraCommand | { type: 'selectAt'; x: number; y: number };
+
 export function attachInteraction(
   elements: { canvas: HTMLElement; zoomIn: HTMLElement; zoomOut: HTMLElement },
-  emit: (command: CameraCommand) => void,
+  emit: (command: SceneCommand) => void,
 ): () => void {
   const { canvas, zoomIn, zoomOut } = elements;
 
@@ -38,6 +41,10 @@ export function attachInteraction(
         target,
         factor,
       });
+    },
+    selectAt(x, y) {
+      const point = localPoint(x, y);
+      emit({ type: 'selectAt', x: point.x, y: point.y });
     },
   });
 

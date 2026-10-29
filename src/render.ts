@@ -16,6 +16,10 @@ const DEFAULT_FONT = '"Iowan Old Style", Palatino, Georgia, serif';
 const GRID_LINE_PX = 1;
 const PLATE_LINE_PX = 1.25;
 
+/** Selection outline. Screen pixels, so it stays a hairline at any zoom. */
+const SELECT_LINE_PX = 2;
+const SELECT_ACCENT = 'rgba(240, 215, 140, 0.9)';
+
 /**
  * A screen font above this is not submitted. Atlas labels peak near 185px,
  * so the cap does not drop a current label.
@@ -44,6 +48,8 @@ export type RenderFrame = {
   width: number;
   height: number;
   visible: readonly VisibleObject[];
+  /** Set when the shell has a selection. Stroked if that object is in `visible`. */
+  selectedId?: string;
 };
 
 export type Renderer = {
@@ -149,10 +155,34 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
         drawTextObject(ctx, camera, viewW, viewH, object.x, object.y, object.payload);
       }
     }
+    if (frame.selectedId) {
+      const selected = visible.find((entry) => entry.object.id === frame.selectedId);
+      if (selected) drawSelection(ctx, camera, viewW, viewH, selected.object);
+    }
     ctx.restore();
   }
 
   return { draw };
+}
+
+function drawSelection(
+  ctx: CanvasRenderingContext2D,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+  object: CanvasObject,
+) {
+  const { width, height } = object.payload;
+  if (!(width > 0) || !(height > 0)) return;
+  const left = worldToCssX(object.x - width / 2, camera, viewW);
+  const top = worldToCssY(object.y - height / 2, camera, viewH);
+  const cssW = width * camera.scale;
+  const cssH = height * camera.scale;
+  if (!(cssW > 0) || !(cssH > 0)) return;
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = SELECT_ACCENT;
+  ctx.lineWidth = SELECT_LINE_PX;
+  ctx.strokeRect(left, top, cssW, cssH);
 }
 
 function drawGrid(

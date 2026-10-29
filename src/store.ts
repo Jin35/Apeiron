@@ -1,4 +1,4 @@
-import type { ViewBounds } from './camera';
+import type { Camera, ViewBounds } from './camera';
 import type { CanvasObject } from './model';
 import { visibilityAlpha } from './visibility';
 
@@ -37,6 +37,12 @@ export interface SceneStore {
   imageSources(): readonly string[];
   /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
   subscribe(onChange: () => void): () => void;
+  /**
+   * Object that would be drawn at `camera.scale` whose unpadded authored box
+   * contains `worldPoint`. The CSS pad is for culling, not for hits. When
+   * several overlap, the greater `maxScale` wins and a tie goes to the later one.
+   */
+  hitTest(worldPoint: { x: number; y: number }, camera: Camera): CanvasObject | null;
 }
 
 /**
@@ -101,6 +107,17 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       return () => {
         listeners.delete(onChange);
       };
+    },
+    hitTest(worldPoint, camera) {
+      let best: Entry | undefined;
+      for (const entry of entries) {
+        if (visibilityAlpha(entry.object.visibility, camera.scale) <= DRAW_ALPHA) continue;
+        if (!containsPoint(entry.box, worldPoint)) continue;
+        if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
+          best = entry;
+        }
+      }
+      return best?.object ?? null;
     },
     replaceObjects(next) {
       resident = next;
@@ -202,4 +219,8 @@ function padBox(entry: Entry, scale: number): ViewBounds {
 
 function intersects(view: ViewBounds, box: ViewBounds): boolean {
   return view.left <= box.right && box.left <= view.right && view.top <= box.bottom && box.top <= view.bottom;
+}
+
+function containsPoint(box: ViewBounds, point: { x: number; y: number }): boolean {
+  return point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom;
 }

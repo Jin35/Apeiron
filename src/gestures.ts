@@ -3,12 +3,13 @@
  * Wheel and trackpad scroll zoom toward the pointer; they never pan the camera.
  * One pointer drags to pan. Two pointers pinch to zoom. Rotation is ignored.
  * A touch double-tap zooms in. A two-finger tap zooms out. Mouse double-click does not.
+ * A mouse click, and a touch tap that stays single for `DOUBLE_TAP_MS`, call `selectAt`.
  */
 
 export const ZOOM_STEP = 2;
 const TAP_SLOP = 14;
 const TAP_MS = 280;
-const DOUBLE_TAP_MS = 300;
+export const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_DIST = 28;
 const TWO_FINGER_TAP_MS = 280;
 
@@ -26,6 +27,8 @@ export type GestureHost = {
   zoomAt(x: number, y: number, factor: number): void;
   /** Client coordinates. Keeps the world point under the anchor pinned to the target. */
   retarget(anchorX: number, anchorY: number, targetX: number, targetY: number, factor: number): void;
+  /** Client coordinates. A mouse click, or a touch tap that stayed single. */
+  selectAt(x: number, y: number): void;
 };
 
 type PointerRecord = {
@@ -88,6 +91,27 @@ export function attachGestures(target: HTMLElement, host: GestureHost): () => vo
   let pinch: PinchState | null = null;
   let safariPinch = 1;
   let safariGesturing = false;
+  const selectTimers: number[] = [];
+
+  function armSelect(x: number, y: number) {
+    const timer = setTimeout(() => {
+      const index = selectTimers.indexOf(timer);
+      if (index >= 0) selectTimers.splice(index, 1);
+      host.selectAt(x, y);
+    }, DOUBLE_TAP_MS);
+    selectTimers.push(timer);
+  }
+
+  /** A double-tap consumes the tap that was waiting, and not an older one. */
+  function cancelLatestSelect() {
+    const timer = selectTimers.pop();
+    if (timer !== undefined) clearTimeout(timer);
+  }
+
+  function cancelSelects() {
+    for (const timer of selectTimers) clearTimeout(timer);
+    selectTimers.length = 0;
+  }
 
   function centroid(): PinchState | null {
     const pts = [...pointers.values()];
@@ -193,7 +217,16 @@ export function attachGestures(target: HTMLElement, host: GestureHost): () => vo
       lastTap,
     });
     lastTap = decision.lastTap;
-    if (decision.zoomIn) host.zoomAt(event.clientX, event.clientY, ZOOM_STEP);
+    if (decision.zoomIn) {
+      cancelLatestSelect();
+      host.zoomAt(event.clientX, event.clientY, ZOOM_STEP);
+      return;
+    }
+    if (event.pointerType === 'mouse') {
+      if (!rec.moved) host.selectAt(event.clientX, event.clientY);
+      return;
+    }
+    if (decision.lastTap?.t === now) armSelect(event.clientX, event.clientY);
   }
 
   function onWheel(event: WheelEvent) {
@@ -263,6 +296,7 @@ export function attachGestures(target: HTMLElement, host: GestureHost): () => vo
   listen(window, 'gestureend', onGestureEnd);
 
   return () => {
+    cancelSelects();
     unlisten(target, 'pointerdown', onPointerDown as EventListener);
     unlisten(target, 'pointermove', onPointerMove as EventListener);
     unlisten(target, 'pointerup', onPointerUp as EventListener);
