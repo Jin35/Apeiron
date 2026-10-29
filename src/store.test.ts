@@ -328,4 +328,69 @@ describe('createMemoryStore', () => {
     expect(ids(store.query({ bounds: span, scale: 4 }))).toEqual(['kept']);
     expect(store.countInBand(4)).toBe(1);
   });
+
+  it('hits only objects above the draw cutoff', () => {
+    const object = textObject('fade', wide, 0, 0, 'fade', 12, undefined, 8, 8);
+    const store = createMemoryStore([object]);
+    const at = (scale: number) => ({ x: 0, y: 0, scale });
+
+    const belowDraw = fadeInScale(0.005);
+    expect(visibilityAlpha(wide, belowDraw)).toBeGreaterThan(0);
+    expect(visibilityAlpha(wide, belowDraw)).toBeLessThanOrEqual(0.01);
+    expect(store.hitTest({ x: 0, y: 0 }, at(belowDraw))).toBeNull();
+    expect(store.hitTest({ x: 0, y: 0 }, at(0.5))).toBeNull();
+    expect(store.hitTest({ x: 0, y: 0 }, at(100))).toBeNull();
+
+    // Above the draw cutoff and still under the HUD cutoff. The renderer would paint it.
+    const between = fadeInScale(0.015);
+    const betweenAlpha = visibilityAlpha(wide, between);
+    expect(betweenAlpha).toBeGreaterThan(0.01);
+    expect(betweenAlpha).toBeLessThanOrEqual(0.02);
+    expect(store.countInBand(between)).toBe(0);
+    expect(store.hitTest({ x: 0, y: 0 }, at(between))?.id).toBe('fade');
+  });
+
+  it('uses the unpadded authored box', () => {
+    const scale = 4;
+    // 10 by 10, so the right edge is x = 5. The image pad is 1.625 CSS pixels.
+    const plate = imageObject('plate', 'images/plate.svg', 0, 0, 10, 10);
+    const store = createMemoryStore([plate]);
+    const camera = { x: 0, y: 0, scale };
+    const padOnly: ViewBounds = { left: 5.05, right: 5.3, top: -0.2, bottom: 0.2 };
+
+    expect(store.hitTest({ x: 4.9, y: 0 }, camera)?.id).toBe('plate');
+    expect(store.hitTest({ x: 5, y: 0 }, camera)?.id).toBe('plate');
+    expect(store.hitTest({ x: 5.2, y: 0 }, camera)).toBeNull();
+    expect(ids(store.query({ bounds: padOnly, scale }))).toEqual(['plate']);
+  });
+
+  it('prefers the finer object, the one with the greater maxScale', () => {
+    const coarse = textObject('coarse', { minScale: 1, maxScale: 4 }, 0, 0, 'c', 12, undefined, 30, 10);
+    const fine = textObject('fine', { minScale: 2, maxScale: 20 }, 0, 0, 'f', 12, undefined, 10, 10);
+    // Listed first, and still the hit while both are drawn. Greater maxScale is on top.
+    const store = createMemoryStore([fine, coarse]);
+    const inside = { x: 0, y: 0 };
+
+    expect(store.hitTest(inside, { x: 0, y: 0, scale: 3 })?.id).toBe('fine');
+    // Below the fine band only the coarse object would be drawn.
+    expect(store.hitTest(inside, { x: 0, y: 0, scale: 1.2 })?.id).toBe('coarse');
+
+    const tied = textObject('tied', wide, 0, 0, 't', 12, undefined, 10, 10);
+    const earlier = textObject('earlier', wide, 0, 0, 'e', 12, undefined, 10, 10);
+    expect(createMemoryStore([earlier, tied]).hitTest(inside, { x: 0, y: 0, scale: 4 })?.id).toBe('tied');
+  });
+
+  it('hits a parent-local child at its world position', () => {
+    const parent = textObject('phone', wide, 132, -60, 'phone', 12, undefined, 40, 20);
+    const child = withParent(textObject('mark', wide, 100, 0, 'mark', 12, undefined, 2, 2), 'phone');
+    const store = createMemoryStore([parent, child]);
+    const camera = { x: 132, y: -60, scale: 4 };
+
+    const hit = store.hitTest({ x: 232, y: -60 }, camera);
+    expect(hit).toMatchObject({ id: 'mark', x: 232, y: -60 });
+    expect(hit?.parentId).toBeUndefined();
+    expect(store.hitTest({ x: 100, y: 0 }, camera)).toBeNull();
+    expect(child.x).toBe(100);
+    expect(child.parentId).toBe('phone');
+  });
 });
