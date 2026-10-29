@@ -71,3 +71,5 @@ The demo is meant to be hosted at **https://jin35.github.io/Apeiron/**
 The Vite `base` is `./`, so the same build works locally and under the `/Apeiron/` project path.
 
 **This repository is public.** Set **Settings → Pages → Build and deployment → Source** to **GitHub Actions** (the workflow does not flip that setting itself). The deploy job publishes `dist/` on each push to `main`.
+
+Pages deploys from GitHub Actions; run the CI workflow manually to redeploy.
