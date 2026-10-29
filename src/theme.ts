@@ -1,19 +1,20 @@
+import type { CameraLimits } from './camera';
 import type { CanvasObject } from './model';
 
 /**
  * Look for one content pack. Plain data: the renderer and the shell read it.
  *
- * `background`, `ink`, `accent`, and `ui` are `#rrggbb`. `grid` is any CSS
- * color; omit it to draw no grid. `paper` is a procedural vignette and grain,
- * not an image.
+ * `background`, `ink`, `accent`, and `ui` are `#rrggbb`. `grid` is the
+ * square hairline; omit it to draw no grid. `paper` is a procedural vignette
+ * and grain, not an image.
  */
 export type Theme = {
   /** Page and canvas fill. */
   background: string;
   /** Soft aged-paper wash. Omitted for a flat fill. */
   paper?: PaperTreatment;
-  /** Grid hairline. Omit to draw no grid. */
-  grid?: string;
+  /** Square grid. Omit to draw no grid. */
+  grid?: GridStyle;
   /** Text fill when an object does not set `style.color`. */
   ink: string;
   /** Selection stroke, zoom buttons, and their focus ring. */
@@ -26,6 +27,12 @@ export type Theme = {
   bodyFont: string;
 };
 
+/** Hairline grid. Absent on a theme means the renderer draws none. */
+export type GridStyle = {
+  /** Any CSS color. */
+  color: string;
+};
+
 export type PaperTreatment = {
   /** Radial edge wash, a CSS color with alpha. */
   vignette: string;
@@ -33,10 +40,15 @@ export type PaperTreatment = {
   grain: string;
 };
 
-/** Theme plus the objects that use it. */
+/**
+ * Theme plus the objects that use it.
+ * `limits` overrides the camera range derived from `objects`. Omitted fields
+ * are still derived. Absent `limits` derives the whole range.
+ */
 export type ContentPack = {
   theme: Theme;
   objects: readonly CanvasObject[];
+  limits?: CameraLimits;
 };
 
 const DISPLAY = '"Iowan Old Style", Palatino, Georgia, serif';
@@ -48,7 +60,7 @@ const BODY = 'ui-sans-serif, system-ui, sans-serif';
  */
 export const darkTheme: Theme = {
   background: '#101318',
-  grid: 'rgba(232, 228, 217, 0.08)',
+  grid: { color: 'rgba(232, 228, 217, 0.08)' },
   ink: '#f0d78c',
   accent: '#f0d78c',
   ui: '#f3efe6',
@@ -58,7 +70,7 @@ export const darkTheme: Theme = {
 
 /**
  * Aged paper for the smartphone pack. Ink and accent clear WCAG AA on the
- * page color; the vignette only darkens the edges.
+ * page color; the vignette only darkens the edges. No grid.
  */
 export const paperTheme: Theme = {
   background: '#F3EAD3',
@@ -66,7 +78,6 @@ export const paperTheme: Theme = {
     vignette: 'rgba(62, 42, 22, 0.28)',
     grain: 'rgba(59, 47, 34, 0.14)',
   },
-  grid: 'rgba(59, 47, 34, 0.12)',
   ink: '#3B2F22',
   accent: '#7A3E1D',
   ui: '#3B2F22',

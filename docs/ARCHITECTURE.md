@@ -4,7 +4,7 @@ Three layers plus a thin shell. The shell is `src/main.ts`, and it is the only m
 
 Content lives in the store. Pixels live in the renderer. Pointer, keyboard, and button input lives in the interaction layer, which emits commands. The shell applies a command to the session, queries the store, and hands the renderer a camera plus the visible set.
 
-World **y grows downward**. `Camera.scale` is CSS pixels per world unit. `MIN_SCALE` / `MAX_SCALE` (`1e-4–1e7` in `camera.ts`) are camera limits, not a world edge. An object's `visibility` range is content and may extend past those limits.
+World **y grows downward**. `Camera.scale` is CSS pixels per world unit. `MIN_SCALE` / `MAX_SCALE` (`1e-4–1e7` in `camera.ts`) are the outer camera limits, not a world edge. A content pack may tighten them. An object's `visibility` range is content and may extend past those limits.
 
 The first split is merged (PRs #5–#12). The sections through [First sequence](#first-sequence) describe that design as it stands in the tree. [Second review](#second-review) is the problem list behind [Next sequence](#next-sequence). That sequence is done.
 
@@ -13,20 +13,20 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | Module | What it does |
 | --- | --- |
 | `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. Text carries world `width` and `height`. Text `color` is optional. |
-| `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
+| `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`, `deriveCameraLimits`. Pure functions. Content limits are enforced in `applyCameraCommand`. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. |
-| `src/theme.ts` | `Theme`, `darkTheme`, `paperTheme`. A content pack is `{ theme, objects }`. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`, `contentBoxes`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. `contentBoxes` is the unpadded world box after that flattening. |
+| `src/theme.ts` | `Theme`, `darkTheme`, `paperTheme`. A content pack is `{ theme, objects, limits? }`. `grid` is optional; the paper theme omits it. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. A mouse click and a touch tap that stays single for `DOUBLE_TAP_MS` call `selectAt`. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, keyboard pan and zoom, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). Arrow keys and `+`/`−` reuse `CameraCommand`. |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. A reduced-motion `zoomStep` settles on the committed camera with no segments. |
 | `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
 | `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Colors and fonts come from the frame's `theme` (the demo dark theme when it is omitted). Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. |
 | `src/demo.ts` | `demoPack` (`darkTheme` and `demoObjects`) and the title fit width. Thirty objects, six images, four overlapping bands. |
-| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD and a visually hidden label list from the frame's `query`. Session `selectedId` is on the frame and on `dataset.selected`. `prefers-reduced-motion: reduce` settles `zoomStep` in one frame. |
+| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD and a visually hidden label list from the frame's `query`. Session `selectedId` is on the frame and on `dataset.selected`. `prefers-reduced-motion: reduce` settles `zoomStep` in one frame. Each frame derives camera limits from `contentBoxes` and the viewport, with the pack override on top. |
 
-`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store and an optional theme; production still builds the demo pack. The shell writes the theme into CSS custom properties for the page, HUD, and buttons, and into the `theme-color` meta, and passes the same object on the frame. `style.color` overrides the theme ink. `?theme=paper` on the dev server previews `paperTheme` on the atlas. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`, unless `prefers-reduced-motion: reduce` matches, in which case that step settles in the next frame.
+`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store, an optional theme, and optional camera limits; production still builds the demo pack. The shell writes the theme into CSS custom properties for the page, HUD, and buttons, and into the `theme-color` meta, and passes the same object on the frame. `style.color` overrides the theme ink. `grid` omitted means the renderer draws no grid. `?theme=paper` on the dev server previews `paperTheme` on the atlas. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`, unless `prefers-reduced-motion: reduce` matches, in which case that step settles in the next frame. Both paths pass the same resolved limits into `applyCameraCommand`, which clamps scale before position. Limits are derived again on every frame, so `replaceObjects` and a viewport resize are in effect before the next command and before +/− enablement updates. The opening camera is not rewritten on the first paint.
 
 ### Contracts that are actually in the tree
 
@@ -39,6 +39,7 @@ interface SceneStore {
   imageSources(): readonly string[];               // srcs of the resident objects
   subscribe(onChange: () => void): () => void;     // resident set changed
   hitTest(worldPoint, camera): CanvasObject | null; // alpha > 0.01, unpadded box, greater maxScale
+  contentBoxes(): ContentBox[];                    // placed world boxes, for camera limits
 }
 
 type SceneCommand = CameraCommand | { type: 'selectAt'; x: number; y: number };

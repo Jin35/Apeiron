@@ -21,11 +21,11 @@ npm run build
 npm run preview
 ```
 
-On a phone-width window the opening scale is a little smaller so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` is clamped to the same limits as the zoom controls. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it.
+On a phone-width window the opening scale is a little smaller so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
 
 ## Objects and depth
 
-World **y grows downward**. The camera stores the world point at the center of the screen and a **scale** in CSS pixels per world unit. Pan is unbounded. Zoom is clamped to `1e-4–1e7` so you can move past every band; the clamp is not a world edge.
+World **y grows downward**. The camera stores the world point at the center of the screen and a **scale** in CSS pixels per world unit. Pan keeps that centre inside the content, and centres the content when it is smaller than the window. Zoom is clamped to the content as well, and never outside `1e-4–1e7`. The global clamp is not a world edge.
 
 Each object has:
 
@@ -45,7 +45,7 @@ The demo nests four bands. They overlap so the map is never empty between them:
 | Place | 0.95 – 8 | Wharf, tower, phone, observatory |
 | Detail | 5 – 64 | Bollard, buoy, lens cap, sample tray |
 
-The readout is `×scale · N visible`. N counts objects inside the current zoom band, including ones outside the viewport. The grid spacing also changes with zoom so empty space still shows the camera moving.
+The readout is `×scale · N visible`. N counts objects inside the current zoom band, including ones outside the viewport. On the dark theme the grid spacing changes with zoom so empty space still shows the camera moving. The paper theme draws no grid.
 
 ## Gestures
 

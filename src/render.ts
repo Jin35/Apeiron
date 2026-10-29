@@ -238,7 +238,8 @@ function drawGrid(
   viewW: number,
   viewH: number,
 ) {
-  if (!theme.grid) return;
+  const color = theme.grid?.color;
+  if (!color) return;
   const step = gridStep(camera.scale);
   if (!(step > 0) || !Number.isFinite(step)) return;
   const bounds = viewBounds(camera, viewW, viewH);
@@ -247,7 +248,7 @@ function drawGrid(
   const j0 = Math.floor(bounds.top / step);
   const j1 = Math.ceil(bounds.bottom / step);
   ctx.beginPath();
-  ctx.strokeStyle = theme.grid;
+  ctx.strokeStyle = color;
   ctx.lineWidth = GRID_LINE_PX;
   const limit = 120;
   const top = worldToCssY(bounds.top, camera, viewH);

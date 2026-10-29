@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import page from '../index.html?raw';
 import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
-import { viewBounds, zoomAt } from './camera';
+import { applyCameraCommand, deriveCameraLimits, viewBounds, type CameraLimits } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
 import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
@@ -46,13 +46,19 @@ function harness(options?: {
   reduceMotion?: boolean;
   theme?: Theme;
   document?: Document;
+  limits?: CameraLimits;
 }) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
   const canvasListeners = new Map<string, Listener[]>();
+  const size = { width: 800, height: 600 };
   const rect = {
-    width: 800,
-    height: 600,
+    get width() {
+      return size.width;
+    },
+    get height() {
+      return size.height;
+    },
     left: 10,
     top: 20,
     right: 810,
@@ -176,6 +182,7 @@ function harness(options?: {
     options?.store,
     labels as unknown as HTMLElement,
     options?.theme,
+    options?.limits,
   );
 
   return {
@@ -196,6 +203,10 @@ function harness(options?: {
     },
     resize() {
       onResize?.();
+    },
+    setSize(width: number, height: number) {
+      size.width = width;
+      size.height = height;
     },
     clickIn() {
       for (const handler of zoomInListeners) handler({} as Event);
@@ -275,7 +286,8 @@ describe('frame loop', () => {
 
     expect(shell.draws.n).toBe(1);
     expect(shell.pending.size).toBe(0);
-    expect(shell.status.textContent).toBe(`×0.100 · ${visible} visible`);
+    expect(visible).toBe(5);
+    expect(shell.status.textContent).toBe('×0.100 · 5 visible');
     expect(shell.status.dataset).toMatchObject({ scale: '0.1', x: '0', y: '-80' });
     expect(shell.images).toHaveLength(0);
 
@@ -340,34 +352,36 @@ describe('frame loop', () => {
 
   it('disables zoom-in from the committed scale while the picture is still catching up', () => {
     const shell = harness();
-    // Twelve 2× steps pass the old limit (80) and stay under 1e7.
-    for (let i = 0; i < 12; i += 1) shell.clickIn();
+    const limits = deriveCameraLimits(createMemoryStore(demoObjects).contentBoxes(), 800, 600);
+    const steps = Math.ceil(Math.log(limits.maxScale / 0.1) / Math.log(2));
+    for (let i = 0; i < steps - 1; i += 1) shell.clickIn();
     shell.flush();
     expect(shell.zoomIn.disabled).toBe(false);
     expect(shell.zoomOut.disabled).toBe(false);
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
 
-    // Twenty-seven steps from 0.1 land past 1e7.
-    for (let i = 0; i < 15; i += 1) shell.clickIn();
+    shell.clickIn();
     shell.flush();
     expect(shell.zoomIn.disabled).toBe(true);
     expect(shell.zoomOut.disabled).toBe(false);
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
   });
 
-  it('disables zoom-out at the wide minimum while the picture is still catching up', () => {
+  it('disables zoom-out at the content fit while the picture is still catching up', () => {
     const shell = harness();
-    // Four 2× steps out pass the old minimum (0.012) and stay above 1e-4.
-    for (let i = 0; i < 4; i += 1) shell.clickOut();
-    shell.flush();
-    expect(shell.zoomOut.disabled).toBe(false);
-    expect(shell.zoomIn.disabled).toBe(false);
+    const limits = deriveCameraLimits(createMemoryStore(demoObjects).contentBoxes(), 800, 600);
+    expect(limits.minScale).toBeLessThan(0.1);
+    expect(limits.minScale).toBeGreaterThan(0.05);
 
-    // Ten steps from 0.1 land under 1e-4.
-    for (let i = 0; i < 6; i += 1) shell.clickOut();
+    shell.clickOut();
     shell.flush();
     expect(shell.zoomOut.disabled).toBe(true);
     expect(shell.zoomIn.disabled).toBe(false);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
+
+    shell.clickOut();
+    shell.flush();
+    expect(shell.zoomOut.disabled).toBe(true);
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
   });
 
@@ -399,13 +413,13 @@ describe('frame loop', () => {
       preventDefault() {},
     });
 
-    const zoomed = zoomAt(
-      { x: -300, y: -80, scale: 0.1 },
-      390,
-      280,
+    const limits = deriveCameraLimits(createMemoryStore(demoObjects).contentBoxes(), 800, 600);
+    const zoomed = applyCameraCommand(
+      { x: -300, y: Number(shell.status.dataset.y), scale: 0.1 },
+      { type: 'zoomAt', x: 390, y: 280, factor: wheelZoomFactor(-80, false) },
       800,
       600,
-      wheelZoomFactor(-80, false),
+      limits,
     );
     expect(shell.draws.n).toBe(3);
     expect(shell.pending.size).toBe(0);
@@ -463,9 +477,12 @@ describe('frame loop', () => {
   it('prints the wide scale limits and still disables +/− there', () => {
     const store = createMemoryStore(demoObjects);
 
+    const limits = deriveCameraLimits(store.contentBoxes(), 800, 600);
+
     const oldMin = harness({ search: '?scale=0.012&x=0&y=-80' });
     expect(oldMin.status.textContent).toBe(`×0.012 · ${store.countInBand(0.012)} visible`);
-    expect(oldMin.zoomOut.disabled).toBe(false);
+    expect(oldMin.zoomOut.disabled).toBe(true);
+    expect(oldMin.zoomIn.disabled).toBe(false);
 
     const far = harness({ search: '?scale=1e-4&x=0&y=-80' });
     expect(far.status.textContent).toBe('×1e-4 · 0 visible');
@@ -475,7 +492,9 @@ describe('frame loop', () => {
 
     const oldMax = harness({ search: '?scale=80&x=132&y=-60' });
     expect(oldMax.status.textContent).toBe(`×80.0 · ${store.countInBand(80)} visible`);
-    expect(oldMax.zoomIn.disabled).toBe(false);
+    expect(limits.maxScale).toBeLessThan(80);
+    expect(oldMax.zoomIn.disabled).toBe(true);
+    expect(oldMax.zoomOut.disabled).toBe(false);
 
     const deep = harness({ search: '?scale=1e7&x=132&y=-60' });
     expect(deep.status.textContent).toBe('×1e7 · 0 visible');
@@ -699,6 +718,116 @@ describe('frame loop', () => {
     expect(shell.labels.builds()).toBe(3);
     expect(shell.labels.getAttribute('aria-live')).toBeNull();
     expect(store.countInBand(0.1)).toBe(4);
+  });
+
+  it('enforces explicit limits for wheel, drag, keys, and +/-', () => {
+    const bounds = { left: -4000, right: 4000, top: -4000, bottom: 4000 };
+    const shell = harness({
+      reduceMotion: true,
+      search: '?scale=2&x=0&y=0',
+      limits: { minScale: 1, maxScale: 4, bounds },
+    });
+    expect(shell.status.dataset).toMatchObject({ scale: '2', x: '0', y: '0' });
+
+    for (let i = 0; i < 4; i += 1) {
+      shell.wheel({
+        deltaX: 0,
+        deltaY: -400,
+        deltaMode: 0,
+        ctrlKey: false,
+        clientX: 40,
+        clientY: 50,
+        preventDefault() {},
+      });
+    }
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(4);
+    const parked = { x: shell.status.dataset.x, y: shell.status.dataset.y };
+    shell.wheel({
+      deltaX: 0,
+      deltaY: -400,
+      deltaMode: 0,
+      ctrlKey: false,
+      clientX: 40,
+      clientY: 50,
+      preventDefault() {},
+    });
+    expect(shell.status.dataset.x).toBe(parked.x);
+    expect(shell.status.dataset.y).toBe(parked.y);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(4);
+
+    shell.clickIn();
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(4);
+    expect(shell.zoomIn.disabled).toBe(true);
+
+    const down = pointerAt('mouse', 100, 100);
+    shell.pointer('pointerdown', down);
+    const yBeforePan = Number(shell.status.dataset.y);
+    shell.pointer('pointermove', { ...down, clientX: down.clientX - 100_000 });
+    expect(Number(shell.status.dataset.x)).toBeCloseTo(bounds.right);
+    expect(Number(shell.status.dataset.y)).toBeCloseTo(yBeforePan);
+
+    shell.keydown({ key: 'ArrowLeft' });
+    expect(Number(shell.status.dataset.x)).toBeLessThan(bounds.right);
+    expect(Number(shell.status.dataset.x)).toBeGreaterThanOrEqual(bounds.left);
+
+    shell.clickOut();
+    shell.flush();
+    shell.clickOut();
+    shell.flush();
+    shell.clickOut();
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(1);
+    expect(shell.zoomOut.disabled).toBe(true);
+    const x = shell.status.dataset.x;
+    const y = shell.status.dataset.y;
+    shell.wheel({
+      deltaX: 0,
+      deltaY: 400,
+      deltaMode: 0,
+      ctrlKey: false,
+      clientX: 700,
+      clientY: 40,
+      preventDefault() {},
+    });
+    expect(shell.status.dataset.x).toBe(x);
+    expect(shell.status.dataset.y).toBe(y);
+  });
+
+  it('recomputes limits when the store replaces objects and when the viewport resizes', () => {
+    const band = { minScale: 0.01, maxScale: 4 };
+    const piece = (id: string, width: number): CanvasObject => ({
+      id,
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'text', text: id, style: { fontSize: 12 }, width, height: 100 },
+    });
+    const store = createMemoryStore([piece('wide', 8000)]);
+    const shell = harness({ store, reduceMotion: true });
+    shell.setSize(1600, 1200);
+    shell.clickOut();
+    shell.flush();
+    const wideFit = Number(shell.status.dataset.scale);
+    expect(wideFit).toBeCloseTo(deriveCameraLimits(store.contentBoxes(), 1600, 1200).minScale);
+
+    shell.setSize(400, 300);
+    shell.resize();
+    shell.flush();
+    shell.clickOut();
+    shell.flush();
+    const narrowFit = Number(shell.status.dataset.scale);
+    expect(narrowFit).toBeLessThan(wideFit);
+    expect(narrowFit).toBeGreaterThanOrEqual(deriveCameraLimits(store.contentBoxes(), 400, 300).minScale - 1e-6);
+
+    store.replaceObjects([piece('tight', 200)]);
+    shell.flush();
+    shell.clickOut();
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeGreaterThan(narrowFit);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(
+      deriveCameraLimits(store.contentBoxes(), 400, 300).minScale,
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
-import { MAX_SCALE, MIN_SCALE, viewBounds, worldPoint } from './camera';
+import { deriveCameraLimits, viewBounds, worldPoint, type CameraLimits } from './camera';
 import { demoPack, titleFitWidth } from './demo';
 import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
@@ -15,6 +15,7 @@ export function mountShell(
   store: SceneStore = createMemoryStore(demoPack.objects),
   labelList?: HTMLElement,
   theme: Theme = demoPack.theme,
+  limits?: CameraLimits,
 ): void {
   let zoomAnim = createButtonZoom(
     cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
@@ -40,6 +41,7 @@ export function mountShell(
     const width = rect.width;
     const height = rect.height;
     const camera = zoomAnim.camera;
+    const limitsNow = activeLimits(width, height);
     const shown = store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale });
     renderer.draw({
       camera,
@@ -59,8 +61,8 @@ export function mountShell(
     status.dataset.selected = selected;
     surface.dataset.selected = selected;
     const limit = committedCamera(zoomAnim).scale;
-    zoomInButton.disabled = limit >= MAX_SCALE - 1e-9;
-    zoomOutButton.disabled = limit <= MIN_SCALE + 1e-9;
+    zoomInButton.disabled = limit >= limitsNow.maxScale - 1e-9;
+    zoomOutButton.disabled = limit <= limitsNow.minScale + 1e-9;
     if (zoomAnim.segments.length > 0) invalidate();
   }
 
@@ -92,6 +94,7 @@ export function mountShell(
     }
     zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now, {
       settleZoomStep: reduceMotion,
+      limits: activeLimits(rect.width, rect.height),
     });
     if (command.type === 'zoomStep') {
       invalidate();
@@ -122,6 +125,11 @@ export function mountShell(
   }
 
   store.subscribe(() => invalidate());
+
+  /** Pack override, or the objects and the current viewport. Fresh on resize and replaceObjects. */
+  function activeLimits(width: number, height: number) {
+    return deriveCameraLimits(store.contentBoxes(), width, height, limits);
+  }
 
   attachInteraction(
     { canvas: surface, zoomIn: zoomInButton, zoomOut: zoomOutButton },
