@@ -45,6 +45,17 @@ export interface SceneStore {
   countInBand(scale: number): number;
   /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
+  /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
+  subscribe(onChange: () => void): () => void;
+}
+
+/**
+ * Memory-store write. The shell only needs `subscribe` on `SceneStore`.
+ * Replacing the resident array is this backend, not the layer seam.
+ */
+export interface MemoryStore extends SceneStore {
+  /** Rebuild the resident entries, then notify subscribers. */
+  replaceObjects(objects: readonly CanvasObject[]): void;
 }
 
 type Entry = {
@@ -57,9 +68,15 @@ type Entry = {
 /**
  * Linear scan of conservative world boxes. The atlas is small enough that
  * a quadtree would not change what the renderer receives.
+ * `replaceObjects` rebuilds those boxes and notifies subscribers.
  */
-export function createMemoryStore(objects: readonly CanvasObject[]): SceneStore {
-  const entries = objects.map(entryFor);
+export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore {
+  let entries = objects.map(entryFor);
+  const listeners = new Set<() => void>();
+
+  function notify(): void {
+    for (const listener of [...listeners]) listener();
+  }
 
   return {
     countInBand(scale) {
@@ -85,6 +102,16 @@ export function createMemoryStore(objects: readonly CanvasObject[]): SceneStore 
         if (object.payload.type === 'image') srcs.push(object.payload.src);
       }
       return srcs;
+    },
+    subscribe(onChange) {
+      listeners.add(onChange);
+      return () => {
+        listeners.delete(onChange);
+      };
+    },
+    replaceObjects(next) {
+      entries = next.map(entryFor);
+      notify();
     },
   };
 }

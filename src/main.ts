@@ -4,13 +4,14 @@ import { MAX_SCALE, MIN_SCALE, viewBounds, type CameraCommand } from './camera';
 import { demoObjects } from './demo';
 import { attachInteraction } from './interaction';
 import { createRenderer } from './render';
-import { createMemoryStore } from './store';
+import { createMemoryStore, type SceneStore } from './store';
 
 export function mountShell(
   surface: HTMLCanvasElement,
   status: HTMLElement,
   zoomInButton: HTMLButtonElement,
   zoomOutButton: HTMLButtonElement,
+  store: SceneStore = createMemoryStore(demoObjects),
 ): void {
   let zoomAnim = createButtonZoom(
     cameraFromLocation(initialCameraFor(window.innerWidth), window.location.search),
@@ -18,7 +19,6 @@ export function mountShell(
   let rafId = 0;
 
   const renderer = createRenderer(surface, () => invalidate());
-  const store = createMemoryStore(demoObjects);
 
   function frame(now: number) {
     zoomAnim = tickButtonZoom(zoomAnim, now);
@@ -43,7 +43,7 @@ export function mountShell(
     if (zoomAnim.segments.length > 0) invalidate();
   }
 
-  /** At most one animation frame. Button zoom, resize, and image loads use this. */
+  /** At most one animation frame. Button zoom, resize, image loads, and store changes use this. */
   function invalidate() {
     if (rafId !== 0) return;
     rafId = requestAnimationFrame((now) => {
@@ -66,6 +66,8 @@ export function mountShell(
     }
     frame(now);
   }
+
+  store.subscribe(() => invalidate());
 
   attachInteraction(
     { canvas: surface, zoomIn: zoomInButton, zoomOut: zoomOutButton },

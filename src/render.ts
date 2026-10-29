@@ -57,9 +57,11 @@ type CachedImage = {
   settled: boolean;
 };
 
-function publicUrl(path: string): string {
+function publicUrl(src: string): string {
+  // An absolute URL is already fetchable. Prefixing it with BASE_URL (`./`) would break it.
+  if (src.startsWith('http:') || src.startsWith('https:')) return src;
   const base = import.meta.env.BASE_URL;
-  const trimmed = path.replace(/^\//, '');
+  const trimmed = src.replace(/^\//, '');
   return base.endsWith('/') ? base + trimmed : `${base}/${trimmed}`;
 }
 

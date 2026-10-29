@@ -26,7 +26,7 @@ export type TextPayload = {
 
 export type ImagePayload = {
   type: 'image';
-  /** Path under the site root, e.g. `images/phone.svg`. */
+  /** Site path such as `images/phone.svg`, or an absolute `http:` / `https:` URL. */
   src: string;
   width: number;
   height: number;

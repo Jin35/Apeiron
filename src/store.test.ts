@@ -212,4 +212,31 @@ describe('createMemoryStore', () => {
     ]);
     expect(createMemoryStore([textObject('only-text', wide)]).imageSources()).toEqual([]);
   });
+
+  it('rebuilds the resident set and notifies when objects are replaced', () => {
+    const first = textObject('first', wide);
+    const plate = imageObject('plate', 'images/plate.svg');
+    const store = createMemoryStore([first, plate]);
+    const seen: number[] = [];
+    const unsubscribe = store.subscribe(() => {
+      seen.push(store.countInBand(4));
+    });
+
+    expect(seen).toEqual([]);
+    expect(store.imageSources()).toEqual(['images/plate.svg']);
+
+    const second = textObject('second', wide);
+    store.replaceObjects([second]);
+
+    expect(seen).toEqual([1]);
+    expect(store.countInBand(4)).toBe(1);
+    expect(ids(store.query({ bounds: nearby, scale: 4 }))).toEqual(['second']);
+    expect(store.imageSources()).toEqual([]);
+
+    unsubscribe();
+    store.replaceObjects([first, second]);
+    expect(seen).toEqual([1]);
+    expect(store.countInBand(4)).toBe(2);
+    expect(ids(store.query({ bounds: nearby, scale: 4 }))).toEqual(['first', 'second']);
+  });
 });
