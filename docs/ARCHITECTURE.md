@@ -12,11 +12,11 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 
 | Module | What it does |
 | --- | --- |
-| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. No parent, no bounds on text. |
+| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. No bounds on text. |
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `MemoryStore.replaceObjects` rebuilds and notifies. Linear scan of conservative world boxes. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Linear scan of conservative world boxes. |
 | `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates, text. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `CameraCommand`s. |

@@ -16,6 +16,7 @@ describe('demo atlas', () => {
       expect(object.visibility.minScale).toBeLessThan(object.visibility.maxScale);
       expect(Number.isFinite(object.x)).toBe(true);
       expect(Number.isFinite(object.y)).toBe(true);
+      expect(object.parentId).toBeUndefined();
     }
   });
 
