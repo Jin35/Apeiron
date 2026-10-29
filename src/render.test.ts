@@ -213,6 +213,32 @@ describe('createRenderer', () => {
     expect(fontsOf(ctx).every((font) => font.includes('48px'))).toBe(true);
   });
 
+  it('leaves absolute image urls unchanged and prefixes site paths', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 16 };
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [
+        visible(imageObject('phone', 'images/phone.svg', visibility), 1),
+        visible(imageObject('secure', 'https://example.com/phone.svg', visibility), 1),
+        visible(imageObject('plain', 'http://example.com/plate.svg', visibility), 1),
+      ],
+    });
+
+    const base = import.meta.env.BASE_URL;
+    const phone = base.endsWith('/') ? `${base}images/phone.svg` : `${base}/images/phone.svg`;
+    expect(images.map((image) => image.src)).toEqual([
+      phone,
+      'https://example.com/phone.svg',
+      'http://example.com/plate.svg',
+    ]);
+    expect(phone).not.toBe('images/phone.svg');
+  });
+
   it('fetches an image only when this frame draws it', () => {
     const ctx = recordingContext();
     const onReady = vi.fn();

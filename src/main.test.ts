@@ -5,7 +5,7 @@ import { viewBounds, zoomAt } from './camera';
 import { demoObjects } from './demo';
 import { wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
-import { createMemoryStore } from './store';
+import { createMemoryStore, type SceneStore } from './store';
 
 type Listener = (event: Event) => void;
 
@@ -33,7 +33,7 @@ function recordingContext(draws: { n: number }): CanvasRenderingContext2D {
   });
 }
 
-function harness(options?: { search?: string; innerWidth?: number }) {
+function harness(options?: { search?: string; innerWidth?: number; store?: SceneStore }) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
   const canvasListeners = new Map<string, Listener[]>();
@@ -133,6 +133,7 @@ function harness(options?: { search?: string; innerWidth?: number }) {
     status as unknown as HTMLElement,
     zoomIn as unknown as HTMLButtonElement,
     zoomOut as unknown as HTMLButtonElement,
+    options?.store,
   );
 
   return {
@@ -387,5 +388,33 @@ describe('frame loop', () => {
     expect(deep.status.dataset.scale).toBe('10000000');
     expect(deep.zoomIn.disabled).toBe(true);
     expect(deep.zoomOut.disabled).toBe(false);
+  });
+
+  it('paints one frame when the store replaces its objects', () => {
+    const store = createMemoryStore([]);
+    const shell = harness({ store });
+
+    expect(shell.draws.n).toBe(1);
+    expect(shell.pending.size).toBe(0);
+    expect(shell.status.textContent).toBe('×0.100 · 0 visible');
+
+    store.replaceObjects([
+      {
+        id: 'late',
+        x: 0,
+        y: -80,
+        visibility: { minScale: 0.02, maxScale: 0.3 },
+        payload: { type: 'text', text: 'Late', style: { fontSize: 12, color: '#fff' } },
+      },
+    ]);
+
+    expect(shell.draws.n).toBe(1);
+    expect(shell.pending.size).toBe(1);
+
+    shell.flush();
+    expect(shell.draws.n).toBe(2);
+    expect(shell.pending.size).toBe(0);
+    expect(store.countInBand(0.1)).toBe(1);
+    expect(shell.status.textContent).toBe('×0.100 · 1 visible');
   });
 });

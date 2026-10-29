@@ -16,7 +16,7 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`. Linear scan of conservative world boxes. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `MemoryStore.replaceObjects` rebuilds and notifies. Linear scan of conservative world boxes. |
 | `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates, text. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `CameraCommand`s. |
@@ -25,7 +25,7 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | `src/demo.ts` | `demoObjects` only. Thirty objects, six images, four overlapping bands. |
 | `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD. |
 
-`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, and image `onReady` call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`.
+`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`.
 
 ### Contracts that are actually in the tree
 
@@ -35,7 +35,12 @@ type SceneQuery = { bounds: ViewBounds; scale: number };
 interface SceneStore {
   query(query: SceneQuery): VisibleObject[];       // alpha > 0.01, viewport cull
   countInBand(scale: number): number;              // alpha > 0.02, whole world
-  imageSources(): readonly string[];               // every image src in the array
+  imageSources(): readonly string[];               // srcs of the resident objects
+  subscribe(onChange: () => void): () => void;     // resident set changed
+}
+
+interface MemoryStore extends SceneStore {
+  replaceObjects(objects: readonly CanvasObject[]): void; // rebuild entries, then notify
 }
 
 type RenderFrame = {
