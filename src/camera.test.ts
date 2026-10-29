@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SCALE, panBy, retarget, worldPoint, zoomAt, type Camera } from './camera';
+import {
+  applyCameraCommand,
+  MAX_SCALE,
+  panBy,
+  retarget,
+  worldPoint,
+  zoomAt,
+  type Camera,
+  type CameraCommand,
+} from './camera';
 
 const viewW = 800;
 const viewH = 600;
@@ -58,5 +67,39 @@ describe('camera', () => {
     expect(next.x).toBeCloseTo(5);
     expect(next.y).toBeCloseTo(23);
     expect(next.scale).toBe(2);
+  });
+});
+
+describe('applyCameraCommand', () => {
+  it('panBy matches panBy and ignores the viewport size', () => {
+    const camera: Camera = { x: 10, y: 20, scale: 2 };
+    const command = { type: 'panBy', dx: 10, dy: -6 } as const;
+    expect(applyCameraCommand(camera, command, 0, 0)).toEqual(panBy(camera, 10, -6));
+    expect(applyCameraCommand(camera, command, viewW, viewH)).toEqual(panBy(camera, 10, -6));
+  });
+
+  it('zoomAt matches zoomAt', () => {
+    const camera: Camera = { x: 100, y: -50, scale: 2 };
+    const command = { type: 'zoomAt', x: 620, y: 180, factor: 3 } as const;
+    expect(applyCameraCommand(camera, command, viewW, viewH)).toEqual(
+      zoomAt(camera, 620, 180, viewW, viewH, 3),
+    );
+  });
+
+  it('retarget matches retarget', () => {
+    const camera: Camera = { x: 0, y: 0, scale: 2 };
+    const anchor = { x: 100, y: 120 };
+    const target = { x: 340, y: 420 };
+    const command = { type: 'retarget', anchor, target, factor: 1.5 } as const;
+    expect(applyCameraCommand(camera, command, viewW, viewH)).toEqual(
+      retarget(camera, anchor, target, viewW, viewH, 1.5),
+    );
+  });
+
+  it('does not accept the animated zoomStep command', () => {
+    const camera: Camera = { x: 0, y: 0, scale: 1 };
+    const command: CameraCommand = { type: 'zoomStep', factor: 2 };
+    // @ts-expect-error zoomStep is animated by button zoom, not applied here.
+    void applyCameraCommand(camera, command, viewW, viewH);
   });
 });

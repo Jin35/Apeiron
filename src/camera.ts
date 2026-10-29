@@ -94,3 +94,36 @@ export function viewBounds(camera: Camera, viewW: number, viewH: number): ViewBo
     bottom: camera.y + halfH,
   };
 }
+
+/**
+ * Session camera command. Coordinates are canvas-local CSS pixels.
+ * `zoomStep` is the animated +/− control, anchored at the view center.
+ */
+export type CameraCommand =
+  | { type: 'panBy'; dx: number; dy: number }
+  | { type: 'zoomAt'; x: number; y: number; factor: number }
+  | { type: 'retarget'; anchor: ScreenPoint; target: ScreenPoint; factor: number }
+  | { type: 'zoomStep'; factor: number };
+
+type ImmediateCameraCommand = Exclude<CameraCommand, { type: 'zoomStep' }>;
+
+/**
+ * Immediate half of a camera command. Delegates to `panBy`, `zoomAt`, or `retarget`.
+ * `viewW` and `viewH` are the viewport in CSS pixels; `panBy` does not use them.
+ * `zoomStep` is not accepted here. Button zoom animates that command.
+ */
+export function applyCameraCommand(
+  camera: Camera,
+  command: ImmediateCameraCommand,
+  viewW: number,
+  viewH: number,
+): Camera {
+  switch (command.type) {
+    case 'panBy':
+      return panBy(camera, command.dx, command.dy);
+    case 'zoomAt':
+      return zoomAt(camera, command.x, command.y, viewW, viewH, command.factor);
+    case 'retarget':
+      return retarget(camera, command.anchor, command.target, viewW, viewH, command.factor);
+  }
+}
