@@ -122,12 +122,17 @@ describe('createRenderer', () => {
     expect(visibilityAlpha(low, camera.scale)).toBe(0);
     expect(visibilityAlpha(fine, camera.scale)).toBe(1);
 
-    renderer.draw(camera, [
-      visible(textObject('fine', fine), 0.55),
-      visible(textObject('early', low), 0.3),
-      visible(textObject('mid', mid), 0.011),
-      visible(textObject('late', low), 0.2),
-    ]);
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [
+        visible(textObject('fine', fine), 0.55),
+        visible(textObject('early', low), 0.3),
+        visible(textObject('mid', mid), 0.011),
+        visible(textObject('late', low), 0.2),
+      ],
+    });
 
     expect(paintsOf(ctx)).toEqual([
       { kind: 'text', text: 'early', alpha: 0.3 },
@@ -143,7 +148,12 @@ describe('createRenderer', () => {
     const renderer = createRenderer(canvasFor(ctx), onReady);
 
     renderer.warm(['images/off-band.svg', 'images/buoy.svg', 'images/off-band.svg']);
-    renderer.draw(camera, [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)]);
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)],
+    });
 
     expect(images.map((image) => image.src)).toEqual([
       expect.stringContaining('images/off-band.svg'),
@@ -164,9 +174,12 @@ describe('createRenderer', () => {
     const visibility: VisibilityRange = { minScale: 1, maxScale: 2 };
     expect(visibilityAlpha(visibility, camera.scale)).toBe(0);
 
-    renderer.draw(camera, [
-      visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4),
-    ]);
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4)],
+    });
 
     expect(images).toHaveLength(1);
     expect(images[0]?.src).toEqual(expect.stringContaining('images/buoy.svg'));
@@ -174,9 +187,32 @@ describe('createRenderer', () => {
 
     images[0]?.onload?.();
     expect(onReady).toHaveBeenCalledOnce();
-    renderer.draw(camera, [
-      visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4),
-    ]);
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4)],
+    });
     expect(images).toHaveLength(1);
+  });
+
+  it('sizes the bitmap from the frame and does not measure the canvas', () => {
+    const ctx = recordingContext();
+    const canvas = canvasFor(ctx);
+    canvas.getBoundingClientRect = () => {
+      throw new Error('draw should not measure the canvas');
+    };
+    const renderer = createRenderer(canvas, () => {});
+
+    renderer.draw({
+      camera,
+      width: 100,
+      height: 40,
+      visible: [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)],
+    });
+
+    expect(canvas.width).toBe(100);
+    expect(canvas.height).toBe(40);
+    expect(paintsOf(ctx)).toEqual([{ kind: 'text', text: 'label', alpha: 1 }]);
   });
 });

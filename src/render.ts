@@ -14,12 +14,19 @@ const DEFAULT_FONT = '"Iowan Old Style", Palatino, Georgia, serif';
 
 type SpacedContext = CanvasRenderingContext2D & { letterSpacing: string };
 
+/** One paint. `width` and `height` are CSS pixels measured once by the shell. */
+export type RenderFrame = {
+  camera: Camera;
+  width: number;
+  height: number;
+  visible: readonly VisibleObject[];
+};
+
 export type Renderer = {
-  /** Paint `visible` with the alpha already on each entry. */
-  draw(camera: Camera, visible: readonly VisibleObject[]): void;
+  /** Paint one measured frame. Alpha is already on each visible entry. */
+  draw(frame: RenderFrame): void;
   /** Fetch image bytes. Drawing does not depend on the fetch having finished. */
   warm(srcs: readonly string[]): void;
-  size(): { width: number; height: number };
 };
 
 function publicUrl(path: string): string {
@@ -45,17 +52,12 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     return image;
   }
 
-  function size() {
-    const rect = canvas.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
-  }
-
   function warm(srcs: readonly string[]) {
     for (const src of srcs) imageFor(src);
   }
 
-  function draw(camera: Camera, visible: readonly VisibleObject[]) {
-    const { width: viewW, height: viewH } = size();
+  function draw(frame: RenderFrame) {
+    const { camera, width: viewW, height: viewH, visible } = frame;
     if (viewW < 1 || viewH < 1) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -91,7 +93,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     ctx.restore();
   }
 
-  return { draw, warm, size };
+  return { draw, warm };
 }
 
 function drawGrid(
