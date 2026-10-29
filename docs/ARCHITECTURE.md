@@ -12,20 +12,21 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 
 | Module | What it does |
 | --- | --- |
-| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. Text carries world `width` and `height`. |
+| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. Text carries world `width` and `height`. Text `color` is optional. |
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
 | `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. |
-| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. |
+| `src/theme.ts` | `Theme`, `darkTheme`, `paperTheme`. A content pack is `{ theme, objects }`. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. A mouse click and a touch tap that stays single for `DOUBLE_TAP_MS` call `selectAt`. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, keyboard pan and zoom, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). Arrow keys and `+`/`−` reuse `CameraCommand`. |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. A reduced-motion `zoomStep` settles on the committed camera with no segments. |
 | `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
-| `src/demo.ts` | `demoObjects` and the title fit width. Thirty objects, six images, four overlapping bands. |
+| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Colors and fonts come from the frame's `theme` (the demo dark theme when it is omitted). Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. |
+| `src/demo.ts` | `demoPack` (`darkTheme` and `demoObjects`) and the title fit width. Thirty objects, six images, four overlapping bands. |
 | `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD and a visually hidden label list from the frame's `query`. Session `selectedId` is on the frame and on `dataset.selected`. `prefers-reduced-motion: reduce` settles `zoomStep` in one frame. |
 
-`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`, unless `prefers-reduced-motion: reduce` matches, in which case that step settles in the next frame.
+`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store and an optional theme; production still builds the demo pack. The shell writes the theme into CSS custom properties for the page, HUD, and buttons, and into the `theme-color` meta, and passes the same object on the frame. `style.color` overrides the theme ink. `?theme=paper` on the dev server previews `paperTheme` on the atlas. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`, unless `prefers-reduced-motion: reduce` matches, in which case that step settles in the next frame.
 
 ### Contracts that are actually in the tree
 
@@ -52,6 +53,7 @@ type RenderFrame = {
   height: number;
   visible: readonly VisibleObject[];
   selectedId?: string;                             // shell session; stroked when that object is drawn
+  theme?: Theme;                                   // pack look; omitted frame uses the demo dark theme
 };
 
 interface Renderer {
@@ -70,7 +72,7 @@ Dependencies point inward, toward `model.ts` and `camera.ts`.
 ```
 main.ts
   ├── store.ts         → model.ts, camera.ts (ViewBounds), visibility.ts
-  ├── render.ts        → model.ts, camera.ts, grid.ts
+  ├── render.ts        → model.ts, camera.ts, grid.ts, theme.ts
   ├── interaction.ts   → gestures.ts, CameraCommand (type-only). Emits SceneCommand.
   └── buttonZoom.ts    → camera.ts. Shell holds the value and ticks it.
 ```

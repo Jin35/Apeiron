@@ -1,4 +1,5 @@
 import type { CanvasObject, TextStyle, VisibilityRange } from './model';
+import { darkTheme, type ContentPack } from './theme';
 
 /**
  * Four zoom bands. Ranges overlap on purpose so the handoff fades
@@ -135,3 +136,9 @@ export const demoObjects: CanvasObject[] = [
   text('detail-lens', observatory.x - 14, observatory.y - 12, 'lens cap', 2.1, SLATE, detail, 21.1155, 3.2655),
   text('detail-tray', observatory.x + 16, observatory.y + 10, 'sample tray', 2, SLATE, detail, 27.61, 3.11),
 ];
+
+/** Archipelago content: the historical dark look plus the atlas objects. */
+export const demoPack: ContentPack = {
+  theme: darkTheme,
+  objects: demoObjects,
+};

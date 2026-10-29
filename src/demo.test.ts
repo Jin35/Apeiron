@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { demoObjects, titleFitWidth } from './demo';
+import { demoObjects, demoPack, titleFitWidth } from './demo';
+import { darkTheme } from './theme';
 import { visibilityAlpha } from './visibility';
 
 function visibleAt(scale: number) {
@@ -13,6 +14,8 @@ describe('demo atlas', () => {
     expect(demoObjects.some((object) => object.payload.type === 'text')).toBe(true);
     expect(demoObjects.some((object) => object.payload.type === 'image')).toBe(true);
     expect(titleFitWidth).toBe(6300);
+    expect(demoPack.theme).toBe(darkTheme);
+    expect(demoPack.objects).toBe(demoObjects);
     const title = demoObjects.find((object) => object.id === 'overview-title');
     expect(title?.payload.type === 'text' && title.payload.width).toBeGreaterThan(titleFitWidth);
     for (const object of demoObjects) {

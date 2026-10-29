@@ -15,7 +15,8 @@ export type TextStyle = {
    * pixels, and the renderer scales it down when the ink would exceed the payload box.
    */
   fontSize: number;
-  color: string;
+  /** Fill. When omitted, the renderer uses the pack theme's ink. */
+  color?: string;
   fontFamily?: string;
   fontWeight?: string;
   letterSpacing?: string;
