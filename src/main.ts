@@ -1,5 +1,5 @@
 import { committedCamera, createButtonZoom, pressButtonZoom, tickButtonZoom } from './buttonZoom';
-import { clampScale, MAX_SCALE, MIN_SCALE, panBy, retarget, viewBounds, zoomAt, type Camera } from './camera';
+import { applyCameraCommand, clampScale, MAX_SCALE, MIN_SCALE, viewBounds, type Camera } from './camera';
 import { demoObjects, initialCameraFor } from './demo';
 import { attachGestures, ZOOM_STEP } from './gestures';
 import { createRenderer } from './render';
@@ -115,16 +115,36 @@ function zoomFromCenter(factor: number) {
 
 attachGestures(surface, {
   panBy(dx, dy) {
-    replaceCamera(panBy(zoomAnim.camera, dx, dy));
+    // A pan does not use the viewport size.
+    replaceCamera(applyCameraCommand(zoomAnim.camera, { type: 'panBy', dx, dy }, 0, 0));
   },
   zoomAt(x, y, factor) {
     const point = localPoint(x, y);
-    replaceCamera(zoomAt(zoomAnim.camera, point.x, point.y, point.width, point.height, factor));
+    replaceCamera(
+      applyCameraCommand(
+        zoomAnim.camera,
+        { type: 'zoomAt', x: point.x, y: point.y, factor },
+        point.width,
+        point.height,
+      ),
+    );
   },
   retarget(anchorX, anchorY, targetX, targetY, factor) {
     const anchor = localPoint(anchorX, anchorY);
     const target = localPoint(targetX, targetY);
-    replaceCamera(retarget(zoomAnim.camera, anchor, target, anchor.width, anchor.height, factor));
+    replaceCamera(
+      applyCameraCommand(
+        zoomAnim.camera,
+        {
+          type: 'retarget',
+          anchor: { x: anchor.x, y: anchor.y },
+          target: { x: target.x, y: target.y },
+          factor,
+        },
+        anchor.width,
+        anchor.height,
+      ),
+    );
   },
 });
 
