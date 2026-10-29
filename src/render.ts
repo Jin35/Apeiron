@@ -23,6 +23,12 @@ const PLATE_LINE_PX = 1.25;
 const MAX_SCREEN_FONT_PX = 512;
 
 /**
+ * Decoded images kept. Enough for this atlas many times over.
+ * Loads that have not fired onload or onerror stay put, so the next frame does not restart them.
+ */
+const MAX_SETTLED_IMAGES = 32;
+
+/**
  * Canvas still turns user coordinates into float32. Inside this limit the
  * true rect is sub-pixel-accurate and the bitmap can clip it. Past it, the
  * fill is cropped to the viewport and only edges that cross the view are
@@ -43,8 +49,12 @@ export type RenderFrame = {
 export type Renderer = {
   /** Paint one measured frame. Alpha is already on each visible entry. */
   draw(frame: RenderFrame): void;
-  /** Fetch image bytes. Drawing does not depend on the fetch having finished. */
-  warm(srcs: readonly string[]): void;
+};
+
+type CachedImage = {
+  image: HTMLImageElement;
+  /** True after onload or onerror. `complete` is already true before `src` is assigned. */
+  settled: boolean;
 };
 
 function publicUrl(path: string): string {
@@ -57,21 +67,51 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Canvas 2D is unavailable');
   const ctx = context;
-  const images = new Map<string, HTMLImageElement>();
+  /** Draw order: `imageFor` moves an entry to the end. Oldest settled key is first. */
+  const images = new Map<string, CachedImage>();
 
   function imageFor(src: string): HTMLImageElement {
     const existing = images.get(src);
-    if (existing) return existing;
-    const image = new Image();
-    image.onload = () => onReady();
-    image.onerror = () => onReady();
-    image.src = publicUrl(src);
-    images.set(src, image);
-    return image;
+    if (existing) {
+      touch(src, existing);
+      return existing.image;
+    }
+
+    const entry: CachedImage = { image: new Image(), settled: false };
+    const settle = () => {
+      entry.settled = true;
+      evictSettled();
+      onReady();
+    };
+    entry.image.onload = settle;
+    entry.image.onerror = settle;
+    // In the map before `src`, so a synchronous load still counts toward the cap.
+    touch(src, entry);
+    entry.image.src = publicUrl(src);
+    return entry.image;
   }
 
-  function warm(srcs: readonly string[]) {
-    for (const src of srcs) imageFor(src);
+  function touch(src: string, entry: CachedImage) {
+    images.delete(src);
+    images.set(src, entry);
+  }
+
+  function evictSettled() {
+    let settled = 0;
+    for (const entry of images.values()) if (entry.settled) settled += 1;
+    while (settled > MAX_SETTLED_IMAGES) {
+      const victim = oldestSettled();
+      if (victim === undefined) return;
+      images.delete(victim);
+      settled -= 1;
+    }
+  }
+
+  function oldestSettled(): string | undefined {
+    for (const [src, entry] of images) {
+      if (entry.settled) return src;
+    }
+    return undefined;
   }
 
   function draw(frame: RenderFrame) {
@@ -119,7 +159,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     ctx.restore();
   }
 
-  return { draw, warm };
+  return { draw };
 }
 
 function drawGrid(

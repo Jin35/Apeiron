@@ -17,7 +17,7 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
 | `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`. Linear scan of conservative world boxes. |
-| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`, `warm`. Canvas 2D, image cache, grid, plates, text. |
+| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates, text. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `CameraCommand`s. |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. |
@@ -47,7 +47,6 @@ type RenderFrame = {
 
 interface Renderer {
   draw(frame: RenderFrame): void;
-  warm(srcs: readonly string[]): void;
 }
 ```
 
