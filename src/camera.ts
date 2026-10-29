@@ -145,10 +145,16 @@ export type CameraLimits = {
   bounds?: ViewBounds;
 };
 
-/** Limits `applyCameraCommand` enforces. `bounds` absent means pan is free. */
+/**
+ * Limits `applyCameraCommand` enforces. `bounds` absent means pan is free.
+ * `fitScale` is the opening fit (s0): the content fitted to this viewport
+ * with `FIT_SLACK`, clamped to the global range. It does not follow an
+ * explicit `minScale`. Relative zoom is `camera.scale / fitScale`.
+ */
 export type ResolvedCameraLimits = {
   minScale: number;
   maxScale: number;
+  fitScale: number;
   bounds?: ViewBounds;
 };
 
@@ -158,7 +164,7 @@ export type ResolvedCameraLimits = {
  * `minScale` fits those bounds with `FIT_SLACK`. `maxScale` is deep enough to read the
  * finest object (`visibility.maxScale`, or `READABLE_PX` on its smaller side, whichever
  * is deeper). Both scales stay inside `MIN_SCALE`..`MAX_SCALE`. An explicit field replaces
- * the derived one.
+ * the derived one. `fitScale` stays the opening fit even when `minScale` is overridden.
  */
 export function deriveCameraLimits(
   content: readonly ContentBox[],
@@ -176,6 +182,7 @@ export function deriveCameraLimits(
 
   const minOverride = positiveScale(explicit?.minScale);
   const maxOverride = positiveScale(explicit?.maxScale);
+  const openingFit = clampScale(fitted);
   let minScale = clampScale(minOverride ?? fitted);
   let maxScale = clampScale(maxOverride ?? readable);
   if (minScale > maxScale) {
@@ -191,7 +198,9 @@ export function deriveCameraLimits(
     } else maxScale = minScale;
   }
 
-  return bounds ? { minScale, maxScale, bounds } : { minScale, maxScale };
+  return bounds
+    ? { minScale, maxScale, fitScale: openingFit, bounds }
+    : { minScale, maxScale, fitScale: openingFit };
 }
 
 /**

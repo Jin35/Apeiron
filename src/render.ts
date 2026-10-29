@@ -1,4 +1,5 @@
 import { viewBounds, type Camera } from './camera';
+import { displayOpacity } from './fade';
 import { gridStep } from './grid';
 import type { CanvasObject, TextPayload } from './model';
 import { darkTheme, withAlpha, type Theme } from './theme';
@@ -54,10 +55,18 @@ export type RenderFrame = {
   selectedId?: string;
   /** Pack look. Omitted frames use the demo dark theme. */
   theme?: Theme;
+  /**
+   * Opening fit scale (s0) for this viewport. Zoom fade on an object is
+   * `camera.scale / fitScale`. Omit it and `fade` is not applied.
+   */
+  fitScale?: number;
 };
 
 export type Renderer = {
-  /** Paint one measured frame. Alpha is already on each visible entry. */
+  /**
+   * Paint one measured frame. `alpha` is the visibility band. Zoom fade, when
+   * the object has one, is applied here from `fitScale`. Alpha 0 is not drawn.
+   */
   draw(frame: RenderFrame): void;
 };
 
@@ -149,12 +158,16 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     ctx.save();
     drawGrid(ctx, theme, camera, viewW, viewH);
 
-    // Coarser bands (smaller maxScale) sit under finer ones. Alpha is the caller's.
+    // Coarser bands (smaller maxScale) sit under finer ones. Equal bands keep
+    // the caller's order, so a pack can stack parts by listing them back to front.
     const sorted = [...visible].sort(
       (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
     );
-    for (const { object, alpha } of sorted) {
+    for (const entry of sorted) {
+      const alpha = paintAlpha(entry, camera.scale, frame.fitScale);
+      if (!(alpha > 0)) continue;
       ctx.globalAlpha = alpha;
+      const { object } = entry;
       if (object.payload.type === 'image') {
         drawImageObject(ctx, theme, camera, viewW, viewH, object, imageFor(object.payload.src));
       } else {
@@ -163,12 +176,19 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     }
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
-      if (selected) drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
+      if (selected && paintAlpha(selected, camera.scale, frame.fitScale) > 0) {
+        drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
+      }
     }
     ctx.restore();
   }
 
   return { draw };
+}
+
+/** Visibility alpha times the object's zoom fade. Nothing here is pack-specific. */
+function paintAlpha(entry: VisibleObject, scale: number, fitScale: number | undefined): number {
+  return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale);
 }
 
 /** Vignette plus a deterministic speck field. No image asset. */

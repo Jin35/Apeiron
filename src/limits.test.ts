@@ -62,6 +62,7 @@ describe('derived camera limits', () => {
     const limits = deriveCameraLimits([plate(-100, 100, -50, 50, 10, 20)], viewW, viewH);
     const fitted = fitOf(limits.bounds!, viewW, viewH) * FIT_SLACK;
     expect(limits.minScale).toBeCloseTo(fitted);
+    expect(limits.fitScale).toBeCloseTo(fitted);
     expect(limits.maxScale).toBeCloseTo(10);
 
     const out = applyCameraCommand(
@@ -186,7 +187,8 @@ describe('derived camera limits', () => {
       maxScale: 1.5,
       bounds,
     });
-    expect(explicit).toEqual({ minScale: 0.5, maxScale: 1.5, bounds });
+    expect(explicit).toEqual({ minScale: 0.5, maxScale: 1.5, fitScale: fitOf(bounds, viewW, viewH) * FIT_SLACK, bounds });
+    expect(explicit.fitScale).not.toBeCloseTo(explicit.minScale);
     expect(explicit.minScale).not.toBeCloseTo(derived.minScale);
     expect(explicit.bounds).not.toEqual(derived.bounds);
 
@@ -230,7 +232,11 @@ describe('derived camera limits', () => {
   });
 
   it('derives an empty atlas as the global clamp with no pan bounds', () => {
-    expect(deriveCameraLimits([], viewW, viewH)).toEqual({ minScale: MIN_SCALE, maxScale: MAX_SCALE });
+    expect(deriveCameraLimits([], viewW, viewH)).toEqual({
+      minScale: MIN_SCALE,
+      maxScale: MAX_SCALE,
+      fitScale: MIN_SCALE,
+    });
   });
 });
 

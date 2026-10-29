@@ -393,4 +393,38 @@ describe('createMemoryStore', () => {
     expect(child.x).toBe(100);
     expect(child.parentId).toBe('phone');
   });
+
+  it('skips an object whose zoom fade has reached alpha 0', () => {
+    const band: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
+    const fitScale = 4;
+    const front = {
+      ...textObject('front', band, 0, 0, 'Front', 12, undefined, 20, 10),
+      fade: { fadeOut: [1, 2] as const },
+    };
+    const part = withParent(
+      {
+        ...textObject('part', band, 0, 0, 'Part', 12, undefined, 10, 10),
+        fade: { fadeIn: [1, 2] as const },
+      },
+      'front',
+    );
+    const store = createMemoryStore([part, front]);
+    const at = (ratio: number) => ({ x: 0, y: 0, scale: fitScale * ratio });
+
+    expect(store.hitTest({ x: 0, y: 0 }, at(0.5), fitScale)?.id).toBe('front');
+    expect(store.hitTest({ x: 0, y: 0 }, at(1), fitScale)?.id).toBe('front');
+    expect(store.hitTest({ x: 0, y: 0 }, at(1.5), fitScale)?.id).toBe('front');
+    expect(store.hitTest({ x: 0, y: 0 }, at(2), fitScale)).toMatchObject({ id: 'part' });
+    expect(store.hitTest({ x: 0, y: 0 }, at(3), fitScale)?.id).toBe('part');
+    // No fit scale means the fade is not applied, so the later object still wins.
+    expect(store.hitTest({ x: 0, y: 0 }, at(3))?.id).toBe('front');
+
+    const shown = (ratio: number) => store.query({ bounds: span, scale: fitScale * ratio, fitScale });
+    expect(ids(shown(1))).toEqual(['front']);
+    expect(shown(1.2).find((entry) => entry.object.id === 'front')?.alpha).toBe(1);
+    expect(ids(shown(2))).toEqual(['part']);
+    expect(store.countInBand(fitScale, fitScale)).toBe(1);
+    expect(store.countInBand(fitScale * 1.5, fitScale)).toBe(2);
+    expect(store.countInBand(fitScale * 3, fitScale)).toBe(1);
+  });
 });
