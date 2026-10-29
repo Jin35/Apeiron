@@ -11,9 +11,9 @@ export type ScreenPoint = {
   y: number;
 };
 
-/** Practical clamp so the demo can move past the last visibility band. */
-export const MIN_SCALE = 0.012;
-export const MAX_SCALE = 80;
+/** Camera limits, not a world edge. One decade past the overview, out to 1e7. */
+export const MIN_SCALE = 1e-4;
+export const MAX_SCALE = 1e7;
 
 export function clampScale(scale: number): number {
   if (!Number.isFinite(scale)) return MIN_SCALE;

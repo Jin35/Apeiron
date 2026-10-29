@@ -25,7 +25,7 @@ On a phone-width window the opening scale is a little smaller so the title fits;
 
 ## Objects and depth
 
-World **y grows downward**. The camera stores the world point at the center of the screen and a **scale** in CSS pixels per world unit. Pan is unbounded. Zoom is clamped to `0.012–80` so you can move past every band; the clamp is not a world edge.
+World **y grows downward**. The camera stores the world point at the center of the screen and a **scale** in CSS pixels per world unit. Pan is unbounded. Zoom is clamped to `1e-4–1e7` so you can move past every band; the clamp is not a world edge.
 
 Each object has:
 

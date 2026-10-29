@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyCameraCommand,
+  clampScale,
   MAX_SCALE,
+  MIN_SCALE,
   panBy,
   retarget,
   worldPoint,
@@ -43,6 +45,20 @@ describe('camera', () => {
     expect(next.scale).toBeCloseTo(3);
     expect(after.x).toBeCloseTo(before.x);
     expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it('clamps scale to the wide limits and leaves the old range alone', () => {
+    expect(MIN_SCALE).toBe(1e-4);
+    expect(MAX_SCALE).toBe(1e7);
+    expect(clampScale(1e-8)).toBe(MIN_SCALE);
+    expect(clampScale(MIN_SCALE)).toBe(MIN_SCALE);
+    expect(clampScale(0.012)).toBe(0.012);
+    expect(clampScale(80)).toBe(80);
+    expect(clampScale(MAX_SCALE)).toBe(MAX_SCALE);
+    expect(clampScale(1e8)).toBe(MAX_SCALE);
+    expect(clampScale(0)).toBe(MIN_SCALE);
+    expect(clampScale(Number.NaN)).toBe(MIN_SCALE);
+    expect(clampScale(Number.POSITIVE_INFINITY)).toBe(MIN_SCALE);
   });
 
   it('clamps scale without leaving the pointer', () => {
