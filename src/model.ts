@@ -10,7 +10,10 @@ export type VisibilityRange = {
 };
 
 export type TextStyle = {
-  /** Size in world units. On screen it is `fontSize * camera.scale` pixels. */
+  /**
+   * Preferred size in world units. On screen it starts at `fontSize * camera.scale`
+   * pixels, and the renderer scales it down when the ink would exceed the payload box.
+   */
   fontSize: number;
   color: string;
   fontFamily?: string;
@@ -22,6 +25,9 @@ export type TextPayload = {
   type: 'text';
   text: string;
   style: TextStyle;
+  /** World-space bounds, centered on the object's `(x, y)`, same as an image. */
+  width: number;
+  height: number;
 };
 
 export type ImagePayload = {

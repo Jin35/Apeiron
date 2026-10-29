@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demoObjects } from './demo';
+import { demoObjects, titleFitWidth } from './demo';
 import { visibilityAlpha } from './visibility';
 
 function visibleAt(scale: number) {
@@ -12,11 +12,18 @@ describe('demo atlas', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(demoObjects.some((object) => object.payload.type === 'text')).toBe(true);
     expect(demoObjects.some((object) => object.payload.type === 'image')).toBe(true);
+    expect(titleFitWidth).toBe(6300);
+    const title = demoObjects.find((object) => object.id === 'overview-title');
+    expect(title?.payload.type === 'text' && title.payload.width).toBeGreaterThan(titleFitWidth);
     for (const object of demoObjects) {
       expect(object.visibility.minScale).toBeLessThan(object.visibility.maxScale);
       expect(Number.isFinite(object.x)).toBe(true);
       expect(Number.isFinite(object.y)).toBe(true);
       expect(object.parentId).toBeUndefined();
+      if (object.payload.type === 'text') {
+        expect(object.payload.width).toBeGreaterThan(0);
+        expect(object.payload.height).toBeGreaterThan(0);
+      }
     }
   });
 

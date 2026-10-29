@@ -12,17 +12,17 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 
 | Module | What it does |
 | --- | --- |
-| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. No bounds on text. |
+| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text and image payloads. Data only. Optional `parentId`. Text carries world `width` and `height`. |
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Linear scan of conservative world boxes. |
-| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates, text. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. |
+| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Text is fitted into its authored box. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `CameraCommand`s. |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. |
-| `src/bootstrap.ts` | `initialCamera`, `initialCameraFor`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
-| `src/demo.ts` | `demoObjects` only. Thirty objects, six images, four overlapping bands. |
+| `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
+| `src/demo.ts` | `demoObjects` and the title fit width. Thirty objects, six images, four overlapping bands. |
 | `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD. |
 
 `store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`.

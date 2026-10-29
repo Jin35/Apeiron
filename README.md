@@ -32,7 +32,7 @@ Each object has:
 - `id`
 - `x`, `y` — world coordinates, or parent-local when `parentId` is set
 - `visibility: { minScale, maxScale }` — its depth
-- a payload: `text` (string plus font size, color, and a bit of style) or `image` (`src` plus world width and height)
+- a payload: `text` (string, font size, color, style, and world width and height) or `image` (`src` plus world width and height)
 
 An object is drawn only while `minScale <= camera.scale <= maxScale`. Opacity fades across a short band at each edge, measured in log scale (about a 35% zoom, or half the range when the range is narrower), so bands hand off instead of popping. Zooming in past `maxScale` hides coarse labels. Zooming out past `minScale` hides fine ones. Font size and image size are world units, so they grow as you zoom until that band ends. A later pass can swap one object for richer children that use a tighter range; the range is the hook.
 

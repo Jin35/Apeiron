@@ -1,7 +1,7 @@
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
 import { MAX_SCALE, MIN_SCALE, viewBounds, type CameraCommand } from './camera';
-import { demoObjects } from './demo';
+import { demoObjects, titleFitWidth } from './demo';
 import { attachInteraction } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore, type SceneStore } from './store';
@@ -14,7 +14,7 @@ export function mountShell(
   store: SceneStore = createMemoryStore(demoObjects),
 ): void {
   let zoomAnim = createButtonZoom(
-    cameraFromLocation(initialCameraFor(window.innerWidth), window.location.search),
+    cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
   );
   let rafId = 0;
 

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
 import { viewBounds, zoomAt } from './camera';
-import { demoObjects } from './demo';
+import { demoObjects, titleFitWidth } from './demo';
 import { wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
 import { createMemoryStore, type SceneStore } from './store';
@@ -352,7 +352,7 @@ describe('frame loop', () => {
 
   it('opens on the fitted camera, and a scale query replaces it', () => {
     const phone = harness({ innerWidth: 390 });
-    const fitted = initialCameraFor(390);
+    const fitted = initialCameraFor(390, titleFitWidth);
     expect(Number(phone.status.dataset.scale)).toBeCloseTo(fitted.scale);
     expect(phone.status.dataset).toMatchObject({ x: '0', y: '-80' });
     expect(fitted.scale).toBeLessThan(0.06);
@@ -404,7 +404,7 @@ describe('frame loop', () => {
         x: 0,
         y: -80,
         visibility: { minScale: 0.02, maxScale: 0.3 },
-        payload: { type: 'text', text: 'Late', style: { fontSize: 12, color: '#fff' } },
+        payload: { type: 'text', text: 'Late', style: { fontSize: 12, color: '#fff' }, width: 40, height: 16 },
       },
     ]);
 

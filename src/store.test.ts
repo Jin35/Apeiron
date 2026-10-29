@@ -19,13 +19,21 @@ function textObject(
   label = id,
   fontSize = 12,
   extras?: Partial<TextStyle>,
+  width = 4,
+  height = 4,
 ): CanvasObject {
   return {
     id,
     x,
     y,
     visibility,
-    payload: { type: 'text', text: label, style: { fontSize, color: '#fff', ...extras } },
+    payload: {
+      type: 'text',
+      text: label,
+      style: { fontSize, color: '#fff', ...extras },
+      width,
+      height,
+    },
   };
 }
 
@@ -135,9 +143,9 @@ describe('createMemoryStore', () => {
     const frameOnly: ViewBounds = { left: 50.05, right: 50.2, top: -1, bottom: 1 };
     expect(ids(images.query({ bounds: frameOnly, scale }))).toEqual(['plate']);
 
-    // "MMMM" at 100em is hundreds of units wide and about an em tall.
-    // These views miss the anchor and still cover painted ink.
-    const label = textObject('label', wide, 0, 0, 'MMMM', 100);
+    // Authored box is 500 by 160, centered on the anchor.
+    // These views miss the anchor and still cover that box.
+    const label = textObject('label', wide, 0, 0, 'MMMM', 100, undefined, 500, 160);
     const labels = createMemoryStore([label]);
     const textRight: ViewBounds = { left: 150, right: 180, top: -10, bottom: 10 };
     const textAbove: ViewBounds = { left: -10, right: 10, top: -60, bottom: -30 };
@@ -146,14 +154,22 @@ describe('createMemoryStore', () => {
     expect(labels.query({ bounds: offScreen, scale })).toEqual([]);
   });
 
-  it('includes a spaced label whose glyphs sit left of the anchor', () => {
+  it('uses the authored text width and height for query bounds', () => {
     const scale = 4;
-    const spaced = textObject('spaced', wide, 0, 0, 'Hi', 20, { letterSpacing: '10em' });
-    const plain = textObject('plain', wide, 0, 0, 'Hi', 20);
-    const glyph: ViewBounds = { left: -220, right: -200, top: -5, bottom: 5 };
+    // 100 by 40, centered. The one-pixel pad is 0.25 world units at this scale.
+    const label = textObject('label', wide, 0, 0, 'Hi', 20, { letterSpacing: '10em' }, 100, 40);
+    const store = createMemoryStore([label]);
+    const onBox: ViewBounds = { left: 40, right: 49, top: -2, bottom: 2 };
+    const padOnly: ViewBounds = { left: 50.05, right: 50.2, top: -1, bottom: 1 };
+    const beyond: ViewBounds = { left: 50.3, right: 51, top: -1, bottom: 1 };
 
-    expect(ids(createMemoryStore([spaced]).query({ bounds: glyph, scale }))).toEqual(['spaced']);
-    expect(createMemoryStore([plain]).query({ bounds: glyph, scale })).toEqual([]);
+    expect(ids(store.query({ bounds: onBox, scale }))).toEqual(['label']);
+    expect(ids(store.query({ bounds: padOnly, scale }))).toEqual(['label']);
+    expect(store.query({ bounds: beyond, scale })).toEqual([]);
+
+    // A narrower box misses the same view. Letter-spacing does not grow it.
+    const narrow = textObject('narrow', wide, 0, 0, 'Hi', 20, { letterSpacing: '10em' }, 20, 40);
+    expect(createMemoryStore([narrow]).query({ bounds: onBox, scale })).toEqual([]);
   });
 
   it('keeps only the sliver inside a deep-zoom view', () => {
