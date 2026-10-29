@@ -1,4 +1,3 @@
-import type { Camera } from './camera';
 import type { CanvasObject, TextStyle, VisibilityRange } from './model';
 
 /**
@@ -16,19 +15,6 @@ const GOLD = '#f0d78c';
 const MIST = '#d7ebe4';
 const PAPER = '#f3efe6';
 const SLATE = '#a9b7c6';
-
-export const initialCamera: Camera = { x: 0, y: -80, scale: 0.1 };
-
-/** Approximate on-screen width of the title at scale 1, including letter-spacing. */
-const TITLE_WORLD_WIDTH = 6300;
-
-/** Desktop keeps `initialCamera`. Narrow viewports zoom out so the title fits. */
-export function initialCameraFor(viewWidth: number): Camera {
-  const width = viewWidth > 0 ? viewWidth : 1280;
-  const fitted = (width * 0.86) / TITLE_WORLD_WIDTH;
-  const scale = Math.min(initialCamera.scale, Math.max(0.04, fitted));
-  return { x: initialCamera.x, y: initialCamera.y, scale };
-}
 
 function text(
   id: string,

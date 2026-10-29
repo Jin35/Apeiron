@@ -1,6 +1,7 @@
+import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
-import { clampScale, MAX_SCALE, MIN_SCALE, viewBounds, type Camera, type CameraCommand } from './camera';
-import { demoObjects, initialCameraFor } from './demo';
+import { MAX_SCALE, MIN_SCALE, viewBounds, type CameraCommand } from './camera';
+import { demoObjects } from './demo';
 import { attachInteraction } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore } from './store';
@@ -11,7 +12,9 @@ export function mountShell(
   zoomInButton: HTMLButtonElement,
   zoomOutButton: HTMLButtonElement,
 ): void {
-  let zoomAnim = createButtonZoom(cameraFromLocation(initialCameraFor(window.innerWidth)));
+  let zoomAnim = createButtonZoom(
+    cameraFromLocation(initialCameraFor(window.innerWidth), window.location.search),
+  );
   let rafId = 0;
 
   const renderer = createRenderer(surface, () => invalidate());
@@ -80,19 +83,6 @@ function formatScale(scale: number): string {
   if (scale >= 10) return scale.toFixed(1);
   if (scale >= 1) return scale.toFixed(2);
   return scale.toFixed(3);
-}
-
-function cameraFromLocation(fallback: Camera): Camera {
-  const params = new URLSearchParams(window.location.search);
-  const scale = Number(params.get('scale'));
-  if (!Number.isFinite(scale) || scale <= 0) return { ...fallback };
-  const x = Number(params.get('x'));
-  const y = Number(params.get('y'));
-  return {
-    x: Number.isFinite(x) ? x : fallback.x,
-    y: Number.isFinite(y) ? y : fallback.y,
-    scale: clampScale(scale),
-  };
 }
 
 if (typeof document !== 'undefined') {

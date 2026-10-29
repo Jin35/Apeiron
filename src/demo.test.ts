@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demoObjects, initialCamera, initialCameraFor } from './demo';
+import { demoObjects } from './demo';
 import { visibilityAlpha } from './visibility';
 
 function visibleAt(scale: number) {
@@ -28,18 +28,11 @@ describe('demo atlas', () => {
     expect(scales.size).toBeGreaterThan(1);
   });
 
-  it('fits the opening title on a narrow viewport', () => {
-    expect(initialCameraFor(1440).scale).toBeCloseTo(initialCamera.scale);
-    const phone = initialCameraFor(390);
-    expect(phone.scale).toBeLessThan(0.06);
-    expect(phone.scale * 6300).toBeLessThan(360);
-  });
-
-  it('shows a different set when zoomed in', () => {
-    const far = visibleAt(initialCamera.scale);
+  it('shows the title at the desktop opening scale and a different set when zoomed in', () => {
+    const far = visibleAt(0.1);
     const near = visibleAt(16);
-    expect(far.length).toBeGreaterThan(0);
-    expect(near.length).toBeGreaterThan(0);
+    expect(far.map((object) => object.id)).toContain('overview-title');
+    expect(near.map((object) => object.id)).toContain('detail-buoy');
     const farIds = new Set(far.map((object) => object.id));
     expect(near.every((object) => !farIds.has(object.id))).toBe(true);
   });
