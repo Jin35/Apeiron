@@ -213,12 +213,11 @@ describe('createRenderer', () => {
     expect(fontsOf(ctx).every((font) => font.includes('48px'))).toBe(true);
   });
 
-  it('fetches warmed sources that this frame does not draw', () => {
+  it('fetches an image only when this frame draws it', () => {
     const ctx = recordingContext();
     const onReady = vi.fn();
     const renderer = createRenderer(canvasFor(ctx), onReady);
 
-    renderer.warm(['images/off-band.svg', 'images/buoy.svg', 'images/off-band.svg']);
     renderer.draw({
       camera,
       width: 800,
@@ -226,16 +225,64 @@ describe('createRenderer', () => {
       visible: [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)],
     });
 
-    expect(images.map((image) => image.src)).toEqual([
-      expect.stringContaining('images/off-band.svg'),
-      expect.stringContaining('images/buoy.svg'),
-    ]);
+    expect(images).toEqual([]);
     expect(paintsOf(ctx)).toEqual([{ kind: 'text', text: 'label', alpha: 1 }]);
     expect(onReady).not.toHaveBeenCalled();
 
-    images[0]?.onload?.();
-    images[1]?.onerror?.();
-    expect(onReady).toHaveBeenCalledTimes(2);
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', { minScale: 1, maxScale: 16 }), 1)],
+    });
+
+    expect(images.map((image) => image.src)).toEqual([expect.stringContaining('images/buoy.svg')]);
+    images[0]?.onerror?.();
+    expect(onReady).toHaveBeenCalledOnce();
+  });
+
+  it('keeps 32 settled images and drops the least recently drawn', () => {
+    const ctx = recordingContext();
+    const onReady = vi.fn();
+    const renderer = createRenderer(canvasFor(ctx), onReady);
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 64 };
+    const settled = Array.from({ length: 32 }, (_, index) => `images/plate-${index}.svg`);
+    const waiting = Array.from({ length: 5 }, (_, index) => `images/new-${index}.svg`);
+
+    function drawSrcs(srcs: readonly string[]) {
+      renderer.draw({
+        camera,
+        width: 800,
+        height: 600,
+        visible: srcs.map((src) => visible(imageObject(src, src, visibility), 1)),
+      });
+    }
+
+    drawSrcs(settled);
+    expect(images).toHaveLength(32);
+    for (const image of images) image.onload?.();
+    expect(onReady).toHaveBeenCalledTimes(32);
+
+    // plate-0 was drawn first. Draw it again so a later eviction skips it.
+    drawSrcs([settled[0]]);
+    expect(images).toHaveLength(32);
+
+    // In-flight loads stay even though 32 images have already settled.
+    drawSrcs(waiting);
+    expect(images).toHaveLength(37);
+    drawSrcs([settled[0], waiting[4]]);
+    expect(images).toHaveLength(37);
+
+    // Settling one of them evicts plate-1, the least recently drawn settled image.
+    images[32]?.onerror?.();
+    expect(onReady).toHaveBeenCalledTimes(33);
+    drawSrcs([settled[1]]);
+    expect(images).toHaveLength(38);
+    expect(images[37]?.src).toEqual(expect.stringContaining('images/plate-1.svg'));
+
+    // The redrawn plate, the image that just settled, and one that has not loaded yet stay cached.
+    drawSrcs([settled[0], waiting[0], waiting[1]]);
+    expect(images).toHaveLength(38);
   });
 
   it('paints a visible image at the provided alpha and loads it once', () => {

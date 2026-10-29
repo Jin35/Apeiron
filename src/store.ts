@@ -43,7 +43,7 @@ export interface SceneStore {
   query(query: SceneQuery): VisibleObject[];
   /** In band, anywhere in the world, alpha above the HUD cutoff (0.02). */
   countInBand(scale: number): number;
-  /** Every image src in the dataset. The shell warms the renderer from this. */
+  /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
 }
 

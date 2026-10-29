@@ -19,8 +19,6 @@ export function mountShell(
 
   const renderer = createRenderer(surface, () => invalidate());
   const store = createMemoryStore(demoObjects);
-  // Off-band images are absent from the visible set. Fetch every src once up front.
-  renderer.warm(store.imageSources());
 
   function frame(now: number) {
     zoomAnim = tickButtonZoom(zoomAnim, now);

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
-import { zoomAt } from './camera';
+import { viewBounds, zoomAt } from './camera';
 import { demoObjects } from './demo';
 import { wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
@@ -182,19 +182,39 @@ describe('frame loop', () => {
     expect(shell.pending.size).toBe(0);
     expect(shell.status.textContent).toBe(`×0.100 · ${visible} visible`);
     expect(shell.status.dataset).toMatchObject({ scale: '0.1', x: '0', y: '-80' });
+    expect(shell.images).toHaveLength(0);
+
+    // Region images start at minScale 0.16. One + step lands at 0.2, in that band.
+    shell.clickIn();
+    shell.setNow(1_000 + BUTTON_ZOOM_MS);
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.2);
+    const region = createMemoryStore(demoObjects).query({
+      bounds: viewBounds({ x: 0, y: -80, scale: 0.2 }, 800, 600),
+      scale: 0.2,
+    });
+    const expectedSrcs = region.flatMap((entry) =>
+      entry.object.payload.type === 'image' ? [entry.object.payload.src] : [],
+    );
+    expect(expectedSrcs.length).toBeGreaterThan(0);
+    expect(shell.images.map((image) => image.src)).toEqual(
+      expectedSrcs.map((src) => expect.stringContaining(src)),
+    );
 
     shell.resize();
     shell.resize();
-    shell.images[0]?.onload?.();
-    shell.images[1]?.onerror?.();
-    shell.images[2]?.onload?.();
+    shell.images.forEach((image, index) => {
+      if (index === 1) image.onerror?.();
+      else image.onload?.();
+    });
 
     expect(shell.pending.size).toBe(1);
-    expect(shell.draws.n).toBe(1);
+    expect(shell.draws.n).toBe(2);
 
     shell.flush();
-    expect(shell.draws.n).toBe(2);
+    expect(shell.draws.n).toBe(3);
     expect(shell.pending.size).toBe(0);
+    expect(shell.images).toHaveLength(expectedSrcs.length);
   });
 
   it('re-invalidates while a button zoom is running, then stops', () => {
@@ -335,6 +355,7 @@ describe('frame loop', () => {
     expect(Number(phone.status.dataset.scale)).toBeCloseTo(fitted.scale);
     expect(phone.status.dataset).toMatchObject({ x: '0', y: '-80' });
     expect(fitted.scale).toBeLessThan(0.06);
+    expect(phone.images).toHaveLength(0);
     const visible = createMemoryStore(demoObjects).countInBand(fitted.scale);
     expect(phone.status.textContent).toBe(`×${Number(fitted.scale).toFixed(3)} · ${visible} visible`);
 
