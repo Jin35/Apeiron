@@ -286,22 +286,29 @@ function drawImageObject(
   const cssH = height * camera.scale;
   if (!(cssW > 0) || !(cssH > 0)) return;
 
+  const framed = object.payload.frame !== false;
   if (coordsArePrecise(left, top, cssW, cssH)) {
-    ctx.fillStyle = PLATE;
-    ctx.fillRect(left, top, cssW, cssH);
+    if (framed) {
+      ctx.fillStyle = PLATE;
+      ctx.fillRect(left, top, cssW, cssH);
+    }
     if (image.complete && image.naturalWidth > 0) {
       ctx.drawImage(image, left, top, cssW, cssH);
     }
-    ctx.strokeStyle = withAlpha(theme.accent, FRAME_ALPHA);
-    ctx.lineWidth = PLATE_LINE_PX;
-    ctx.strokeRect(left, top, cssW, cssH);
+    if (framed) {
+      ctx.strokeStyle = withAlpha(theme.accent, FRAME_ALPHA);
+      ctx.lineWidth = PLATE_LINE_PX;
+      ctx.strokeRect(left, top, cssW, cssH);
+    }
     return;
   }
 
   const fill = clipToView(left, top, cssW, cssH, viewW, viewH);
   if (fill) {
-    ctx.fillStyle = PLATE;
-    ctx.fillRect(fill.x, fill.y, fill.w, fill.h);
+    if (framed) {
+      ctx.fillStyle = PLATE;
+      ctx.fillRect(fill.x, fill.y, fill.w, fill.h);
+    }
     if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
       const sx = ((fill.x - left) / cssW) * image.naturalWidth;
       const sy = ((fill.y - top) / cssH) * image.naturalHeight;
@@ -310,7 +317,7 @@ function drawImageObject(
       ctx.drawImage(image, sx, sy, sw, sh, fill.x, fill.y, fill.w, fill.h);
     }
   }
-  strokeCrossingEdges(ctx, theme, left, top, left + cssW, top + cssH, viewW, viewH);
+  if (framed) strokeCrossingEdges(ctx, theme, left, top, left + cssW, top + cssH, viewW, viewH);
 }
 
 /** Halo stroke as a fraction of the font size. Counted when the ink is fitted to the box. */

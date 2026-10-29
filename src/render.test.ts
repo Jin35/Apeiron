@@ -36,6 +36,7 @@ type RecordedContext = CanvasRenderingContext2D & {
   fillTexts: TextCall[];
   strokeRects: RectCall[];
   fillRects: RectCall[];
+  drawImages: number[];
   gradients: number;
 };
 
@@ -44,6 +45,7 @@ class FakeImage {
   onerror: (() => void) | null = null;
   complete = false;
   naturalWidth = 0;
+  naturalHeight = 0;
   src = '';
 
   constructor() {
@@ -66,6 +68,7 @@ function recordingContext(options?: {
   const fillTexts: TextCall[] = [];
   const strokeRects: RectCall[] = [];
   const fillRects: RectCall[] = [];
+  const drawImages: number[] = [];
   const gradients = { n: 0 };
   const ctx = new Proxy({} as RecordedContext, {
     get(_target, prop) {
@@ -78,6 +81,7 @@ function recordingContext(options?: {
       if (prop === 'fillTexts') return fillTexts;
       if (prop === 'strokeRects') return strokeRects;
       if (prop === 'fillRects') return fillRects;
+      if (prop === 'drawImages') return drawImages;
       if (prop === 'gradients') return gradients.n;
       if (prop === 'createRadialGradient') {
         return () => {
@@ -109,6 +113,11 @@ function recordingContext(options?: {
       if (prop === 'fillRect') {
         return (x: number, y: number, w: number, h: number) => {
           fillRects.push({ x, y, w, h });
+        };
+      }
+      if (prop === 'drawImage') {
+        return () => {
+          drawImages.push(state.globalAlpha);
         };
       }
       return () => {};
@@ -381,6 +390,43 @@ describe('createRenderer', () => {
       visible: [visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4)],
     });
     expect(images).toHaveLength(1);
+  });
+
+  it('draws a cut-out image without the plate fill or frame', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 8 };
+    const cutout = imageObject('phone', 'images/smartphone.webp', visibility);
+    if (cutout.payload.type === 'image') cutout.payload.frame = false;
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: paperTheme,
+      visible: [visible(cutout, 1)],
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([]);
+    expect(fillStylesOf(ctx)).not.toContain('#171b22');
+    expect((ctx as RecordedContext).drawImages).toEqual([]);
+
+    const image = images[0];
+    if (!image) throw new Error('expected an image load');
+    image.complete = true;
+    image.naturalWidth = 331;
+    image.naturalHeight = 649;
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: paperTheme,
+      visible: [visible(cutout, 1)],
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([]);
+    expect(fillStylesOf(ctx)).not.toContain('#171b22');
+    expect((ctx as RecordedContext).drawImages).toEqual([1]);
   });
 
   it('sizes the bitmap from the frame and does not measure the canvas', () => {

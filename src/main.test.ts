@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { bootFromLocation } from '../content/packs';
 import page from '../index.html?raw';
 import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
-import { applyCameraCommand, deriveCameraLimits, viewBounds, type CameraLimits } from './camera';
+import { applyCameraCommand, deriveCameraLimits, viewBounds, type Camera, type CameraLimits } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
 import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
@@ -47,6 +48,7 @@ function harness(options?: {
   theme?: Theme;
   document?: Document;
   limits?: CameraLimits;
+  opening?: Camera;
 }) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
@@ -183,6 +185,7 @@ function harness(options?: {
     labels as unknown as HTMLElement,
     options?.theme,
     options?.limits,
+    options?.opening,
   );
 
   return {
@@ -847,6 +850,29 @@ describe('theme chrome', () => {
     expect(doc.vars['--body-font']).toBe('ui-sans-serif, system-ui, sans-serif');
     expect(doc.vars['color-scheme']).toBe('dark');
     expect(doc.meta.content).toBe('#101318');
+  });
+
+  it('opens the smartphone pack on paper, fitted to the phone', () => {
+    const doc = themeDocument();
+    const boot = bootFromLocation('', 800, 600, false);
+    const shell = harness({
+      document: doc as unknown as Document,
+      store: createMemoryStore(boot.pack.objects),
+      theme: boot.theme,
+      limits: boot.limits,
+      opening: boot.opening,
+    });
+
+    expect(boot.id).toBe('smartphone');
+    expect(boot.theme).toBe(paperTheme);
+    expect(doc.meta.content).toBe(paperTheme.background);
+    expect(shell.zoomOut.disabled).toBe(true);
+    expect(shell.zoomIn.disabled).toBe(false);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(boot.opening.scale);
+    expect(shell.status.dataset).toMatchObject({ x: '0', y: '0' });
+    expect(shell.status.textContent).toContain('1 visible');
+    expect(shell.labels.texts()).toEqual([]);
+    expect(shell.images.map((image) => image.src)).toEqual([expect.stringContaining('images/smartphone.webp')]);
   });
 
   it('applies a pack theme to the page background, HUD, and theme-color', () => {

@@ -1,11 +1,12 @@
+import { bootFromLocation } from '../content/packs';
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
-import { deriveCameraLimits, viewBounds, worldPoint, type CameraLimits } from './camera';
+import { deriveCameraLimits, viewBounds, worldPoint, type Camera, type CameraLimits } from './camera';
 import { demoPack, titleFitWidth } from './demo';
 import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore, type SceneStore, type VisibleObject } from './store';
-import { applyTheme, themeFromSearch, type Theme } from './theme';
+import { applyTheme, type Theme } from './theme';
 
 export function mountShell(
   surface: HTMLCanvasElement,
@@ -16,9 +17,13 @@ export function mountShell(
   labelList?: HTMLElement,
   theme: Theme = demoPack.theme,
   limits?: CameraLimits,
+  opening?: Camera,
 ): void {
   let zoomAnim = createButtonZoom(
-    cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
+    cameraFromLocation(
+      opening ?? initialCameraFor(window.innerWidth, titleFitWidth),
+      window.location.search,
+    ),
   );
   let selectedId: string | null = null;
   let labelKey = '';
@@ -169,14 +174,23 @@ if (typeof document !== 'undefined') {
   if (!canvas || !statusEl || !zoomIn || !zoomOut || !labels) {
     throw new Error('Apeiron markup is missing');
   }
-  // The store defaults to the demo pack. `?theme=paper` previews paperTheme in dev.
+  // Smartphone is the page default. `?pack=archipelago` loads the atlas in dev and production.
+  const rect = canvas.getBoundingClientRect();
+  const boot = bootFromLocation(
+    window.location.search,
+    rect.width > 0 ? rect.width : window.innerWidth,
+    rect.height > 0 ? rect.height : window.innerHeight,
+    import.meta.env.DEV,
+  );
   mountShell(
     canvas,
     statusEl,
     zoomIn,
     zoomOut,
-    undefined,
+    createMemoryStore(boot.pack.objects),
     labels,
-    themeFromSearch(window.location.search, { fallback: demoPack.theme }),
+    boot.theme,
+    boot.limits,
+    boot.opening,
   );
 }
