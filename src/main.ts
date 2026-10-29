@@ -1,3 +1,4 @@
+import { committedCamera, createButtonZoom, pressButtonZoom, tickButtonZoom } from './buttonZoom';
 import { clampScale, MAX_SCALE, MIN_SCALE, panBy, retarget, zoomAt, type Camera } from './camera';
 import { demoObjects, initialCameraFor } from './demo';
 import { attachGestures, ZOOM_STEP } from './gestures';
@@ -16,7 +17,8 @@ const status = statusEl;
 const zoomInButton = zoomIn;
 const zoomOutButton = zoomOut;
 
-let camera = cameraFromLocation(initialCameraFor(window.innerWidth));
+let zoomAnim = createButtonZoom(cameraFromLocation(initialCameraFor(window.innerWidth)));
+let zoomFrame = 0;
 let drawing = false;
 let pending = false;
 
@@ -66,14 +68,16 @@ function publish() {
   }
   drawing = true;
   try {
+    const camera = zoomAnim.camera;
     renderer.draw(camera, demoObjects);
     const visible = countVisible(camera.scale);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);
     status.dataset.y = String(camera.y);
-    zoomInButton.disabled = camera.scale >= MAX_SCALE - 1e-9;
-    zoomOutButton.disabled = camera.scale <= MIN_SCALE + 1e-9;
+    const limit = committedCamera(zoomAnim).scale;
+    zoomInButton.disabled = limit >= MAX_SCALE - 1e-9;
+    zoomOutButton.disabled = limit <= MIN_SCALE + 1e-9;
   } finally {
     drawing = false;
   }
@@ -83,27 +87,41 @@ function publish() {
   }
 }
 
+function replaceCamera(next: Camera) {
+  if (zoomFrame !== 0) cancelAnimationFrame(zoomFrame);
+  zoomFrame = 0;
+  zoomAnim = createButtonZoom(next);
+  publish();
+}
+
+function pumpButtonZoom(now: number) {
+  zoomFrame = 0;
+  zoomAnim = tickButtonZoom(zoomAnim, now);
+  publish();
+  if (zoomAnim.segments.length > 0) zoomFrame = requestAnimationFrame(pumpButtonZoom);
+}
+
 function zoomFromCenter(factor: number) {
   const rect = surface.getBoundingClientRect();
-  camera = zoomAt(camera, rect.width / 2, rect.height / 2, rect.width, rect.height, factor);
+  zoomAnim = pressButtonZoom(zoomAnim, factor, rect.width, rect.height, performance.now());
+  if (zoomAnim.segments.length > 0 && zoomFrame === 0) {
+    zoomFrame = requestAnimationFrame(pumpButtonZoom);
+  }
   publish();
 }
 
 attachGestures(surface, {
   panBy(dx, dy) {
-    camera = panBy(camera, dx, dy);
-    publish();
+    replaceCamera(panBy(zoomAnim.camera, dx, dy));
   },
   zoomAt(x, y, factor) {
     const point = localPoint(x, y);
-    camera = zoomAt(camera, point.x, point.y, point.width, point.height, factor);
-    publish();
+    replaceCamera(zoomAt(zoomAnim.camera, point.x, point.y, point.width, point.height, factor));
   },
   retarget(anchorX, anchorY, targetX, targetY, factor) {
     const anchor = localPoint(anchorX, anchorY);
     const target = localPoint(targetX, targetY);
-    camera = retarget(camera, anchor, target, anchor.width, anchor.height, factor);
-    publish();
+    replaceCamera(retarget(zoomAnim.camera, anchor, target, anchor.width, anchor.height, factor));
   },
 });
 

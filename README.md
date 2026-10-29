@@ -56,7 +56,7 @@ The canvas is a full-screen map, in the greedy sense of the Google Maps app: it 
 - **Multitouch:** one-finger drag pans, pinch zooms (finger translation pans, angle is ignored), double-tap zooms in, two-finger tap zooms out.
 - **Single touch:** drag pans, double-tap zooms in, +/− cover the rest.
 
-Mouse double-click does not zoom. + and − step by 2×.
+Mouse double-click does not zoom. + and − step by 2×, and each step interpolates scale over 150ms. Scroll, pinch, and tap zoom stay immediate.
 
 ## GitHub Pages
 
