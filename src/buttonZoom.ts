@@ -6,7 +6,7 @@
  * scale currently on screen.
  */
 
-import { zoomAt, type Camera } from './camera';
+import { applyCameraCommand, zoomAt, type Camera, type CameraCommand } from './camera';
 
 export const BUTTON_ZOOM_MS = 150;
 
@@ -73,6 +73,29 @@ export function tickButtonZoom(state: ButtonZoom, now: number): ButtonZoom {
 export function cancelButtonZoom(state: ButtonZoom): ButtonZoom {
   if (state.segments.length === 0) return state;
   return createButtonZoom(state.camera);
+}
+
+/**
+ * Apply one camera command to button-zoom state.
+ * `panBy`, `zoomAt`, and `retarget` run on the camera on screen, then
+ * `cancelButtonZoom` drops the queue. `zoomStep` queues a 150ms step
+ * from the committed camera, so a second click does not resample the
+ * in-between scale.
+ */
+export function applyButtonZoomCommand(
+  state: ButtonZoom,
+  command: CameraCommand,
+  viewW: number,
+  viewH: number,
+  now: number,
+): ButtonZoom {
+  if (command.type === 'zoomStep') {
+    return pressButtonZoom(state, command.factor, viewW, viewH, now);
+  }
+  const next = applyCameraCommand(state.camera, command, viewW, viewH);
+  // The command already ran on the camera that was on screen. Cancel keeps
+  // that camera and drops the queue (the same settle as createButtonZoom).
+  return cancelButtonZoom({ camera: next, segments: state.segments });
 }
 
 function clamp01(value: number): number {

@@ -1,5 +1,5 @@
-import { committedCamera, createButtonZoom, pressButtonZoom, tickButtonZoom } from './buttonZoom';
-import { applyCameraCommand, clampScale, MAX_SCALE, MIN_SCALE, viewBounds, type Camera } from './camera';
+import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
+import { clampScale, MAX_SCALE, MIN_SCALE, viewBounds, type Camera, type CameraCommand } from './camera';
 import { demoObjects, initialCameraFor } from './demo';
 import { attachGestures, ZOOM_STEP } from './gestures';
 import { createRenderer } from './render';
@@ -90,13 +90,6 @@ function publish() {
   }
 }
 
-function replaceCamera(next: Camera) {
-  if (zoomFrame !== 0) cancelAnimationFrame(zoomFrame);
-  zoomFrame = 0;
-  zoomAnim = createButtonZoom(next);
-  publish();
-}
-
 function pumpButtonZoom(now: number) {
   zoomFrame = 0;
   zoomAnim = tickButtonZoom(zoomAnim, now);
@@ -104,11 +97,15 @@ function pumpButtonZoom(now: number) {
   if (zoomAnim.segments.length > 0) zoomFrame = requestAnimationFrame(pumpButtonZoom);
 }
 
-function zoomFromCenter(factor: number) {
-  const rect = surface.getBoundingClientRect();
-  zoomAnim = pressButtonZoom(zoomAnim, factor, rect.width, rect.height, performance.now());
-  if (zoomAnim.segments.length > 0 && zoomFrame === 0) {
-    zoomFrame = requestAnimationFrame(pumpButtonZoom);
+function applyCommand(command: CameraCommand, viewW: number, viewH: number) {
+  zoomAnim = applyButtonZoomCommand(zoomAnim, command, viewW, viewH, performance.now());
+  if (command.type === 'zoomStep') {
+    if (zoomAnim.segments.length > 0 && zoomFrame === 0) {
+      zoomFrame = requestAnimationFrame(pumpButtonZoom);
+    }
+  } else if (zoomFrame !== 0) {
+    cancelAnimationFrame(zoomFrame);
+    zoomFrame = 0;
   }
   publish();
 }
@@ -116,40 +113,35 @@ function zoomFromCenter(factor: number) {
 attachGestures(surface, {
   panBy(dx, dy) {
     // A pan does not use the viewport size.
-    replaceCamera(applyCameraCommand(zoomAnim.camera, { type: 'panBy', dx, dy }, 0, 0));
+    applyCommand({ type: 'panBy', dx, dy }, 0, 0);
   },
   zoomAt(x, y, factor) {
     const point = localPoint(x, y);
-    replaceCamera(
-      applyCameraCommand(
-        zoomAnim.camera,
-        { type: 'zoomAt', x: point.x, y: point.y, factor },
-        point.width,
-        point.height,
-      ),
-    );
+    applyCommand({ type: 'zoomAt', x: point.x, y: point.y, factor }, point.width, point.height);
   },
   retarget(anchorX, anchorY, targetX, targetY, factor) {
     const anchor = localPoint(anchorX, anchorY);
     const target = localPoint(targetX, targetY);
-    replaceCamera(
-      applyCameraCommand(
-        zoomAnim.camera,
-        {
-          type: 'retarget',
-          anchor: { x: anchor.x, y: anchor.y },
-          target: { x: target.x, y: target.y },
-          factor,
-        },
-        anchor.width,
-        anchor.height,
-      ),
+    applyCommand(
+      {
+        type: 'retarget',
+        anchor: { x: anchor.x, y: anchor.y },
+        target: { x: target.x, y: target.y },
+        factor,
+      },
+      anchor.width,
+      anchor.height,
     );
   },
 });
 
-zoomInButton.addEventListener('click', () => zoomFromCenter(ZOOM_STEP));
-zoomOutButton.addEventListener('click', () => zoomFromCenter(1 / ZOOM_STEP));
+function zoomStep(factor: number) {
+  const rect = surface.getBoundingClientRect();
+  applyCommand({ type: 'zoomStep', factor }, rect.width, rect.height);
+}
+
+zoomInButton.addEventListener('click', () => zoomStep(ZOOM_STEP));
+zoomOutButton.addEventListener('click', () => zoomStep(1 / ZOOM_STEP));
 
 new ResizeObserver(() => publish()).observe(surface);
 publish();
