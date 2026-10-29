@@ -80,9 +80,22 @@ export function mountShell(
 }
 
 function formatScale(scale: number): string {
+  // Fixed decimals cover the atlas. Past that, 1e-4 would print "0.000" and 1e7 a digit run.
+  if (scale < 1e-3 || scale >= 1e4) return formatWideScale(scale);
   if (scale >= 10) return scale.toFixed(1);
   if (scale >= 1) return scale.toFixed(2);
   return scale.toFixed(3);
+}
+
+/** Scientific form with trailing zeros removed: `1e-4`, `6.71e6`. */
+function formatWideScale(scale: number): string {
+  const [mantissa, exponent] = scale.toExponential(2).split('e');
+  let end = mantissa.length;
+  if (mantissa.includes('.')) {
+    while (mantissa[end - 1] === '0') end -= 1;
+    if (mantissa[end - 1] === '.') end -= 1;
+  }
+  return `${mantissa.slice(0, end)}e${Number(exponent)}`;
 }
 
 if (typeof document !== 'undefined') {

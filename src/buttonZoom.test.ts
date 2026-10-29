@@ -68,12 +68,14 @@ describe('button zoom', () => {
   });
 
   it('animates a clamped step to the limit and ignores another click', () => {
-    const start = createButtonZoom({ x: 8, y: 9, scale: 50 });
+    // 5/8 of the limit: one 2× step still overshoots, and the next click is a no-op.
+    const startScale = (MAX_SCALE * 5) / 8;
+    const start = createButtonZoom({ x: 8, y: 9, scale: startScale });
     const once = press(start, ZOOM_STEP, 0);
     expect(committedCamera(once)).toEqual({ x: 8, y: 9, scale: MAX_SCALE });
     expect(press(once, ZOOM_STEP, 20)).toBe(once);
     const mid = tickButtonZoom(once, BUTTON_ZOOM_MS / 2).camera;
-    expect(mid.scale).toBeCloseTo(Math.sqrt(50 * MAX_SCALE));
+    expect(mid.scale).toBeCloseTo(Math.sqrt(startScale * MAX_SCALE));
     expect(center(mid)).toEqual({ x: 8, y: 9 });
     const done = tickButtonZoom(once, BUTTON_ZOOM_MS);
     expect(done.camera).toEqual({ x: 8, y: 9, scale: MAX_SCALE });

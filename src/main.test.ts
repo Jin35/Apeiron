@@ -156,6 +156,9 @@ function harness(options?: { search?: string; innerWidth?: number }) {
     clickIn() {
       for (const handler of zoomInListeners) handler({} as Event);
     },
+    clickOut() {
+      for (const handler of zoomOutListeners) handler({} as Event);
+    },
     pointer(type: string, event: object) {
       for (const handler of canvasListeners.get(type) ?? []) handler(event as Event);
     },
@@ -222,11 +225,34 @@ describe('frame loop', () => {
 
   it('disables zoom-in from the committed scale while the picture is still catching up', () => {
     const shell = harness();
+    // Twelve 2× steps pass the old limit (80) and stay under 1e7.
     for (let i = 0; i < 12; i += 1) shell.clickIn();
+    shell.flush();
+    expect(shell.zoomIn.disabled).toBe(false);
+    expect(shell.zoomOut.disabled).toBe(false);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
 
+    // Twenty-seven steps from 0.1 land past 1e7.
+    for (let i = 0; i < 15; i += 1) shell.clickIn();
     shell.flush();
     expect(shell.zoomIn.disabled).toBe(true);
     expect(shell.zoomOut.disabled).toBe(false);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
+  });
+
+  it('disables zoom-out at the wide minimum while the picture is still catching up', () => {
+    const shell = harness();
+    // Four 2× steps out pass the old minimum (0.012) and stay above 1e-4.
+    for (let i = 0; i < 4; i += 1) shell.clickOut();
+    shell.flush();
+    expect(shell.zoomOut.disabled).toBe(false);
+    expect(shell.zoomIn.disabled).toBe(false);
+
+    // Ten steps from 0.1 land under 1e-4.
+    for (let i = 0; i < 6; i += 1) shell.clickOut();
+    shell.flush();
+    expect(shell.zoomOut.disabled).toBe(true);
+    expect(shell.zoomIn.disabled).toBe(false);
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.1);
   });
 
@@ -316,5 +342,29 @@ describe('frame loop', () => {
     const count = createMemoryStore(demoObjects).countInBand(2);
     expect(wharf.status.textContent).toBe(`×2.00 · ${count} visible`);
     expect(wharf.status.dataset).toMatchObject({ scale: '2', x: '-3012', y: '-1112' });
+  });
+
+  it('prints the wide scale limits and still disables +/− there', () => {
+    const store = createMemoryStore(demoObjects);
+
+    const oldMin = harness({ search: '?scale=0.012&x=0&y=-80' });
+    expect(oldMin.status.textContent).toBe(`×0.012 · ${store.countInBand(0.012)} visible`);
+    expect(oldMin.zoomOut.disabled).toBe(false);
+
+    const far = harness({ search: '?scale=1e-4&x=0&y=-80' });
+    expect(far.status.textContent).toBe('×1e-4 · 0 visible');
+    expect(far.status.dataset.scale).toBe('0.0001');
+    expect(far.zoomOut.disabled).toBe(true);
+    expect(far.zoomIn.disabled).toBe(false);
+
+    const oldMax = harness({ search: '?scale=80&x=132&y=-60' });
+    expect(oldMax.status.textContent).toBe(`×80.0 · ${store.countInBand(80)} visible`);
+    expect(oldMax.zoomIn.disabled).toBe(false);
+
+    const deep = harness({ search: '?scale=1e7&x=132&y=-60' });
+    expect(deep.status.textContent).toBe('×1e7 · 0 visible');
+    expect(deep.status.dataset.scale).toBe('10000000');
+    expect(deep.zoomIn.disabled).toBe(true);
+    expect(deep.zoomOut.disabled).toBe(false);
   });
 });

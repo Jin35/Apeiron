@@ -32,7 +32,13 @@ describe('opening camera', () => {
       y: fallback.y,
       scale: 2,
     });
-    expect(cameraFromLocation(fallback, '?scale=1000&x=1&y=2').scale).toBe(MAX_SCALE);
-    expect(cameraFromLocation(fallback, '?scale=0.001&x=1&y=2').scale).toBe(MIN_SCALE);
+    expect(cameraFromLocation(fallback, '?scale=1000&x=1&y=2')).toEqual({ x: 1, y: 2, scale: 1000 });
+    expect(cameraFromLocation(fallback, '?scale=0.001&x=1&y=2')).toEqual({
+      x: 1,
+      y: 2,
+      scale: 0.001,
+    });
+    expect(cameraFromLocation(fallback, '?scale=1e8&x=1&y=2').scale).toBe(MAX_SCALE);
+    expect(cameraFromLocation(fallback, '?scale=1e-8&x=1&y=2').scale).toBe(MIN_SCALE);
   });
 });

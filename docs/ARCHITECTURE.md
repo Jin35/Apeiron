@@ -4,7 +4,7 @@ Three layers plus a thin shell. The shell is `src/main.ts`, and it is the only m
 
 Content lives in the store. Pixels live in the renderer. Pointer and button input lives in the interaction layer, which emits commands. The shell applies a command to the session, queries the store, and hands the renderer a camera plus the visible set.
 
-World **y grows downward**. `Camera.scale` is CSS pixels per world unit. `MIN_SCALE` / `MAX_SCALE` (`0.012–80` in `camera.ts`) are camera limits, not a world edge. An object's `visibility` range is content and may extend past those limits.
+World **y grows downward**. `Camera.scale` is CSS pixels per world unit. `MIN_SCALE` / `MAX_SCALE` (`1e-4–1e7` in `camera.ts`) are camera limits, not a world edge. An object's `visibility` range is content and may extend past those limits.
 
 The first split is merged (PRs #5–#12). The sections through [First sequence](#first-sequence) describe that design as it stands in the tree. [Second review](#second-review) is the next set of changes. Nothing below the first sequence is a claim that the code already does it.
 
