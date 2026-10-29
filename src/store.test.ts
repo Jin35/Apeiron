@@ -20,6 +20,16 @@ function textObject(id: string, visibility: VisibilityRange, x = 0): CanvasObjec
   };
 }
 
+function imageObject(id: string, src: string): CanvasObject {
+  return {
+    id,
+    x: 0,
+    y: 0,
+    visibility: wide,
+    payload: { type: 'image', src, width: 10, height: 10 },
+  };
+}
+
 /** Scale inside the fade-in of `wide`, where alpha tracks this fraction. */
 function fadeInScale(fraction: number): number {
   return wide.minScale * 1.35 ** fraction;
@@ -79,5 +89,22 @@ describe('createMemoryStore', () => {
     const store = createMemoryStore([]);
     expect(store.countInBand(4)).toBe(0);
     expect(store.query({ bounds: nearby, scale: 4 })).toEqual([]);
+    expect(store.imageSources()).toEqual([]);
+  });
+
+  it('lists every image src in dataset order and skips text', () => {
+    const store = createMemoryStore([
+      imageObject('compass', 'images/compass.svg'),
+      textObject('label', wide),
+      imageObject('buoy', 'images/buoy.svg'),
+      imageObject('compass-again', 'images/compass.svg'),
+    ]);
+
+    expect(store.imageSources()).toEqual([
+      'images/compass.svg',
+      'images/buoy.svg',
+      'images/compass.svg',
+    ]);
+    expect(createMemoryStore([textObject('only-text', wide)]).imageSources()).toEqual([]);
   });
 });

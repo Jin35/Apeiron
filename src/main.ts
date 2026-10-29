@@ -1,5 +1,5 @@
 import { committedCamera, createButtonZoom, pressButtonZoom, tickButtonZoom } from './buttonZoom';
-import { clampScale, MAX_SCALE, MIN_SCALE, panBy, retarget, zoomAt, type Camera } from './camera';
+import { clampScale, MAX_SCALE, MIN_SCALE, panBy, retarget, viewBounds, zoomAt, type Camera } from './camera';
 import { demoObjects, initialCameraFor } from './demo';
 import { attachGestures, ZOOM_STEP } from './gestures';
 import { createRenderer } from './render';
@@ -24,6 +24,8 @@ let pending = false;
 
 const renderer = createRenderer(surface, () => publish());
 const store = createMemoryStore(demoObjects);
+// Off-band images are absent from the visible set. Fetch every src once up front.
+renderer.warm(store.imageSources());
 
 function formatScale(scale: number): string {
   if (scale >= 10) return scale.toFixed(1);
@@ -66,7 +68,11 @@ function publish() {
   drawing = true;
   try {
     const camera = zoomAnim.camera;
-    renderer.draw(camera, demoObjects);
+    const { width, height } = renderer.size();
+    renderer.draw(
+      camera,
+      store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale }),
+    );
     const visible = countVisible(camera.scale);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
