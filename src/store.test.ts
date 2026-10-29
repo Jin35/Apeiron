@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { ViewBounds } from './camera';
-import type { CanvasObject, VisibilityRange } from './model';
+import { viewBounds, type ViewBounds } from './camera';
+import { demoObjects } from './demo';
+import type { CanvasObject, TextStyle, VisibilityRange } from './model';
 import { createMemoryStore } from './store';
 import { visibilityAlpha } from './visibility';
 
@@ -10,24 +11,44 @@ const nowhere: ViewBounds = { left: 0, right: 0, top: 0, bottom: 0 };
 const nearby: ViewBounds = { left: -10, right: 10, top: -10, bottom: 10 };
 const farAway: ViewBounds = { left: 1e9, right: 1e9 + 1, top: 1e9, bottom: 1e9 + 1 };
 
-function textObject(id: string, visibility: VisibilityRange, x = 0): CanvasObject {
+function textObject(
+  id: string,
+  visibility: VisibilityRange,
+  x = 0,
+  y = 0,
+  label = id,
+  fontSize = 12,
+  extras?: Partial<TextStyle>,
+): CanvasObject {
   return {
     id,
     x,
-    y: 0,
+    y,
     visibility,
-    payload: { type: 'text', text: id, style: { fontSize: 12, color: '#fff' } },
+    payload: { type: 'text', text: label, style: { fontSize, color: '#fff', ...extras } },
   };
 }
 
-function imageObject(id: string, src: string): CanvasObject {
+function imageObject(
+  id: string,
+  src: string,
+  x = 0,
+  y = 0,
+  width = 10,
+  height = 10,
+  visibility: VisibilityRange = wide,
+): CanvasObject {
   return {
     id,
-    x: 0,
-    y: 0,
-    visibility: wide,
-    payload: { type: 'image', src, width: 10, height: 10 },
+    x,
+    y,
+    visibility,
+    payload: { type: 'image', src, width, height },
   };
+}
+
+function ids(visible: { object: CanvasObject }[]): string[] {
+  return visible.map((entry) => entry.object.id);
 }
 
 /** Scale inside the fade-in of `wide`, where alpha tracks this fraction. */
@@ -74,15 +95,99 @@ describe('createMemoryStore', () => {
     expect(store.query({ bounds: nowhere, scale: belowDraw })).toEqual([]);
   });
 
-  it('ignores query bounds', () => {
-    const object = textObject('placed', wide, 1_000_000);
-    const store = createMemoryStore([object]);
+  it('counts an in-band object that is far outside the view and omits it from query', () => {
+    const placed = textObject('placed', wide, 1_000_000);
+    const store = createMemoryStore([placed]);
     const scale = 4;
-    const expected = [{ object, alpha: 1 }];
 
-    expect(store.query({ bounds: nearby, scale })).toEqual(expected);
-    expect(store.query({ bounds: farAway, scale })).toEqual(expected);
-    expect(store.query({ bounds: nowhere, scale })).toEqual(expected);
+    expect(store.countInBand(scale)).toBe(1);
+    expect(store.query({ bounds: nearby, scale })).toEqual([]);
+    expect(store.query({ bounds: farAway, scale })).toEqual([]);
+    expect(store.query({ bounds: nowhere, scale })).toEqual([]);
+  });
+
+  it('drops objects fully outside the view and keeps ones that only clip an edge', () => {
+    const scale = 8;
+    const plate = imageObject('plate', 'images/plate.svg', 0, 0, 100, 40);
+    const images = createMemoryStore([plate]);
+
+    // Payload spans x [-50, 50], y [-20, 20]. None of these views contain the center.
+    const rightEdge: ViewBounds = { left: 40, right: 80, top: -5, bottom: 5 };
+    const leftEdge: ViewBounds = { left: -80, right: -40, top: -5, bottom: 5 };
+    const topEdge: ViewBounds = { left: -5, right: 5, top: -30, bottom: -15 };
+    const bottomEdge: ViewBounds = { left: -5, right: 5, top: 15, bottom: 30 };
+    const offScreen: ViewBounds = { left: 400, right: 500, top: -5, bottom: 5 };
+
+    expect(ids(images.query({ bounds: rightEdge, scale }))).toEqual(['plate']);
+    expect(ids(images.query({ bounds: leftEdge, scale }))).toEqual(['plate']);
+    expect(ids(images.query({ bounds: topEdge, scale }))).toEqual(['plate']);
+    expect(ids(images.query({ bounds: bottomEdge, scale }))).toEqual(['plate']);
+    expect(images.query({ bounds: offScreen, scale })).toEqual([]);
+    expect(images.countInBand(scale)).toBe(1);
+
+    // Half of the 1.25px image stroke sticks out past the payload rect.
+    const frameOnly: ViewBounds = { left: 50.05, right: 50.2, top: -1, bottom: 1 };
+    expect(ids(images.query({ bounds: frameOnly, scale }))).toEqual(['plate']);
+
+    // "MMMM" at 100em is hundreds of units wide and about an em tall.
+    // These views miss the anchor and still cover painted ink.
+    const label = textObject('label', wide, 0, 0, 'MMMM', 100);
+    const labels = createMemoryStore([label]);
+    const textRight: ViewBounds = { left: 150, right: 180, top: -10, bottom: 10 };
+    const textAbove: ViewBounds = { left: -10, right: 10, top: -60, bottom: -30 };
+    expect(ids(labels.query({ bounds: textRight, scale }))).toEqual(['label']);
+    expect(ids(labels.query({ bounds: textAbove, scale }))).toEqual(['label']);
+    expect(labels.query({ bounds: offScreen, scale })).toEqual([]);
+  });
+
+  it('includes a spaced label whose glyphs sit left of the anchor', () => {
+    const scale = 4;
+    const spaced = textObject('spaced', wide, 0, 0, 'Hi', 20, { letterSpacing: '10em' });
+    const plain = textObject('plain', wide, 0, 0, 'Hi', 20);
+    const glyph: ViewBounds = { left: -220, right: -200, top: -5, bottom: 5 };
+
+    expect(ids(createMemoryStore([spaced]).query({ bounds: glyph, scale }))).toEqual(['spaced']);
+    expect(createMemoryStore([plain]).query({ bounds: glyph, scale })).toEqual([]);
+  });
+
+  it('keeps only the sliver inside a deep-zoom view', () => {
+    const scale = 80;
+    const visibility: VisibilityRange = { minScale: 20, maxScale: 200 };
+    const edge = imageObject('edge', 'images/edge.svg', 0, 0, 2, 2, visibility);
+    const neighbor = imageObject('neighbor', 'images/neighbor.svg', 40, 0, 2, 2, visibility);
+    const fine = textObject('fine', visibility, 1_000_000, -20, 'x', 1);
+    const store = createMemoryStore([edge, neighbor, fine]);
+
+    const sliver: ViewBounds = { left: 0.7, right: 1.2, top: -0.2, bottom: 0.2 };
+    expect(store.query({ bounds: sliver, scale })).toEqual([{ object: edge, alpha: 1 }]);
+
+    const onNeighbor: ViewBounds = { left: 39.2, right: 40.2, top: -0.4, bottom: 0.4 };
+    expect(ids(store.query({ bounds: onNeighbor, scale }))).toEqual(['neighbor']);
+
+    const gap: ViewBounds = { left: 10, right: 12, top: -1, bottom: 1 };
+    expect(store.query({ bounds: gap, scale })).toEqual([]);
+
+    const fineInk: ViewBounds = { left: 1_000_000.05, right: 1_000_000.15, top: -20.05, bottom: -19.95 };
+    const fineMiss: ViewBounds = { left: 1_000_030, right: 1_000_032, top: -21, bottom: -19 };
+    expect(ids(store.query({ bounds: fineInk, scale }))).toEqual(['fine']);
+    expect(store.query({ bounds: fineMiss, scale })).toEqual([]);
+
+    expect(store.countInBand(scale)).toBe(3);
+  });
+
+  it('sends fewer atlas objects to the renderer than the band contains', () => {
+    const store = createMemoryStore(demoObjects);
+    const scale = 1;
+    const bounds = viewBounds({ x: 0, y: -80, scale }, 1280, 720);
+    const visible = store.query({ bounds, scale });
+    const band = store.countInBand(scale);
+    const idsInView = visible.map((entry) => entry.object.id);
+
+    expect(visible.length).toBeGreaterThan(0);
+    expect(visible.length).toBeLessThan(band);
+    expect(idsInView).toContain('region-compass');
+    expect(idsInView).not.toContain('region-dune');
+    expect(idsInView).not.toContain('detail-bollard');
   });
 
   it('returns an empty result for an empty list', () => {
