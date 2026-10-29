@@ -30,6 +30,7 @@ type RecordedContext = CanvasRenderingContext2D & {
   transforms: TransformCall[];
   fonts: string[];
   lineWidths: number[];
+  strokeStyles: string[];
   fillTexts: TextCall[];
   strokeRects: RectCall[];
   fillRects: RectCall[];
@@ -57,6 +58,7 @@ function recordingContext(options?: {
   const transforms: TransformCall[] = [];
   const fonts: string[] = [];
   const lineWidths: number[] = [];
+  const strokeStyles: string[] = [];
   const fillTexts: TextCall[] = [];
   const strokeRects: RectCall[] = [];
   const fillRects: RectCall[] = [];
@@ -66,6 +68,7 @@ function recordingContext(options?: {
       if (prop === 'transforms') return transforms;
       if (prop === 'fonts') return fonts;
       if (prop === 'lineWidths') return lineWidths;
+      if (prop === 'strokeStyles') return strokeStyles;
       if (prop === 'fillTexts') return fillTexts;
       if (prop === 'strokeRects') return strokeRects;
       if (prop === 'fillRects') return fillRects;
@@ -101,6 +104,7 @@ function recordingContext(options?: {
       if (prop === 'globalAlpha' && typeof value === 'number') state.globalAlpha = value;
       if (prop === 'font' && typeof value === 'string') fonts.push(value);
       if (prop === 'lineWidth' && typeof value === 'number') lineWidths.push(value);
+      if (prop === 'strokeStyle' && typeof value === 'string') strokeStyles.push(value);
       return true;
     },
   });
@@ -166,6 +170,10 @@ function fontsOf(ctx: CanvasRenderingContext2D): string[] {
 
 function lineWidthsOf(ctx: CanvasRenderingContext2D): number[] {
   return (ctx as RecordedContext).lineWidths;
+}
+
+function strokeStylesOf(ctx: CanvasRenderingContext2D): string[] {
+  return (ctx as RecordedContext).strokeStyles;
 }
 
 function fillTextsOf(ctx: CanvasRenderingContext2D): TextCall[] {
@@ -460,6 +468,45 @@ describe('createRenderer', () => {
 
     expect(fontsOf(ctx)).toEqual([expect.stringContaining('48px')]);
     expect(fillTextsOf(ctx)).toEqual([{ text: 'loose', x: 400, y: 300 }]);
+  });
+
+  it('strokes the selected box at a constant screen width', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const label = sizedLabel('pin', 12, 10, 8);
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(label, 0.4)],
+      selectedId: 'pin',
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([{ x: 380, y: 284, w: 40, h: 32 }]);
+    expect(lineWidthsOf(ctx).at(-1)).toBe(2);
+    expect(strokeStylesOf(ctx).at(-1)).toBe('rgba(240, 215, 140, 0.9)');
+
+    const zoomed = recordingContext();
+    createRenderer(canvasFor(zoomed), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 8 },
+      width: 800,
+      height: 600,
+      visible: [visible(label, 0.4)],
+      selectedId: 'pin',
+    });
+    expect(strokeRectsOf(zoomed)).toEqual([{ x: 360, y: 268, w: 80, h: 64 }]);
+    expect(lineWidthsOf(zoomed).at(-1)).toBe(2);
+
+    const missing = recordingContext();
+    createRenderer(canvasFor(missing), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(label, 1)],
+      selectedId: 'other',
+    });
+    expect(strokeRectsOf(missing)).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Three layers plus a thin shell. The shell is `src/main.ts`, and it is the only module that constructs the other three. The live **camera** and, later, the **selection** are session state, owned by the shell. `src/camera.ts` stays the shared value (`Camera`, `ViewBounds`, scale clamp, pan/zoom math). The store, the renderer, and the gesture recognizer do not keep a camera of their own.
+Three layers plus a thin shell. The shell is `src/main.ts`, and it is the only module that constructs the other three. The live **camera** and the **selection** are session state, owned by the shell. `src/camera.ts` stays the shared value (`Camera`, `ViewBounds`, scale clamp, pan/zoom math). The store, the renderer, and the gesture recognizer do not keep a camera of their own.
 
 Content lives in the store. Pixels live in the renderer. Pointer and button input lives in the interaction layer, which emits commands. The shell applies a command to the session, queries the store, and hands the renderer a camera plus the visible set.
 
@@ -16,14 +16,14 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`. Pure functions. |
 | `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. |
-| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Text is fitted into its authored box. |
-| `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. |
-| `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `CameraCommand`s. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. |
+| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. |
+| `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. A mouse click and a touch tap that stays single for `DOUBLE_TAP_MS` call `selectAt`. |
+| `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. |
 | `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
 | `src/demo.ts` | `demoObjects` and the title fit width. Thirty objects, six images, four overlapping bands. |
-| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD. |
+| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD. Session `selectedId` is on the frame and on `dataset.selected`. |
 
 `store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`.
 
@@ -37,7 +37,10 @@ interface SceneStore {
   countInBand(scale: number): number;              // alpha > 0.02, whole world
   imageSources(): readonly string[];               // srcs of the resident objects
   subscribe(onChange: () => void): () => void;     // resident set changed
+  hitTest(worldPoint, camera): CanvasObject | null; // alpha > 0.01, unpadded box, greater maxScale
 }
+
+type SceneCommand = CameraCommand | { type: 'selectAt'; x: number; y: number };
 
 interface MemoryStore extends SceneStore {
   replaceObjects(objects: readonly CanvasObject[]): void; // rebuild entries, then notify
@@ -48,6 +51,7 @@ type RenderFrame = {
   width: number;
   height: number;
   visible: readonly VisibleObject[];
+  selectedId?: string;                             // shell session; stroked when that object is drawn
 };
 
 interface Renderer {
@@ -57,7 +61,7 @@ interface Renderer {
 
 `query` returns an unsorted set. `draw` sorts by `visibility.maxScale` ascending, so coarser bands sit under finer ones. The two alpha cutoffs stay on the two store methods. `VisibleObject` is declared in `store.ts` and repeated as a private type in `render.ts`, so the renderer does not import the store.
 
-`hitTest` and `SceneCommand` are not in the tree. The first sequence left them for selection.
+`hitTest` ignores the cull pad. `selectAt` is not an `applyCameraCommand` input; the shell resolves it with `worldPoint` and stores `selectedId`.
 
 ## Target
 
@@ -67,7 +71,7 @@ Dependencies point inward, toward `model.ts` and `camera.ts`.
 main.ts
   ├── store.ts         → model.ts, camera.ts (ViewBounds), visibility.ts
   ├── render.ts        → model.ts, camera.ts, grid.ts
-  ├── interaction.ts   → gestures.ts, CameraCommand (type-only, from camera.ts)
+  ├── interaction.ts   → gestures.ts, CameraCommand (type-only). Emits SceneCommand.
   └── buttonZoom.ts    → camera.ts. Shell holds the value and ticks it.
 ```
 

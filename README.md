@@ -49,7 +49,7 @@ The readout is `×scale · N visible`. N counts objects inside the current zoom 
 
 ## Gestures
 
-The canvas is a full-screen map, in the greedy sense of the Google Maps app: it captures wheel and touch instead of letting the page scroll. Rotation is off. Objects are not selectable or draggable; only the camera moves.
+The canvas is a full-screen map, in the greedy sense of the Google Maps app: it captures wheel and touch instead of letting the page scroll. Rotation is off. Objects are not draggable; only the camera moves. A click or a settled tap selects the object under the pointer.
 
 - **Mouse:** drag pans, wheel zooms toward the cursor, on-screen +/− zoom about the center.
 - **Trackpad:** click-drag pans. Two-finger scroll and pinch zoom toward the pointer. Scroll does not pan.

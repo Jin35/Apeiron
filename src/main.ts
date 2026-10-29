@@ -1,8 +1,8 @@
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
-import { MAX_SCALE, MIN_SCALE, viewBounds, type CameraCommand } from './camera';
+import { MAX_SCALE, MIN_SCALE, viewBounds, worldPoint } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
-import { attachInteraction } from './interaction';
+import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore, type SceneStore } from './store';
 
@@ -16,6 +16,7 @@ export function mountShell(
   let zoomAnim = createButtonZoom(
     cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
   );
+  let selectedId: string | null = null;
   let rafId = 0;
 
   const renderer = createRenderer(surface, () => invalidate());
@@ -31,12 +32,16 @@ export function mountShell(
       width,
       height,
       visible: store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale }),
+      ...(selectedId ? { selectedId } : {}),
     });
     const visible = store.countInBand(camera.scale);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);
     status.dataset.y = String(camera.y);
+    const selected = selectedId ?? '';
+    status.dataset.selected = selected;
+    surface.dataset.selected = selected;
     const limit = committedCamera(zoomAnim).scale;
     zoomInButton.disabled = limit >= MAX_SCALE - 1e-9;
     zoomOutButton.disabled = limit <= MIN_SCALE + 1e-9;
@@ -53,12 +58,21 @@ export function mountShell(
   }
 
   /**
-   * Drag, wheel, and pinch paint before the handler returns.
+   * Drag, wheel, pinch, and a click paint before the handler returns.
+   * A settled tap paints when its wait ends.
    * A +/− step only schedules a frame; the 150ms blend runs on that clock.
+   * `selectAt` does not cancel that blend.
    */
-  function applyCommand(command: CameraCommand) {
+  function applyCommand(command: SceneCommand) {
     const rect = surface.getBoundingClientRect();
     const now = performance.now();
+    if (command.type === 'selectAt') {
+      const camera = zoomAnim.camera;
+      const world = worldPoint(camera, command.x, command.y, rect.width, rect.height);
+      selectedId = store.hitTest(world, camera)?.id ?? null;
+      frame(now);
+      return;
+    }
     zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now);
     if (command.type === 'zoomStep') {
       invalidate();

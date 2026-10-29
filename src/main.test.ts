@@ -3,7 +3,7 @@ import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
 import { viewBounds, zoomAt } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
-import { wheelZoomFactor } from './gestures';
+import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
 import { createMemoryStore, type SceneStore } from './store';
 
@@ -53,6 +53,7 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
   const canvas = {
     width: 0,
     height: 0,
+    dataset: {} as DOMStringMap,
     classList: { add() {}, remove() {} },
     setPointerCapture() {},
     getContext: () => ctx,
@@ -138,6 +139,7 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
 
   return {
     draws,
+    canvas,
     status,
     zoomIn,
     zoomOut,
@@ -170,6 +172,7 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -417,4 +420,95 @@ describe('frame loop', () => {
     expect(store.countInBand(0.1)).toBe(1);
     expect(shell.status.textContent).toBe('×0.100 · 1 visible');
   });
+
+  it('selects on click, clears on empty space, and does not select on drag', () => {
+    const shell = harness();
+    expect(shell.status.dataset.selected).toBe('');
+    expect(shell.canvas.dataset.selected).toBe('');
+
+    clickAt(shell, 'mouse', 410, 320);
+    expect(shell.status.dataset.selected).toBe('overview-title');
+    expect(shell.canvas.dataset.selected).toBe('overview-title');
+
+    clickAt(shell, 'mouse', 410, 368);
+    expect(shell.status.dataset.selected).toBe('');
+    expect(shell.canvas.dataset.selected).toBe('');
+
+    const drag = pointerAt('mouse', 410, 320);
+    shell.pointer('pointerdown', drag);
+    shell.pointer('pointermove', { ...drag, clientX: 450 });
+    shell.pointer('pointerup', { ...drag, clientX: 450 });
+    expect(shell.status.dataset.selected).toBe('');
+    expect(shell.canvas.dataset.selected).toBe('');
+    expect(shell.status.dataset.x).toBe('-400');
+    expect(shell.status.dataset.scale).toBe('0.1');
+  });
+
+  it('keeps a selection across a drag and does not cancel a button zoom', () => {
+    const shell = harness();
+    shell.clickIn();
+    shell.setNow(1_000 + BUTTON_ZOOM_MS / 2);
+    shell.flush();
+    const scale = Number(shell.status.dataset.scale);
+
+    clickAt(shell, 'mouse', 410, 320);
+    expect(shell.status.dataset.selected).toBe('overview-title');
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(scale);
+    expect(shell.pending.size).toBe(1);
+
+    const drag = pointerAt('mouse', 410, 320);
+    shell.pointer('pointerdown', drag);
+    shell.pointer('pointermove', { ...drag, clientX: 450 });
+    shell.pointer('pointerup', { ...drag, clientX: 450 });
+    expect(shell.status.dataset.selected).toBe('overview-title');
+    expect(shell.status.dataset.x).not.toBe('0');
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(scale);
+  });
+
+  it('selects a touch tap only after DOUBLE_TAP_MS', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const shell = harness();
+    clickAt(shell, 'touch', 410, 320);
+    expect(shell.status.dataset.selected).toBe('');
+    vi.advanceTimersByTime(DOUBLE_TAP_MS - 1);
+    expect(shell.status.dataset.selected).toBe('');
+    vi.advanceTimersByTime(1);
+    expect(shell.status.dataset.selected).toBe('overview-title');
+    expect(shell.canvas.dataset.selected).toBe('overview-title');
+    expect(shell.status.dataset.scale).toBe('0.1');
+  });
+
+  it('zooms a touch double-tap without selecting', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const shell = harness();
+    clickAt(shell, 'touch', 410, 320);
+    clickAt(shell, 'touch', 410, 320);
+    vi.advanceTimersByTime(DOUBLE_TAP_MS);
+    expect(shell.status.dataset.selected).toBe('');
+    expect(shell.canvas.dataset.selected).toBe('');
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.2);
+    expect(shell.status.dataset).toMatchObject({ x: '0', y: '-80' });
+  });
 });
+
+function pointerAt(pointerType: string, clientX: number, clientY: number) {
+  return {
+    pointerType,
+    button: 0,
+    pointerId: 1,
+    clientX,
+    clientY,
+    preventDefault() {},
+  };
+}
+
+function clickAt(
+  shell: { pointer: (type: string, event: object) => void },
+  pointerType: string,
+  clientX: number,
+  clientY: number,
+) {
+  const event = pointerAt(pointerType, clientX, clientY);
+  shell.pointer('pointerdown', event);
+  shell.pointer('pointerup', event);
+}
