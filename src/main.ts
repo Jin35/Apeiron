@@ -1,7 +1,7 @@
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
 import { clampScale, MAX_SCALE, MIN_SCALE, viewBounds, type Camera, type CameraCommand } from './camera';
 import { demoObjects, initialCameraFor } from './demo';
-import { attachGestures, ZOOM_STEP } from './gestures';
+import { attachInteraction } from './interaction';
 import { createRenderer } from './render';
 import { createMemoryStore } from './store';
 
@@ -18,16 +18,6 @@ export function mountShell(
   const store = createMemoryStore(demoObjects);
   // Off-band images are absent from the visible set. Fetch every src once up front.
   renderer.warm(store.imageSources());
-
-  function localPoint(clientX: number, clientY: number) {
-    const rect = surface.getBoundingClientRect();
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  }
 
   function frame(now: number) {
     zoomAnim = tickButtonZoom(zoomAnim, now);
@@ -61,51 +51,25 @@ export function mountShell(
     });
   }
 
-  function applyGesture(command: CameraCommand, viewW: number, viewH: number) {
+  /**
+   * Drag, wheel, and pinch paint before the handler returns.
+   * A +/− step only schedules a frame; the 150ms blend runs on that clock.
+   */
+  function applyCommand(command: CameraCommand) {
+    const rect = surface.getBoundingClientRect();
     const now = performance.now();
-    zoomAnim = applyButtonZoomCommand(zoomAnim, command, viewW, viewH, now);
+    zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now);
+    if (command.type === 'zoomStep') {
+      invalidate();
+      return;
+    }
     frame(now);
   }
 
-  attachGestures(surface, {
-    panBy(dx, dy) {
-      // A pan does not use the viewport size.
-      applyGesture({ type: 'panBy', dx, dy }, 0, 0);
-    },
-    zoomAt(x, y, factor) {
-      const point = localPoint(x, y);
-      applyGesture({ type: 'zoomAt', x: point.x, y: point.y, factor }, point.width, point.height);
-    },
-    retarget(anchorX, anchorY, targetX, targetY, factor) {
-      const anchor = localPoint(anchorX, anchorY);
-      const target = localPoint(targetX, targetY);
-      applyGesture(
-        {
-          type: 'retarget',
-          anchor: { x: anchor.x, y: anchor.y },
-          target: { x: target.x, y: target.y },
-          factor,
-        },
-        anchor.width,
-        anchor.height,
-      );
-    },
-  });
-
-  function zoomStep(factor: number) {
-    const rect = surface.getBoundingClientRect();
-    zoomAnim = applyButtonZoomCommand(
-      zoomAnim,
-      { type: 'zoomStep', factor },
-      rect.width,
-      rect.height,
-      performance.now(),
-    );
-    invalidate();
-  }
-
-  zoomInButton.addEventListener('click', () => zoomStep(ZOOM_STEP));
-  zoomOutButton.addEventListener('click', () => zoomStep(1 / ZOOM_STEP));
+  attachInteraction(
+    { canvas: surface, zoomIn: zoomInButton, zoomOut: zoomOutButton },
+    applyCommand,
+  );
 
   new ResizeObserver(() => invalidate()).observe(surface);
   // The first paint stays synchronous so the canvas is up before any input.

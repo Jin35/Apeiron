@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
+import { zoomAt } from './camera';
 import { demoObjects } from './demo';
+import { wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
 import { createMemoryStore } from './store';
 
@@ -255,9 +257,19 @@ describe('frame loop', () => {
       preventDefault() {},
     });
 
+    const zoomed = zoomAt(
+      { x: -300, y: -80, scale: 0.1 },
+      390,
+      280,
+      800,
+      600,
+      wheelZoomFactor(-80, false),
+    );
     expect(shell.draws.n).toBe(3);
     expect(shell.pending.size).toBe(0);
-    expect(Number(shell.status.dataset.scale)).toBeGreaterThan(0.1);
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(zoomed.scale);
+    expect(Number(shell.status.dataset.x)).toBeCloseTo(zoomed.x);
+    expect(Number(shell.status.dataset.y)).toBeCloseTo(zoomed.y);
   });
 
   it('keeps the on-screen scale when a gesture cancels a button zoom', () => {
