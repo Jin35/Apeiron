@@ -30,7 +30,7 @@ World **y grows downward**. The camera stores the world point at the center of t
 Each object has:
 
 - `id`
-- world `x`, `y`
+- `x`, `y` — world coordinates, or parent-local when `parentId` is set
 - `visibility: { minScale, maxScale }` — its depth
 - a payload: `text` (string plus font size, color, and a bit of style) or `image` (`src` plus world width and height)
 

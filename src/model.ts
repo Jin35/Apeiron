@@ -34,8 +34,15 @@ export type ImagePayload = {
 
 export type CanvasObject = {
   id: string;
+  /**
+   * World position. When `parentId` is set, these are offsets in that
+   * parent's space instead. The memory store adds the chain up to a world
+   * position before `query` returns the object.
+   */
   x: number;
   y: number;
+  /** When set, `x` and `y` are parent-local. */
+  parentId?: string;
   visibility: VisibilityRange;
   payload: TextPayload | ImagePayload;
 };

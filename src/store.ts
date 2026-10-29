@@ -68,10 +68,13 @@ type Entry = {
 /**
  * Linear scan of conservative world boxes. The atlas is small enough that
  * a quadtree would not change what the renderer receives.
- * `replaceObjects` rebuilds those boxes and notifies subscribers.
+ * Parent-local coordinates are flattened to world space when the entries
+ * are built, not on each query. `replaceObjects` rebuilds those boxes and
+ * notifies subscribers.
  */
 export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore {
-  let entries = objects.map(entryFor);
+  let resident = objects;
+  let entries = placedEntries(objects);
   const listeners = new Set<() => void>();
 
   function notify(): void {
@@ -98,7 +101,7 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
     },
     imageSources() {
       const srcs: string[] = [];
-      for (const { object } of entries) {
+      for (const object of resident) {
         if (object.payload.type === 'image') srcs.push(object.payload.src);
       }
       return srcs;
@@ -110,9 +113,66 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       };
     },
     replaceObjects(next) {
-      entries = next.map(entryFor);
+      resident = next;
+      entries = placedEntries(next);
       notify();
     },
+  };
+}
+
+/**
+ * Parent-local `x` / `y` become world coordinates here, so `query` keeps
+ * scanning scale-independent boxes. A missing parent or a cycle leaves the
+ * object out of the entries (and therefore out of `query` and `countInBand`)
+ * instead of throwing. The authored object is not mutated. `imageSources`
+ * still lists every resident image, placed or not.
+ */
+function placedEntries(objects: readonly CanvasObject[]): Entry[] {
+  const byId = new Map<string, CanvasObject>();
+  for (const object of objects) {
+    // First id wins, so a duplicate cannot move a parent out from under its children.
+    if (!byId.has(object.id)) byId.set(object.id, object);
+  }
+
+  const world = new Map<CanvasObject, { x: number; y: number } | null>();
+
+  function resolve(object: CanvasObject, stack: Set<CanvasObject>): { x: number; y: number } | null {
+    const known = world.get(object);
+    if (known !== undefined) return known;
+    if (stack.has(object)) return null;
+
+    stack.add(object);
+    let placed: { x: number; y: number } | null = null;
+    if (object.parentId === undefined) {
+      placed = { x: object.x, y: object.y };
+    } else {
+      const parent = byId.get(object.parentId);
+      const origin = parent ? resolve(parent, stack) : null;
+      if (origin) placed = { x: origin.x + object.x, y: origin.y + object.y };
+    }
+    stack.delete(object);
+    world.set(object, placed);
+    return placed;
+  }
+
+  const entries: Entry[] = [];
+  for (const object of objects) {
+    const placed = resolve(object, new Set());
+    if (!placed) continue;
+    entries.push(entryFor(atWorld(object, placed.x, placed.y)));
+  }
+  return entries;
+}
+
+/** Query objects are world-space, so a parent link is not left on them. */
+function atWorld(object: CanvasObject, x: number, y: number): CanvasObject {
+  if (object.parentId === undefined) return object;
+  return {
+    id: object.id,
+    x,
+    y,
+    visibility: object.visibility,
+    payload: object.payload,
   };
 }
 

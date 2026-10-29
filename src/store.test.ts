@@ -51,6 +51,12 @@ function ids(visible: { object: CanvasObject }[]): string[] {
   return visible.map((entry) => entry.object.id);
 }
 
+function withParent(object: CanvasObject, parentId: string): CanvasObject {
+  return { ...object, parentId };
+}
+
+const span: ViewBounds = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
+
 /** Scale inside the fade-in of `wide`, where alpha tracks this fraction. */
 function fadeInScale(fraction: number): number {
   return wide.minScale * 1.35 ** fraction;
@@ -238,5 +244,72 @@ describe('createMemoryStore', () => {
     expect(seen).toEqual([1]);
     expect(store.countInBand(4)).toBe(2);
     expect(ids(store.query({ bounds: nearby, scale: 4 }))).toEqual(['first', 'second']);
+  });
+
+  it('keeps a child offset of 1e-6 under a parent at x = 132', () => {
+    const parent = textObject('phone', wide, 132, -60);
+    const child = withParent(textObject('mark', wide, 1e-6, 0), 'phone');
+    const store = createMemoryStore([child, parent]);
+    const aroundPhone: ViewBounds = { left: 131, right: 133, top: -61, bottom: -59 };
+
+    const mark = store.query({ bounds: aroundPhone, scale: 4 }).find((entry) => entry.object.id === 'mark');
+    expect(mark).toBeDefined();
+    expect(mark?.object.x).toBe(132 + 1e-6);
+    expect(mark?.object.x).not.toBe(132);
+    expect(mark?.object.y).toBe(-60);
+    expect(mark?.object.parentId).toBeUndefined();
+    expect(child.x).toBe(1e-6);
+    expect(child.parentId).toBe('phone');
+    expect(store.countInBand(4)).toBe(2);
+  });
+
+  it('flattens a grandchild chain to world coordinates', () => {
+    const root = textObject('root', wide, 50, 80, 'x', 1);
+    const child = withParent(textObject('child', wide, 20, -10, 'x', 1), 'root');
+    const grandchild = withParent(textObject('grandchild', wide, -4, 6, 'x', 1), 'child');
+    const store = createMemoryStore([grandchild, child, root]);
+
+    const visible = store.query({ bounds: span, scale: 4 });
+    const byId = new Map(visible.map((entry) => [entry.object.id, entry.object]));
+    expect(byId.get('root')).toMatchObject({ x: 50, y: 80 });
+    expect(byId.get('child')).toMatchObject({ x: 70, y: 70 });
+    expect(byId.get('grandchild')).toMatchObject({ x: 66, y: 76 });
+    expect(store.countInBand(4)).toBe(3);
+
+    const onGrandchild: ViewBounds = { left: 65.5, right: 66.5, top: 75.5, bottom: 76.5 };
+    const onLocal: ViewBounds = { left: -5, right: -3, top: 5, bottom: 7 };
+    expect(ids(store.query({ bounds: onGrandchild, scale: 4 }))).toEqual(['grandchild']);
+    expect(store.query({ bounds: onLocal, scale: 4 })).toEqual([]);
+  });
+
+  it('omits an object whose parent is missing until that parent is resident', () => {
+    const orphan = withParent(imageObject('chip', 'images/chip.svg', 4, -2), 'phone');
+    const store = createMemoryStore([orphan]);
+
+    expect(store.query({ bounds: span, scale: 4 })).toEqual([]);
+    expect(store.countInBand(4)).toBe(0);
+    expect(store.imageSources()).toEqual(['images/chip.svg']);
+
+    const phone = textObject('phone', wide, 132, -60);
+    store.replaceObjects([orphan, phone]);
+
+    const visible = store.query({ bounds: span, scale: 4 });
+    expect(ids(visible)).toEqual(['chip', 'phone']);
+    expect(visible[0]?.object).toMatchObject({ x: 136, y: -62 });
+    expect(store.countInBand(4)).toBe(2);
+    expect(orphan.x).toBe(4);
+    expect(orphan.parentId).toBe('phone');
+  });
+
+  it('omits a parent cycle and anything that hangs off it', () => {
+    const a = withParent(textObject('a', wide, 1, 1), 'b');
+    const b = withParent(textObject('b', wide, 2, 2), 'a');
+    const hanging = withParent(textObject('hanging', wide, 3, 3), 'b');
+    const self = withParent(textObject('self', wide, 4, 4), 'self');
+    const kept = textObject('kept', wide, 0, 0);
+    const store = createMemoryStore([a, hanging, self, kept, b]);
+
+    expect(ids(store.query({ bounds: span, scale: 4 }))).toEqual(['kept']);
+    expect(store.countInBand(4)).toBe(1);
   });
 });
