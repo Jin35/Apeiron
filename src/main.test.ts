@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import page from '../index.html?raw';
 import { initialCameraFor } from './bootstrap';
 import { BUTTON_ZOOM_MS } from './buttonZoom';
 import { viewBounds, zoomAt } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
 import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
 import { mountShell } from './main';
+import type { CanvasObject } from './model';
 import { createMemoryStore, type SceneStore } from './store';
 
 type Listener = (event: Event) => void;
@@ -33,7 +35,12 @@ function recordingContext(draws: { n: number }): CanvasRenderingContext2D {
   });
 }
 
-function harness(options?: { search?: string; innerWidth?: number; store?: SceneStore }) {
+function harness(options?: {
+  search?: string;
+  innerWidth?: number;
+  store?: SceneStore;
+  reduceMotion?: boolean;
+}) {
   const draws = { n: 0 };
   const ctx = recordingContext(draws);
   const canvasListeners = new Map<string, Listener[]>();
@@ -66,7 +73,18 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
     removeEventListener() {},
   };
 
-  const status = { textContent: '', dataset: {} as DOMStringMap };
+  const statusAttributes = new Map<string, string>([['aria-live', 'polite']]);
+  const status = {
+    textContent: '',
+    dataset: {} as DOMStringMap,
+    getAttribute(name: string) {
+      return statusAttributes.get(name) ?? null;
+    },
+    removeAttribute(name: string) {
+      statusAttributes.delete(name);
+    },
+  };
+  const labels = createLabelList();
   const zoomInListeners: Listener[] = [];
   const zoomOutListeners: Listener[] = [];
   const zoomIn = {
@@ -107,6 +125,9 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
     }
   }
 
+  const motionListeners: Array<(event: { matches: boolean }) => void> = [];
+  let reduceMotion = options?.reduceMotion ?? false;
+  let motionQuery = '';
   vi.stubGlobal('window', {
     innerWidth: options?.innerWidth ?? 1280,
     devicePixelRatio: 1,
@@ -117,6 +138,17 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
       windowListeners.set(type, list);
     },
     removeEventListener() {},
+    matchMedia(query: string) {
+      motionQuery = query;
+      return {
+        matches: reduceMotion,
+        media: query,
+        addEventListener(type: string, handler: (event: { matches: boolean }) => void) {
+          if (type === 'change') motionListeners.push(handler);
+        },
+        removeEventListener() {},
+      };
+    },
   });
   vi.stubGlobal('Image', RecordingImage);
   vi.stubGlobal('ResizeObserver', ResizeObserver);
@@ -135,6 +167,7 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
     zoomIn as unknown as HTMLButtonElement,
     zoomOut as unknown as HTMLButtonElement,
     options?.store,
+    labels as unknown as HTMLElement,
   );
 
   return {
@@ -167,6 +200,56 @@ function harness(options?: { search?: string; innerWidth?: number; store?: Scene
     },
     wheel(event: object) {
       for (const handler of windowListeners.get('wheel') ?? []) handler(event as Event);
+    },
+    keydown(event: { key: string }) {
+      for (const handler of windowListeners.get('keydown') ?? []) {
+        handler({
+          key: event.key,
+          ctrlKey: false,
+          metaKey: false,
+          altKey: false,
+          target: { tagName: 'BODY', isContentEditable: false },
+          preventDefault() {},
+        } as unknown as Event);
+      }
+    },
+    labels,
+    motionQuery: () => motionQuery,
+    setReduceMotion(value: boolean) {
+      reduceMotion = value;
+      for (const handler of motionListeners) handler({ matches: value });
+    },
+  };
+}
+
+type LabelNode = { textContent: string };
+
+function createLabelList() {
+  const attributes = new Map<string, string>([['aria-live', 'polite']]);
+  const nodes: LabelNode[] = [];
+  let builds = 0;
+  return {
+    className: 'sr-only',
+    getAttribute(name: string) {
+      return attributes.get(name) ?? null;
+    },
+    removeAttribute(name: string) {
+      attributes.delete(name);
+    },
+    ownerDocument: {
+      createElement() {
+        return { textContent: '' };
+      },
+    },
+    replaceChildren(...next: LabelNode[]) {
+      builds += 1;
+      nodes.splice(0, nodes.length, ...next);
+    },
+    texts() {
+      return nodes.map((node) => node.textContent);
+    },
+    builds() {
+      return builds;
     },
   };
 }
@@ -488,6 +571,126 @@ describe('frame loop', () => {
     expect(shell.canvas.dataset.selected).toBe('');
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.2);
     expect(shell.status.dataset).toMatchObject({ x: '0', y: '-80' });
+  });
+
+  it('settles a zoom step in one frame when reduced motion matches', () => {
+    const shell = harness({ reduceMotion: true });
+    expect(shell.motionQuery()).toBe('(prefers-reduced-motion: reduce)');
+
+    shell.keydown({ key: '+' });
+    expect(shell.draws.n).toBe(1);
+    expect(shell.pending.size).toBe(1);
+    expect(shell.status.dataset.scale).toBe('0.1');
+
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.2);
+    expect(shell.status.dataset).toMatchObject({ x: '0', y: '-80' });
+    expect(shell.pending.size).toBe(0);
+    expect(shell.draws.n).toBe(2);
+
+    shell.clickIn();
+    shell.flush();
+    expect(Number(shell.status.dataset.scale)).toBeCloseTo(0.4);
+    expect(shell.pending.size).toBe(0);
+  });
+
+  it('follows prefers-reduced-motion as it changes', () => {
+    const animated = harness();
+    animated.clickIn();
+    animated.flush();
+    expect(Number(animated.status.dataset.scale)).toBeCloseTo(0.1);
+    expect(animated.pending.size).toBe(1);
+
+    animated.setReduceMotion(true);
+    animated.clickIn();
+    animated.flush();
+    expect(Number(animated.status.dataset.scale)).toBeCloseTo(0.4);
+    expect(animated.pending.size).toBe(0);
+
+    const settled = harness({ reduceMotion: true });
+    settled.setReduceMotion(false);
+    settled.clickIn();
+    settled.flush();
+    expect(Number(settled.status.dataset.scale)).toBeCloseTo(0.1);
+    expect(settled.pending.size).toBe(1);
+    settled.setNow(1_000 + BUTTON_ZOOM_MS);
+    settled.flush();
+    expect(Number(settled.status.dataset.scale)).toBeCloseTo(0.2);
+    expect(settled.pending.size).toBe(0);
+  });
+
+  it('lists text labels from the spatial query and does not announce them', () => {
+    const shell = harness();
+    const camera = { x: 0, y: -80, scale: 0.1 };
+    const labels = createMemoryStore(demoObjects)
+      .query({ bounds: viewBounds(camera, 800, 600), scale: camera.scale })
+      .flatMap((entry) => (entry.object.payload.type === 'text' ? [entry.object.payload.text] : []));
+
+    expect(labels.length).toBeGreaterThan(0);
+    expect(shell.labels.texts()).toEqual(labels);
+    expect(shell.labels.getAttribute('aria-live')).toBeNull();
+    expect(shell.status.getAttribute('aria-live')).toBeNull();
+    expect(page).not.toContain('aria-live');
+    expect(page).toContain('<p id="status"></p>');
+    expect(page).toContain('<ul id="labels" class="sr-only" aria-label="Labels in view"></ul>');
+
+    const built = shell.labels.builds();
+    shell.resize();
+    shell.flush();
+    const down = pointerAt('mouse', 100, 100);
+    shell.pointer('pointerdown', down);
+    shell.pointer('pointermove', { ...down, clientX: 130 });
+    expect(shell.labels.builds()).toBe(built);
+    expect(shell.labels.texts()).toEqual(labels);
+  });
+
+  it('rebuilds the label list only when the queried text changes', () => {
+    const band = { minScale: 0.02, maxScale: 0.3 };
+    const label = (id: string, x: number, text: string): CanvasObject => ({
+      id,
+      x,
+      y: -80,
+      visibility: band,
+      payload: { type: 'text', text, style: { fontSize: 12, color: '#fff' }, width: 40, height: 20 },
+    });
+    const plate: CanvasObject = {
+      id: 'plate',
+      x: 0,
+      y: -80,
+      visibility: band,
+      payload: { type: 'image', src: 'images/phone.svg', width: 10, height: 10 },
+    };
+    const objects = [label('near', 0, 'Near'), plate, label('also', 100, 'Also'), label('far', 20_000, 'Far')];
+    const store = createMemoryStore(objects);
+    const shell = harness({ store });
+
+    expect(store.countInBand(0.1)).toBe(4);
+    expect(shell.labels.texts()).toEqual(['Near', 'Also']);
+    expect(shell.labels.getAttribute('aria-live')).toBeNull();
+    expect(shell.labels.builds()).toBe(1);
+
+    const down = pointerAt('mouse', 100, 100);
+    shell.pointer('pointerdown', down);
+    shell.pointer('pointermove', { ...down, clientX: 130 });
+    expect(shell.labels.texts()).toEqual(['Near', 'Also']);
+    expect(shell.labels.builds()).toBe(1);
+
+    store.replaceObjects([label('near', 0, 'Newer'), plate, label('also', 100, 'Also'), label('far', 20_000, 'Far')]);
+    expect(shell.labels.builds()).toBe(1);
+    shell.flush();
+    expect(shell.labels.texts()).toEqual(['Newer', 'Also']);
+    expect(shell.labels.builds()).toBe(2);
+    expect(store.countInBand(0.1)).toBe(4);
+
+    const jump = pointerAt('mouse', 2500, 100);
+    shell.pointer('pointerdown', jump);
+    shell.pointer('pointermove', { ...jump, clientX: 500 });
+    // The earlier 30px drag left the camera at x = -300. This drag is -2000px.
+    expect(shell.status.dataset.x).toBe('19700');
+    expect(shell.labels.texts()).toEqual(['Far']);
+    expect(shell.labels.builds()).toBe(3);
+    expect(shell.labels.getAttribute('aria-live')).toBeNull();
+    expect(store.countInBand(0.1)).toBe(4);
   });
 });
 

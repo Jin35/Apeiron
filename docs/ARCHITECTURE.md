@@ -2,11 +2,11 @@
 
 Three layers plus a thin shell. The shell is `src/main.ts`, and it is the only module that constructs the other three. The live **camera** and the **selection** are session state, owned by the shell. `src/camera.ts` stays the shared value (`Camera`, `ViewBounds`, scale clamp, pan/zoom math). The store, the renderer, and the gesture recognizer do not keep a camera of their own.
 
-Content lives in the store. Pixels live in the renderer. Pointer and button input lives in the interaction layer, which emits commands. The shell applies a command to the session, queries the store, and hands the renderer a camera plus the visible set.
+Content lives in the store. Pixels live in the renderer. Pointer, keyboard, and button input lives in the interaction layer, which emits commands. The shell applies a command to the session, queries the store, and hands the renderer a camera plus the visible set.
 
 World **y grows downward**. `Camera.scale` is CSS pixels per world unit. `MIN_SCALE` / `MAX_SCALE` (`1e-4–1e7` in `camera.ts`) are camera limits, not a world edge. An object's `visibility` range is content and may extend past those limits.
 
-The first split is merged (PRs #5–#12). The sections through [First sequence](#first-sequence) describe that design as it stands in the tree. [Second review](#second-review) is the next set of changes. Nothing below the first sequence is a claim that the code already does it.
+The first split is merged (PRs #5–#12). The sections through [First sequence](#first-sequence) describe that design as it stands in the tree. [Second review](#second-review) is the problem list behind [Next sequence](#next-sequence). That sequence is done.
 
 ## Current state
 
@@ -19,13 +19,13 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 | `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. |
 | `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. A mouse click and a touch tap that stays single for `DOUBLE_TAP_MS` call `selectAt`. |
-| `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). |
-| `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. |
+| `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, keyboard pan and zoom, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). Arrow keys and `+`/`−` reuse `CameraCommand`. |
+| `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. A reduced-motion `zoomStep` settles on the committed camera with no segments. |
 | `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. |
 | `src/demo.ts` | `demoObjects` and the title fit width. Thirty objects, six images, four overlapping bands. |
-| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD. Session `selectedId` is on the frame and on `dataset.selected`. |
+| `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD and a visually hidden label list from the frame's `query`. Session `selectedId` is on the frame and on `dataset.selected`. `prefers-reduced-motion: reduce` settles `zoomStep` in one frame. |
 
-`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`.
+`store.ts`, `render.ts`, and `interaction.ts` do not import each other. `frame` in `mountShell` is the only paint. Gestures call it before the handler returns. Button zoom, `ResizeObserver`, image `onReady`, and the store subscription call `invalidate`, which schedules one `requestAnimationFrame`. Startup paints synchronously. `mountShell` takes an optional store; production still builds the demo store. `applyButtonZoomCommand` is the one cancel path: an immediate command runs on the camera on screen and drops the queue; `zoomStep` queues a 150ms step from `committedCamera`, unless `prefers-reduced-motion: reduce` matches, in which case that step settles in the next frame.
 
 ### Contracts that are actually in the tree
 
@@ -208,6 +208,8 @@ The canvas has `aria-label="Apeiron canvas"` and a static `.sr-only` paragraph t
 
 ## Next sequence
 
+**Done.** Steps 1–7 are on `main` (PRs #14–#20). Step 8 is keyboard pan and zoom, no live region on `#status`, an immediate `zoomStep` while `prefers-reduced-motion: reduce` matches, and a visually hidden list of the text labels in the frame's `query`.
+
 Each PR leaves the demo working and CI green (the same `verify` job). Preserve the HUD string, the three `dataset` fields, and +/− disabled from the committed scale, except where a step says the clamp moved. Preserve pixels at scales the demo already uses, except where a step says a test changed. There is still no browser harness. Add the assertion at the function the step introduces.
 
 1. **Draw in CSS pixels, relative to the camera.** In `render.ts`, `draw` / `drawGrid` / `drawImageObject` / `drawTextObject` convert world to viewport pixels in float64 and set the transform to DPR only. Font size and line width are CSS pixels. Skip `fillText` when the screen font would exceed 512px (the atlas peaks near 185px, so this changes no current label). Clip the image fill to the viewport. Stroke a plate edge only when that edge crosses the view. The fake context records the transform and the coordinates. A camera at `{ x: 132, y: -60, scale: 1e6 }` paints a label whose world font keeps the screen size under 512px (so `fontSize` is tiny) near the viewport center. A world font of ordinary size at that scale does not call `fillText`. A plate the camera sits inside fills the view without a stroke along the screen edge. `MIN_SCALE` and `MAX_SCALE` stay. Alphas, sort order, and the HUD stay.
@@ -224,6 +226,6 @@ Each PR leaves the demo working and CI green (the same `verify` job). Preserve t
 
 7. **`hitTest`, then `selectAt`.** `hitTest` uses the draw cutoff and the unpadded authored box; finer `maxScale` wins. Tests only, no input change, in the first commit of the PR. Then `selectAt`: mouse click, and a touch tap that waited out `DOUBLE_TAP_MS` without becoming a double-tap zoom. The shell stores `selectedId`, puts it on `RenderFrame`, strokes the box, and mirrors it to `dataset.selected`. Double-tap zoom and drag pan stay. The README gains one sentence that a click or a settled tap selects.
 
-8. **Keyboard, the live region, and the label list.** `attachInteraction` emits `panBy` and `zoomStep` from keydown. Remove `aria-live` from `#status`. Keep the visible HUD. A `prefers-reduced-motion: reduce` match applies `zoomStep` as an immediate settle. A visually hidden list, built from the text payloads in the frame's `query`, updates when the ordered ids change and is not a live region.
+8. **Keyboard, the live region, and the label list.** **Done.** `attachInteraction` emits `panBy` for the arrow keys (a tenth of the canvas width) and `zoomStep` for `+`, `=`, `-`, and `−`. Those keys are ignored in an input, textarea, select, or contenteditable, and while Ctrl, Meta, or Alt is held. `#status` has no `aria-live`. A `prefers-reduced-motion: reduce` match, including a later change to that query, settles `zoomStep` on the committed camera in one frame. A visually hidden `.sr-only` list of the text labels in the frame's `query` is rebuilt when that set changes and is not a live region.
 
 After these eight, a `?focus=<id>` opener is a small bootstrap follow-up: the store returns the world box of an id, and `cameraFromLocation` frames it. It wants steps 5 and 6. A tile cache wants a real plate that stays in band across many doublings, which this sequence does not add.

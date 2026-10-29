@@ -3,7 +3,8 @@
  * zoom-toward-center math as an instant step, and the scale interpolates
  * across 150ms. Another click queues the next step from that target so
  * the in-between scale is not resampled. Gestures cancel and keep the
- * scale currently on screen.
+ * scale currently on screen. The shell can ask a step to land on that
+ * target immediately.
  */
 
 import { applyCameraCommand, zoomAt, type Camera, type CameraCommand } from './camera';
@@ -80,7 +81,7 @@ export function cancelButtonZoom(state: ButtonZoom): ButtonZoom {
  * `panBy`, `zoomAt`, and `retarget` run on the camera on screen, then
  * `cancelButtonZoom` drops the queue. `zoomStep` queues a 150ms step
  * from the committed camera, so a second click does not resample the
- * in-between scale.
+ * in-between scale. `settleZoomStep` keeps that target and drops the blend.
  */
 export function applyButtonZoomCommand(
   state: ButtonZoom,
@@ -88,9 +89,12 @@ export function applyButtonZoomCommand(
   viewW: number,
   viewH: number,
   now: number,
+  options?: { settleZoomStep?: boolean },
 ): ButtonZoom {
   if (command.type === 'zoomStep') {
-    return pressButtonZoom(state, command.factor, viewW, viewH, now);
+    const queued = pressButtonZoom(state, command.factor, viewW, viewH, now);
+    if (!options?.settleZoomStep || queued.segments.length === 0) return queued;
+    return createButtonZoom(committedCamera(queued));
   }
   const next = applyCameraCommand(state.camera, command, viewW, viewH);
   // The command already ran on the camera that was on screen. Cancel keeps
