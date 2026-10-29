@@ -289,6 +289,81 @@ describe('attachInteraction', () => {
       preventDefault() {},
     });
     zoomInListeners.dispatch('click', {});
+    windowListeners.dispatch('keydown', {
+      key: 'ArrowLeft',
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      target: { tagName: 'BODY' },
+      preventDefault() {},
+    });
     expect(commands).toEqual([]);
   });
+
+  it('emits panBy for arrows and zoomStep for + = −', () => {
+    const { commands, windowListeners } = harness();
+    const prevented = [
+      keydown(windowListeners, { key: 'ArrowLeft' }),
+      keydown(windowListeners, { key: 'ArrowRight' }),
+      keydown(windowListeners, { key: 'ArrowUp' }),
+      keydown(windowListeners, { key: 'ArrowDown' }),
+      keydown(windowListeners, { key: '+' }),
+      keydown(windowListeners, { key: '=' }),
+      keydown(windowListeners, { key: '-' }),
+      keydown(windowListeners, { key: '−' }),
+    ];
+    expect(prevented).toEqual([true, true, true, true, true, true, true, true]);
+    const step = 800 * 0.1;
+    expect(commands).toEqual([
+      { type: 'panBy', dx: step, dy: 0 },
+      { type: 'panBy', dx: -step, dy: 0 },
+      { type: 'panBy', dx: 0, dy: step },
+      { type: 'panBy', dx: 0, dy: -step },
+      { type: 'zoomStep', factor: ZOOM_STEP },
+      { type: 'zoomStep', factor: ZOOM_STEP },
+      { type: 'zoomStep', factor: 1 / ZOOM_STEP },
+      { type: 'zoomStep', factor: 1 / ZOOM_STEP },
+    ]);
+  });
+
+  it('ignores keydown in editable fields and when Ctrl, Meta, or Alt is held', () => {
+    const { commands, windowListeners } = harness();
+    const targets = [
+      { tagName: 'INPUT' },
+      { tagName: 'input' },
+      { tagName: 'TEXTAREA' },
+      { tagName: 'SELECT' },
+      { tagName: 'DIV', isContentEditable: true },
+    ];
+    for (const target of targets) {
+      expect(keydown(windowListeners, { key: 'ArrowLeft', target })).toBe(false);
+      expect(keydown(windowListeners, { key: '+', target })).toBe(false);
+    }
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+      expect(keydown(windowListeners, { key: '=', ...modifiers })).toBe(false);
+      expect(keydown(windowListeners, { key: 'ArrowDown', ...modifiers })).toBe(false);
+    }
+    expect(keydown(windowListeners, { key: 'ArrowLeft', shiftKey: true })).toBe(true);
+    expect(keydown(windowListeners, { key: 'k' })).toBe(false);
+    expect(commands).toEqual([{ type: 'panBy', dx: 80, dy: 0 }]);
+  });
 });
+
+function keydown(
+  windowListeners: { dispatch(type: string, event: object): void },
+  event: object,
+): boolean {
+  let prevented = false;
+  windowListeners.dispatch('keydown', {
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    target: { tagName: 'BODY', isContentEditable: false },
+    ...event,
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  return prevented;
+}

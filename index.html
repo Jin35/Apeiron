@@ -17,15 +17,17 @@
   <body>
     <canvas id="canvas" aria-label="Apeiron canvas"></canvas>
     <p class="sr-only" id="description">
-      Pan and zoom a depth atlas. Text and images appear only inside their zoom range.
+      Pan and zoom a depth atlas. Arrow keys pan. Plus and minus zoom. Text and images
+      appear only inside their zoom range.
     </p>
+    <ul id="labels" class="sr-only" aria-label="Labels in view"></ul>
     <header>
       <h1>Apeiron</h1>
-      <p id="status" aria-live="polite"></p>
+      <p id="status"></p>
     </header>
     <p id="hint">
       Drag to pan. Scroll or pinch to zoom toward the pointer. Double-tap to zoom in.
-      Two-finger tap to zoom out.
+      Two-finger tap to zoom out. Arrow keys pan. + and − zoom.
     </p>
     <div id="zoom">
       <button id="zoom-in" type="button" aria-label="Zoom in">+</button>

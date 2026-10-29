@@ -4,7 +4,7 @@ import { MAX_SCALE, MIN_SCALE, viewBounds, worldPoint } from './camera';
 import { demoObjects, titleFitWidth } from './demo';
 import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
-import { createMemoryStore, type SceneStore } from './store';
+import { createMemoryStore, type SceneStore, type VisibleObject } from './store';
 
 export function mountShell(
   surface: HTMLCanvasElement,
@@ -12,12 +12,22 @@ export function mountShell(
   zoomInButton: HTMLButtonElement,
   zoomOutButton: HTMLButtonElement,
   store: SceneStore = createMemoryStore(demoObjects),
+  labelList?: HTMLElement,
 ): void {
   let zoomAnim = createButtonZoom(
     cameraFromLocation(initialCameraFor(window.innerWidth, titleFitWidth), window.location.search),
   );
   let selectedId: string | null = null;
+  let labelKey = '';
   let rafId = 0;
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let reduceMotion = motion.matches;
+  motion.addEventListener('change', (event) => {
+    reduceMotion = (event as MediaQueryListEvent).matches;
+  });
+
+  status.removeAttribute('aria-live');
+  labelList?.removeAttribute('aria-live');
 
   const renderer = createRenderer(surface, () => invalidate());
 
@@ -27,13 +37,15 @@ export function mountShell(
     const width = rect.width;
     const height = rect.height;
     const camera = zoomAnim.camera;
+    const shown = store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale });
     renderer.draw({
       camera,
       width,
       height,
-      visible: store.query({ bounds: viewBounds(camera, width, height), scale: camera.scale }),
+      visible: shown,
       ...(selectedId ? { selectedId } : {}),
     });
+    if (labelList) syncLabelList(labelList, shown);
     const visible = store.countInBand(camera.scale);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
@@ -61,6 +73,7 @@ export function mountShell(
    * Drag, wheel, pinch, and a click paint before the handler returns.
    * A settled tap paints when its wait ends.
    * A +/− step only schedules a frame; the 150ms blend runs on that clock.
+   * Reduced motion settles that step on the committed camera in the same frame.
    * `selectAt` does not cancel that blend.
    */
   function applyCommand(command: SceneCommand) {
@@ -73,12 +86,35 @@ export function mountShell(
       frame(now);
       return;
     }
-    zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now);
+    zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now, {
+      settleZoomStep: reduceMotion,
+    });
     if (command.type === 'zoomStep') {
       invalidate();
       return;
     }
     frame(now);
+  }
+
+  /** Text labels from this frame's `query`, in that order. Not a live region. */
+  function syncLabelList(list: HTMLElement, shown: readonly VisibleObject[]): void {
+    const texts: string[] = [];
+    const ids: string[] = [];
+    for (const { object } of shown) {
+      if (object.payload.type !== 'text') continue;
+      ids.push(object.id);
+      texts.push(object.payload.text);
+    }
+    const key = JSON.stringify(ids.map((id, index) => [id, texts[index]]));
+    if (key === labelKey) return;
+    labelKey = key;
+    list.replaceChildren(
+      ...texts.map((text) => {
+        const item = list.ownerDocument.createElement('li');
+        item.textContent = text;
+        return item;
+      }),
+    );
   }
 
   store.subscribe(() => invalidate());
@@ -117,8 +153,9 @@ if (typeof document !== 'undefined') {
   const statusEl = document.querySelector<HTMLElement>('#status');
   const zoomIn = document.querySelector<HTMLButtonElement>('#zoom-in');
   const zoomOut = document.querySelector<HTMLButtonElement>('#zoom-out');
-  if (!canvas || !statusEl || !zoomIn || !zoomOut) {
+  const labels = document.querySelector<HTMLElement>('#labels');
+  if (!canvas || !statusEl || !zoomIn || !zoomOut || !labels) {
     throw new Error('Apeiron markup is missing');
   }
-  mountShell(canvas, statusEl, zoomIn, zoomOut);
+  mountShell(canvas, statusEl, zoomIn, zoomOut, undefined, labels);
 }

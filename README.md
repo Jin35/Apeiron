@@ -55,8 +55,9 @@ The canvas is a full-screen map, in the greedy sense of the Google Maps app: it 
 - **Trackpad:** click-drag pans. Two-finger scroll and pinch zoom toward the pointer. Scroll does not pan.
 - **Multitouch:** one-finger drag pans, pinch zooms (finger translation pans, angle is ignored), double-tap zooms in, two-finger tap zooms out.
 - **Single touch:** drag pans, double-tap zooms in, +/− cover the rest.
+- **Keyboard:** arrow keys pan about a tenth of the view. `+` and `=` zoom in, `-` zooms out, by the same 2× step as the buttons. Those keys do nothing in a text field, or while Ctrl, Alt, or ⌘ is held.
 
-Mouse double-click does not zoom. + and − step by 2×, and each step interpolates scale over 150ms. Scroll, pinch, and tap zoom stay immediate.
+Mouse double-click does not zoom. + and − step by 2×, and each step interpolates scale over 150ms. A reduced-motion setting skips that blend. Scroll, pinch, and tap zoom stay immediate.
 
 ## GitHub Pages
 

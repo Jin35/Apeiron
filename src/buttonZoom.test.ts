@@ -198,4 +198,33 @@ describe('applyButtonZoomCommand', () => {
     expect(tickButtonZoom(twice, BUTTON_ZOOM_MS).camera.scale).toBeCloseTo(2);
     expect(tickButtonZoom(twice, BUTTON_ZOOM_MS * 2).camera.scale).toBeCloseTo(4);
   });
+
+  it('settles zoomStep on the committed camera and drops the blend', () => {
+    const mid = midZoom();
+    const settled = applyButtonZoomCommand(
+      mid,
+      { type: 'zoomStep', factor: ZOOM_STEP },
+      viewW,
+      viewH,
+      BUTTON_ZOOM_MS / 2,
+      { settleZoomStep: true },
+    );
+    expect(settled.segments).toEqual([]);
+    expect(settled.camera).toEqual(origin);
+
+    const towardLimit = tickButtonZoom(
+      press(createButtonZoom({ x: 1, y: 1, scale: MAX_SCALE / 2 }), ZOOM_STEP, 0),
+      BUTTON_ZOOM_MS / 2,
+    );
+    const snapped = applyButtonZoomCommand(
+      towardLimit,
+      { type: 'zoomStep', factor: ZOOM_STEP },
+      viewW,
+      viewH,
+      10,
+      { settleZoomStep: true },
+    );
+    expect(snapped.segments).toEqual([]);
+    expect(snapped.camera).toEqual({ x: 1, y: 1, scale: MAX_SCALE });
+  });
 });
