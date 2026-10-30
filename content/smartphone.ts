@@ -34,10 +34,14 @@ export const partSprites = {
 export const PHONE_WIDTH_MM = 71.5;
 
 /**
- * Relative zoom at which the front finishes fading and the parts finish
- * fading in. `r = camera.scale / fitScale`, and `r = 1` is the opening fit.
+ * The internals assembly is this fraction of the phone, about the phone centre.
+ * The front finishes fading at `r = 1 / INTERNALS_SCALE`, which is when the
+ * shrunk midframe is back to the screen size the front had at the opening.
  */
-const REVEAL: readonly [number, number] = [1, 2];
+export const INTERNALS_SCALE = 0.625;
+
+/** `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`. */
+const REVEAL = [1, 1 / INTERNALS_SCALE] as const;
 
 /**
  * Wide enough that the opening fit and a deep look (r well past 3) sit in
@@ -79,15 +83,34 @@ function cutout(
 }
 
 /**
- * Front view plus the parts under it. Children are parent-local millimetres
- * on `phone`, listed back to front: chassis, battery, logic board, camera,
- * loudspeaker, haptic motor, then the front image. Edit `x`, `y`, and the
- * opaque width to rearrange them. The fade is zoom-driven, not animated.
+ * Front view plus the parts under it. `internals` is a group on `phone`:
+ * one scale about the phone centre, no pixels of its own. The parts are
+ * parent-local millimetres on that group, listed back to front, then the
+ * front image. Edit a part's `x`, `y`, and opaque width to rearrange it.
+ * The fade is zoom-driven, not animated.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
-  cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'phone'),
-  cutout('battery', 'images/smartphone/battery.webp', partSprites.battery, 50, -9.8, 16.6, fadeIn, 'phone'),
-  cutout('logic-board', 'images/smartphone/logic-board.webp', partSprites.logicBoard, 26, 19.8, -45.2, fadeIn, 'phone'),
+  {
+    id: 'internals',
+    parentId: 'phone',
+    x: 0,
+    y: 0,
+    scale: INTERNALS_SCALE,
+    visibility: band,
+    payload: { type: 'group' },
+  },
+  cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals'),
+  cutout('battery', 'images/smartphone/battery.webp', partSprites.battery, 50, -9.8, 16.6, fadeIn, 'internals'),
+  cutout(
+    'logic-board',
+    'images/smartphone/logic-board.webp',
+    partSprites.logicBoard,
+    26,
+    19.8,
+    -45.2,
+    fadeIn,
+    'internals',
+  ),
   cutout(
     'camera-module',
     'images/smartphone/camera-module.webp',
@@ -96,10 +119,28 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     -21.5,
     -59.5,
     fadeIn,
-    'phone',
+    'internals',
   ),
-  cutout('loudspeaker', 'images/smartphone/loudspeaker.webp', partSprites.loudspeaker, 14, -12, 65.8, fadeIn, 'phone'),
-  cutout('haptic-motor', 'images/smartphone/haptic-motor.webp', partSprites.hapticMotor, 15, 12, 65.8, fadeIn, 'phone'),
+  cutout(
+    'loudspeaker',
+    'images/smartphone/loudspeaker.webp',
+    partSprites.loudspeaker,
+    14,
+    -12,
+    65.8,
+    fadeIn,
+    'internals',
+  ),
+  cutout(
+    'haptic-motor',
+    'images/smartphone/haptic-motor.webp',
+    partSprites.hapticMotor,
+    15,
+    12,
+    65.8,
+    fadeIn,
+    'internals',
+  ),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
 ];
 

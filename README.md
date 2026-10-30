@@ -21,7 +21,7 @@ npm run build
 npm run preview
 ```
 
-The default pack is Smartphone. It opens fitted to the window. Zooming in past that fit fades the front view out and the parts in; the front is gone at twice the opening scale, and the parts are placed in millimetres on the phone. On the archipelago atlas (`?pack=archipelago`), a phone-width window opens a little further out so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
+The default pack is Smartphone. It opens fitted to the window. Zooming in past that fit fades the front view out and the parts in; the front is gone at 1.6× the opening scale. The parts sit on one scaled group, in millimetres, so at that zoom they are the size the phone was when it opened. On the archipelago atlas (`?pack=archipelago`), a phone-width window opens a little further out so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
 
 ## Objects and depth
 
@@ -31,6 +31,7 @@ Each object has:
 
 - `id`
 - `x`, `y` — world coordinates, or parent-local when `parentId` is set
+- optional `scale` — multiplies this object's size and its descendants; a group payload is the transform only
 - `visibility: { minScale, maxScale }` — its depth
 - optional `fade` — opacity from zoom relative to the opening fit (`fadeOut` or `fadeIn` over a ratio range)
 - a payload: `text` (string, font size, optional color, style, and world width and height) or `image` (`src` plus world width and height)

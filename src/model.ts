@@ -44,6 +44,11 @@ export type ImagePayload = {
   frame?: boolean;
 };
 
+/** A transform only. Not drawn, not hit, and not counted. */
+export type GroupPayload = {
+  type: 'group';
+};
+
 /**
  * Opacity from zoom relative to the opening fit scale.
  * `r = camera.scale / fitScale`. Each pair is `[start, end]` in that ratio.
@@ -67,6 +72,13 @@ export type CanvasObject = {
   y: number;
   /** When set, `x` and `y` are parent-local. */
   parentId?: string;
+  /**
+   * Uniform scale of this object's local space. It multiplies the payload
+   * size and every descendant's parent-local position and size. `x` and `y`
+   * stay in the parent's space, so they are not multiplied by this scale.
+   * Omit for 1. A non-positive value is ignored.
+   */
+  scale?: number;
   visibility: VisibilityRange;
   /**
    * Optional opacity from zoom relative to the opening fit scale.
@@ -74,5 +86,5 @@ export type CanvasObject = {
    * transparent object is not hit-tested and is left out of `query`.
    */
   fade?: ZoomFade;
-  payload: TextPayload | ImagePayload;
+  payload: TextPayload | ImagePayload | GroupPayload;
 };

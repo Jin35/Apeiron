@@ -167,6 +167,7 @@ function shownAlpha(object: CanvasObject, scale: number, fitScale: number | unde
 }
 
 function minorSize(object: CanvasObject): number {
+  if (object.payload.type === 'group') return 0;
   const { width, height } = object.payload;
   const w = Number.isFinite(width) ? Math.abs(width) : 0;
   const h = Number.isFinite(height) ? Math.abs(height) : 0;
@@ -176,10 +177,12 @@ function minorSize(object: CanvasObject): number {
 
 /**
  * Parent-local `x` / `y` become world coordinates here, so `query` keeps
- * scanning scale-independent boxes. A missing parent or a cycle leaves the
+ * scanning scale-independent boxes. A parent's `scale` multiplies its
+ * descendants' positions and sizes. A missing parent or a cycle leaves the
  * object out of the entries (and therefore out of `query` and `countInBand`)
- * instead of throwing. The authored object is not mutated. `imageSources`
- * still lists every resident image, placed or not.
+ * instead of throwing. A group is a transform only and is not an entry.
+ * The authored object is not mutated. `imageSources` still lists every
+ * resident image, placed or not.
  */
 function placedEntries(objects: readonly CanvasObject[]): Entry[] {
   const byId = new Map<string, CanvasObject>();
@@ -188,21 +191,28 @@ function placedEntries(objects: readonly CanvasObject[]): Entry[] {
     if (!byId.has(object.id)) byId.set(object.id, object);
   }
 
-  const world = new Map<CanvasObject, { x: number; y: number } | null>();
+  const world = new Map<CanvasObject, Placement | null>();
 
-  function resolve(object: CanvasObject, stack: Set<CanvasObject>): { x: number; y: number } | null {
+  function resolve(object: CanvasObject, stack: Set<CanvasObject>): Placement | null {
     const known = world.get(object);
     if (known !== undefined) return known;
     if (stack.has(object)) return null;
 
     stack.add(object);
-    let placed: { x: number; y: number } | null = null;
+    let placed: Placement | null = null;
+    const local = localScale(object.scale);
     if (object.parentId === undefined) {
-      placed = { x: object.x, y: object.y };
+      placed = { x: object.x, y: object.y, scale: local };
     } else {
       const parent = byId.get(object.parentId);
       const origin = parent ? resolve(parent, stack) : null;
-      if (origin) placed = { x: origin.x + object.x, y: origin.y + object.y };
+      if (origin) {
+        placed = {
+          x: origin.x + object.x * origin.scale,
+          y: origin.y + object.y * origin.scale,
+          scale: origin.scale * local,
+        };
+      }
     }
     stack.delete(object);
     world.set(object, placed);
@@ -211,27 +221,46 @@ function placedEntries(objects: readonly CanvasObject[]): Entry[] {
 
   const entries: Entry[] = [];
   for (const object of objects) {
+    if (object.payload.type === 'group') continue;
     const placed = resolve(object, new Set());
     if (!placed) continue;
-    entries.push(entryFor(atWorld(object, placed.x, placed.y)));
+    entries.push(entryFor(atWorld(object, placed)));
   }
   return entries;
 }
 
-/** Query objects are world-space, so a parent link is not left on them. */
-function atWorld(object: CanvasObject, x: number, y: number): CanvasObject {
-  if (object.parentId === undefined) return object;
+type Placement = { x: number; y: number; scale: number };
+
+/** A missing or non-positive scale is 1, so bad data does not collapse the map. */
+function localScale(scale: number | undefined): number {
+  if (scale === undefined || !Number.isFinite(scale) || !(scale > 0)) return 1;
+  return scale;
+}
+
+/**
+ * Query objects are world-space, so a parent link is not left on them.
+ * `placement.scale` is already in the position and the payload size.
+ */
+function atWorld(object: CanvasObject, placement: Placement): CanvasObject {
+  const payload = scaledPayload(object.payload, placement.scale);
+  if (object.parentId === undefined && payload === object.payload) return object;
   return {
     id: object.id,
-    x,
-    y,
+    x: placement.x,
+    y: placement.y,
     visibility: object.visibility,
     ...(object.fade ? { fade: object.fade } : {}),
-    payload: object.payload,
+    payload,
   };
 }
 
+function scaledPayload(payload: CanvasObject['payload'], scale: number): CanvasObject['payload'] {
+  if (payload.type === 'group' || scale === 1) return payload;
+  return { ...payload, width: payload.width * scale, height: payload.height * scale };
+}
+
 function entryFor(object: CanvasObject): Entry {
+  if (object.payload.type === 'group') throw new Error('a group has no box');
   const pad = object.payload.type === 'image' ? IMAGE_PAD_CSS_PX : TEXT_PAD_CSS_PX;
   return {
     object,
