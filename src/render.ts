@@ -1,8 +1,10 @@
 import { viewBounds, type Camera } from './camera';
 import { displayOpacity } from './fade';
 import { gridStep } from './grid';
-import type { CanvasObject, TextPayload } from './model';
+import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
+import type { CanvasObject, LinkStyle, TextPayload } from './model';
 import { darkTheme, withAlpha, type Theme } from './theme';
+import { visibilityAlpha } from './visibility';
 
 /** One object to paint, with the alpha to use. */
 type VisibleObject = {
@@ -60,6 +62,11 @@ export type RenderFrame = {
    * `camera.scale / fitScale`. Omit it and `fade` is not applied.
    */
   fitScale?: number;
+  /**
+   * Authored objects, parent-local. Leader lines resolve `from` / `to` from
+   * this list each frame (parent chain and group scale). Omit and no link is drawn.
+   */
+  objects?: readonly CanvasObject[];
 };
 
 export type Renderer = {
@@ -168,13 +175,16 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       if (!(alpha > 0)) continue;
       ctx.globalAlpha = alpha;
       const { object } = entry;
-      if (object.payload.type === 'group') continue;
       if (object.payload.type === 'image') {
         drawImageObject(ctx, theme, camera, viewW, viewH, object, imageFor(object.payload.src));
-      } else {
+      } else if (object.payload.type === 'text') {
         drawTextObject(ctx, theme, camera, viewW, viewH, object.x, object.y, object.payload);
       }
     }
+    // After the objects, so the stroke stays visible across other parts.
+    // Clipping keeps it out of the two endpoints; their transparent pixels
+    // cannot show the line either, because the segment never enters the box.
+    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale);
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
       if (selected && paintAlpha(selected, camera.scale, frame.fitScale) > 0) {
@@ -190,6 +200,85 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
 /** Visibility alpha times the object's zoom fade. Nothing here is pack-specific. */
 function paintAlpha(entry: VisibleObject, scale: number, fitScale: number | undefined): number {
   return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale);
+}
+
+/**
+ * Leader lines from `objects`. Endpoints are resolved here, not stored on the
+ * link. Opacity is the minimum of the two endpoints' effective alpha, so the
+ * line fades in and out with them. A missing endpoint or an alpha of 0 is skipped.
+ * The stroke width and the gap stay in CSS pixels at every camera scale.
+ */
+function drawLinks(
+  ctx: CanvasRenderingContext2D,
+  theme: Theme,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+  objects: readonly CanvasObject[] | undefined,
+  fitScale: number | undefined,
+): void {
+  if (!objects || objects.length === 0) return;
+  for (const object of objects) {
+    if (object.payload.type !== 'link') continue;
+    const { from, to, style } = object.payload;
+    const fromAlpha = endpointAlpha(objects, from, camera.scale, fitScale);
+    const toAlpha = endpointAlpha(objects, to, camera.scale, fitScale);
+    if (fromAlpha === null || toAlpha === null) continue;
+    const alpha = Math.min(fromAlpha, toAlpha);
+    if (!(alpha > 0)) continue;
+
+    const fromRect = resolveWorldRect(objects, from);
+    const toRect = resolveWorldRect(objects, to);
+    if (!fromRect || !toRect) continue;
+    const segment = clipLeaderLine(
+      projectRect(fromRect, camera, viewW, viewH),
+      projectRect(toRect, camera, viewW, viewH),
+      leaderGap(style),
+    );
+    if (!segment) continue;
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = style?.color ?? theme.ink;
+    ctx.lineWidth = leaderWidth(style);
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(segment.x1, segment.y1);
+    ctx.lineTo(segment.x2, segment.y2);
+    ctx.stroke();
+  }
+}
+
+/** Display alpha of an endpoint, or null when that id is not in the list. */
+function endpointAlpha(
+  objects: readonly CanvasObject[],
+  id: string,
+  scale: number,
+  fitScale: number | undefined,
+): number | null {
+  const object = objects.find((candidate) => candidate.id === id);
+  if (!object) return null;
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale);
+}
+
+function projectRect(rect: AxisRect, camera: Camera, viewW: number, viewH: number): AxisRect {
+  return {
+    x: worldToCssX(rect.x, camera, viewW),
+    y: worldToCssY(rect.y, camera, viewH),
+    width: rect.width * camera.scale,
+    height: rect.height * camera.scale,
+  };
+}
+
+function leaderGap(style: LinkStyle | undefined): number {
+  const gap = style?.gap;
+  if (gap === undefined || !Number.isFinite(gap)) return LEADER_GAP_PX;
+  return Math.max(0, gap);
+}
+
+function leaderWidth(style: LinkStyle | undefined): number {
+  const width = style?.width;
+  if (width === undefined || !Number.isFinite(width) || !(width > 0)) return LEADER_WIDTH_PX;
+  return width;
 }
 
 /** Vignette plus a deterministic speck field. No image asset. */
@@ -239,7 +328,7 @@ function drawSelection(
   viewH: number,
   object: CanvasObject,
 ) {
-  if (object.payload.type === 'group') return;
+  if (object.payload.type === 'group' || object.payload.type === 'link') return;
   const { width, height } = object.payload;
   if (!(width > 0) || !(height > 0)) return;
   const left = worldToCssX(object.x - width / 2, camera, viewW);

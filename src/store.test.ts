@@ -425,6 +425,27 @@ describe('createMemoryStore', () => {
     expect(store.hitTest({ x: 10, y: -4 }, { x: 0, y: 0, scale: 4 })).toBeNull();
   });
 
+  it('does not place, count, or hit a link', () => {
+    const label = textObject('battery-label', wide, -20, 0, 'Battery', 4, undefined, 8, 3);
+    const battery = imageObject('battery', 'images/battery.webp', 20, 0, 10, 16);
+    const link: CanvasObject = {
+      id: 'battery-link',
+      x: 0,
+      y: 0,
+      visibility: wide,
+      payload: { type: 'link', from: 'battery-label', to: 'battery' },
+    };
+    const store = createMemoryStore([link, label, battery]);
+
+    expect(ids(store.query({ bounds: span, scale: 4 }))).toEqual(['battery-label', 'battery']);
+    expect(store.countInBand(4)).toBe(2);
+    expect(store.contentBoxes()).toHaveLength(2);
+    expect(store.resident()).toEqual([link, label, battery]);
+    expect(store.hitTest({ x: 0, y: 0 }, { x: 0, y: 0, scale: 4 })).toBeNull();
+    expect(store.hitTest({ x: -20, y: 0 }, { x: 0, y: 0, scale: 4 })?.id).toBe('battery-label');
+    expect(store.imageSources()).toEqual(['images/battery.webp']);
+  });
+
   it('skips an object whose zoom fade has reached alpha 0', () => {
     const band: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
     const fitScale = 4;

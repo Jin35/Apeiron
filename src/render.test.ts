@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Camera } from './camera';
+import { clipLeaderLine, resolveWorldRect } from './link';
 import type { CanvasObject, VisibilityRange } from './model';
 import { createRenderer } from './render';
 import type { VisibleObject } from './store';
@@ -38,7 +39,10 @@ type RecordedContext = CanvasRenderingContext2D & {
   fillRects: RectCall[];
   drawImages: number[];
   gradients: number;
+  strokes: StrokeCall[];
 };
+
+type StrokeCall = { x1: number; y1: number; x2: number; y2: number; alpha: number };
 
 class FakeImage {
   onload: (() => void) | null = null;
@@ -70,6 +74,9 @@ function recordingContext(options?: {
   const fillRects: RectCall[] = [];
   const drawImages: number[] = [];
   const gradients = { n: 0 };
+  const strokes: StrokeCall[] = [];
+  let pathStart: Xy | null = null;
+  let pathEnd: Xy | null = null;
   const ctx = new Proxy({} as RecordedContext, {
     get(_target, prop) {
       if (prop === 'paints') return paints;
@@ -83,6 +90,36 @@ function recordingContext(options?: {
       if (prop === 'fillRects') return fillRects;
       if (prop === 'drawImages') return drawImages;
       if (prop === 'gradients') return gradients.n;
+      if (prop === 'strokes') return strokes;
+      if (prop === 'beginPath') {
+        return () => {
+          pathStart = null;
+          pathEnd = null;
+        };
+      }
+      if (prop === 'moveTo') {
+        return (x: number, y: number) => {
+          pathStart = { x, y };
+          pathEnd = { x, y };
+        };
+      }
+      if (prop === 'lineTo') {
+        return (x: number, y: number) => {
+          pathEnd = { x, y };
+        };
+      }
+      if (prop === 'stroke') {
+        return () => {
+          if (!pathStart || !pathEnd) return;
+          strokes.push({
+            x1: pathStart.x,
+            y1: pathStart.y,
+            x2: pathEnd.x,
+            y2: pathEnd.y,
+            alpha: state.globalAlpha,
+          });
+        };
+      }
       if (prop === 'createRadialGradient') {
         return () => {
           gradients.n += 1;
@@ -213,6 +250,10 @@ function fillTextsOf(ctx: CanvasRenderingContext2D): TextCall[] {
 
 function strokeRectsOf(ctx: CanvasRenderingContext2D): RectCall[] {
   return (ctx as RecordedContext).strokeRects;
+}
+
+function strokesOf(ctx: CanvasRenderingContext2D): StrokeCall[] {
+  return (ctx as RecordedContext).strokes;
 }
 
 function fillRectsOf(ctx: CanvasRenderingContext2D): RectCall[] {
@@ -722,6 +763,140 @@ describe('createRenderer', () => {
     expect(fontsOf(ctx).some((font) => font.includes(paperTheme.displayFont))).toBe(true);
     expect(fontsOf(ctx).some((font) => font.includes('monospace'))).toBe(true);
     expect(gradientsOf(ctx)).toBe(1);
+  });
+
+  it('draws a hairline between resolved endpoints and keeps the gap in screen pixels', () => {
+    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const group: CanvasObject = {
+      id: 'internals',
+      x: 0,
+      y: 0,
+      scale: 0.5,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'group' },
+    };
+    const label: CanvasObject = {
+      id: 'battery-label',
+      parentId: 'internals',
+      x: -40,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      fade: { fadeIn: [1, 2] },
+      payload: { type: 'text', text: 'Battery', style: { fontSize: 4 }, width: 16, height: 8 },
+    };
+    const battery: CanvasObject = {
+      id: 'battery',
+      parentId: 'internals',
+      x: 40,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'image', src: 'images/battery.webp', width: 20, height: 20, frame: false },
+    };
+    const link: CanvasObject = {
+      id: 'battery-link',
+      x: 0,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'link', from: 'battery-label', to: 'battery' },
+    };
+    const objects = [group, label, battery, link];
+    const fitScale = 4;
+
+    const hidden = recordingContext();
+    createRenderer(canvasFor(hidden), () => {}).draw({
+      camera: { x: 0, y: 0, scale: fitScale },
+      width: 400,
+      height: 300,
+      theme,
+      visible: [],
+      objects,
+      fitScale,
+    });
+    expect(strokesOf(hidden)).toEqual([]);
+
+    for (const [scale, alpha] of [
+      [6, 0.5],
+      [8, 1],
+    ] as const) {
+      const ctx = recordingContext();
+      createRenderer(canvasFor(ctx), () => {}).draw({
+        camera: { x: 0, y: 0, scale },
+        width: 400,
+        height: 300,
+        theme,
+        visible: [],
+        objects,
+        fitScale,
+      });
+      const from = resolveWorldRect(objects, 'battery-label');
+      const to = resolveWorldRect(objects, 'battery');
+      if (!from || !to) throw new Error('expected endpoints');
+      const expected = clipLeaderLine(
+        { x: 200 + from.x * scale, y: 150 + from.y * scale, width: from.width * scale, height: from.height * scale },
+        { x: 200 + to.x * scale, y: 150 + to.y * scale, width: to.width * scale, height: to.height * scale },
+        4,
+      );
+      expect(expected).not.toBeNull();
+      expect(strokesOf(ctx)).toEqual([
+        {
+          x1: expected?.x1,
+          y1: expected?.y1,
+          x2: expected?.x2,
+          y2: expected?.y2,
+          alpha,
+        },
+      ]);
+      expect(lineWidthsOf(ctx)).toEqual([1.25]);
+      expect(strokeStylesOf(ctx)).toEqual([paperTheme.ink]);
+      const drawn = strokesOf(ctx)[0];
+      if (!drawn || !expected) throw new Error('expected a segment');
+      // The stroke stays outside both boxes: 4px of paper, then the edge.
+      expect(drawn.x1).toBeGreaterThan(200 + (from.x + from.width / 2) * scale);
+      expect(drawn.x2).toBeLessThan(200 + (to.x - to.width / 2) * scale);
+    }
+  });
+
+  it('skips a link whose endpoints overlap or are missing', () => {
+    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const band = { minScale: 0.01, maxScale: 10000 };
+    const left: CanvasObject = {
+      id: 'left',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'text', text: 'A', style: { fontSize: 4 }, width: 20, height: 10 },
+    };
+    const right: CanvasObject = {
+      id: 'right',
+      x: 4,
+      y: 0,
+      visibility: band,
+      payload: { type: 'image', src: 'images/battery.webp', width: 20, height: 10, frame: false },
+    };
+    const overlap: CanvasObject = {
+      id: 'overlap',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'left', to: 'right', style: { color: '#112233', width: 2, gap: 8 } },
+    };
+    const missing: CanvasObject = {
+      id: 'missing',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'left', to: 'gone' },
+    };
+    const ctx = recordingContext();
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 4 },
+      width: 200,
+      height: 200,
+      theme,
+      visible: [],
+      objects: [left, right, overlap, missing],
+    });
+    expect(strokesOf(ctx)).toEqual([]);
   });
 });
 
