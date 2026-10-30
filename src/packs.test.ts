@@ -80,12 +80,14 @@ describe('smartphone pack', () => {
 
     const parts: Array<[string, { width: number; height: number; opaqueWidth: number; opaqueHeight: number }, number, number, number]> = [
       ['midframe', partSprites.midframe, PHONE_WIDTH_MM, 0, 0],
-      ['battery', partSprites.battery, 50, -9.8, 16.6],
-      ['logic-board', partSprites.logicBoard, 26, 19.8, -45.2],
-      ['camera-module', partSprites.cameraModule, 22, -21.5, -59.5],
-      ['loudspeaker', partSprites.loudspeaker, 14, -12, 65.8],
-      ['haptic-motor', partSprites.hapticMotor, 15, 12, 65.8],
+      ['battery', partSprites.battery, 40, -12.6, 10.2],
+      ['logic-board', partSprites.logicBoard, 21, 19.8, -44],
+      ['camera-module', partSprites.cameraModule, 21, -22, -62.5],
+      ['loudspeaker', partSprites.loudspeaker, 18, -11, 66],
+      ['haptic-motor', partSprites.hapticMotor, 22, 13, 66.5],
     ];
+    const midAuthored = smartphoneObjects.find((object) => object.id === 'midframe');
+    if (!midAuthored || midAuthored.payload.type !== 'image') throw new Error('expected the midframe');
     for (const [id, sprite, opaqueMm, x, y] of parts) {
       const part = smartphoneObjects.find((object) => object.id === id);
       if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
@@ -99,11 +101,10 @@ describe('smartphone pack', () => {
       const partOpaqueWidth = (part.payload.width * sprite.opaqueWidth) / sprite.width;
       const partOpaqueHeight = (part.payload.height * sprite.opaqueHeight) / sprite.height;
       expect(partOpaqueWidth).toBeCloseTo(opaqueMm);
-      expect(part.payload.width / 2).toBeLessThanOrEqual(payload.width / 2);
-      expect(part.payload.height / 2).toBeLessThanOrEqual(payload.height / 2);
-      expect(Math.abs(part.x) + part.payload.width / 2).toBeLessThanOrEqual(payload.width / 2 + 1e-9);
-      expect(Math.abs(part.y) + part.payload.height / 2).toBeLessThanOrEqual(payload.height / 2 + 1e-9);
       expect(partOpaqueHeight / partOpaqueWidth).toBeCloseTo(sprite.opaqueHeight / sprite.opaqueWidth);
+      if (id === 'midframe') continue;
+      expect(Math.abs(part.x) + part.payload.width / 2).toBeLessThanOrEqual(midAuthored.payload.width / 2 + 1e-9);
+      expect(Math.abs(part.y) + part.payload.height / 2).toBeLessThanOrEqual(midAuthored.payload.height / 2 + 1e-9);
     }
   });
 

@@ -3,8 +3,8 @@ import { paperTheme, type ContentPack } from '../src/theme';
 
 /**
  * Pixel size of a trimmed cut-out, and of the pixels that are actually opaque.
- * A 4px soft margin sits on every side. World size maps the opaque width to
- * millimetres and keeps the file's own aspect.
+ * World size maps an opaque width in millimetres onto that box and keeps the
+ * file's own aspect. These cuts have no soft shadow fringe.
  */
 type Sprite = {
   width: number;
@@ -15,19 +15,19 @@ type Sprite = {
 
 /** `images/smartphone.webp`. The opaque phone is 71.5 mm wide. */
 export const smartphoneSprite = {
-  width: 478,
-  height: 977,
-  opaqueWidth: 470,
-  opaqueHeight: 969,
+  width: 465,
+  height: 951,
+  opaqueWidth: 461,
+  opaqueHeight: 947,
 } as const satisfies Sprite;
 
 export const partSprites = {
-  midframe: { width: 488, height: 985, opaqueWidth: 480, opaqueHeight: 977 },
-  battery: { width: 491, height: 879, opaqueWidth: 483, opaqueHeight: 871 },
-  logicBoard: { width: 439, height: 887, opaqueWidth: 431, opaqueHeight: 878 },
-  cameraModule: { width: 594, height: 521, opaqueWidth: 586, opaqueHeight: 513 },
-  loudspeaker: { width: 439, height: 280, opaqueWidth: 431, opaqueHeight: 272 },
-  hapticMotor: { width: 423, height: 200, opaqueWidth: 415, opaqueHeight: 192 },
+  midframe: { width: 450, height: 943, opaqueWidth: 446, opaqueHeight: 939 },
+  battery: { width: 487, height: 899, opaqueWidth: 483, opaqueHeight: 895 },
+  logicBoard: { width: 414, height: 863, opaqueWidth: 410, opaqueHeight: 859 },
+  cameraModule: { width: 537, height: 500, opaqueWidth: 533, opaqueHeight: 496 },
+  loudspeaker: { width: 383, height: 227, opaqueWidth: 379, opaqueHeight: 223 },
+  hapticMotor: { width: 418, height: 153, opaqueWidth: 418, opaqueHeight: 153 },
 } as const satisfies Record<string, Sprite>;
 
 /** Opaque phone width. World units are millimetres. */
@@ -100,14 +100,14 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     payload: { type: 'group' },
   },
   cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals'),
-  cutout('battery', 'images/smartphone/battery.webp', partSprites.battery, 50, -9.8, 16.6, fadeIn, 'internals'),
+  cutout('battery', 'images/smartphone/battery.webp', partSprites.battery, 40, -12.6, 10.2, fadeIn, 'internals'),
   cutout(
     'logic-board',
     'images/smartphone/logic-board.webp',
     partSprites.logicBoard,
-    26,
+    21,
     19.8,
-    -45.2,
+    -44,
     fadeIn,
     'internals',
   ),
@@ -115,9 +115,9 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     'camera-module',
     'images/smartphone/camera-module.webp',
     partSprites.cameraModule,
-    22,
-    -21.5,
-    -59.5,
+    21,
+    -22,
+    -62.5,
     fadeIn,
     'internals',
   ),
@@ -125,9 +125,9 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     'loudspeaker',
     'images/smartphone/loudspeaker.webp',
     partSprites.loudspeaker,
-    14,
-    -12,
-    65.8,
+    18,
+    -11,
+    66,
     fadeIn,
     'internals',
   ),
@@ -135,9 +135,9 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     'haptic-motor',
     'images/smartphone/haptic-motor.webp',
     partSprites.hapticMotor,
-    15,
-    12,
-    65.8,
+    22,
+    13,
+    66.5,
     fadeIn,
     'internals',
   ),
