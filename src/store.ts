@@ -1,5 +1,5 @@
-import type { Camera, ContentBox, ViewBounds } from './camera';
-import { displayOpacity } from './fade';
+import { boxFitScale, type Camera, type ContentBox, type ViewBounds } from './camera';
+import { displayOpacity, type AnchorScale } from './fade';
 import type { CanvasObject } from './model';
 import { visibilityAlpha } from './visibility';
 
@@ -26,6 +26,19 @@ export type SceneQuery = {
    * Omit it and a `fade` on an object is not applied.
    */
   fitScale?: number;
+  /**
+   * Viewport in CSS pixels. A fade that names an anchor object fits that
+   * object's world box with the opening-fit rule. Omit it and those ranges
+   * are not applied.
+   */
+  viewWidth?: number;
+  viewHeight?: number;
+};
+
+/** CSS pixel size of the viewport. Anchor fits need it; the opening fit does not. */
+export type ViewportSize = {
+  width: number;
+  height: number;
 };
 
 export type VisibleObject = {
@@ -46,8 +59,9 @@ export interface SceneStore {
   /**
    * In band, anywhere in the world, display alpha above the HUD cutoff (0.02).
    * `fitScale` is the opening fit; omit it and zoom fade is not applied.
+   * `view` resolves anchor-relative fades. Omit it and those ranges are not applied.
    */
-  countInBand(scale: number, fitScale?: number): number;
+  countInBand(scale: number, fitScale?: number, view?: ViewportSize): number;
   /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
   /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
@@ -58,11 +72,13 @@ export interface SceneStore {
    * alpha at or below the draw cutoff is skipped, including a zoom fade to 0.
    * When several overlap, the greater `maxScale` wins and a tie goes to the later one.
    * `fitScale` is the opening fit; omit it and zoom fade is not applied.
+   * `view` resolves anchor-relative fades. Omit it and those ranges are not applied.
    */
   hitTest(
     worldPoint: { x: number; y: number },
     camera: Camera,
     fitScale?: number,
+    view?: ViewportSize,
   ): CanvasObject | null;
   /**
    * World boxes of every placed object, parent chain already flattened.
@@ -110,18 +126,20 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
   }
 
   return {
-    countInBand(scale, fitScale) {
+    countInBand(scale, fitScale, view) {
+      const anchorScale = anchorFits(entries, view);
       let count = 0;
       for (const { object } of entries) {
-        if (shownAlpha(object, scale, fitScale) > HUD_ALPHA) count += 1;
+        if (shownAlpha(object, scale, fitScale, anchorScale) > HUD_ALPHA) count += 1;
       }
       return count;
     },
     query(query) {
+      const anchorScale = anchorFits(entries, { width: query.viewWidth ?? 0, height: query.viewHeight ?? 0 });
       const visible: VisibleObject[] = [];
       for (const entry of entries) {
         const alpha = visibilityAlpha(entry.object.visibility, query.scale);
-        if (displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale) <= DRAW_ALPHA) continue;
+        if (displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale, anchorScale) <= DRAW_ALPHA) continue;
         if (!intersects(query.bounds, padBox(entry, query.scale))) continue;
         visible.push({ object: entry.object, alpha });
       }
@@ -140,10 +158,11 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
         listeners.delete(onChange);
       };
     },
-    hitTest(worldPoint, camera, fitScale) {
+    hitTest(worldPoint, camera, fitScale, view) {
+      const anchorScale = anchorFits(entries, view);
       let best: Entry | undefined;
       for (const entry of entries) {
-        if (shownAlpha(entry.object, camera.scale, fitScale) <= DRAW_ALPHA) continue;
+        if (shownAlpha(entry.object, camera.scale, fitScale, anchorScale) <= DRAW_ALPHA) continue;
         if (!containsPoint(entry.box, worldPoint)) continue;
         if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
           best = entry;
@@ -170,8 +189,30 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
 }
 
 /** Visibility band times zoom fade. The cutoff compares this, not the band alone. */
-function shownAlpha(object: CanvasObject, scale: number, fitScale: number | undefined): number {
-  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale);
+function shownAlpha(
+  object: CanvasObject,
+  scale: number,
+  fitScale: number | undefined,
+  anchorScale: AnchorScale | undefined,
+): number {
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale);
+}
+
+/**
+ * Opening fit of each anchor named by a resident fade. Missing view, or an
+ * id with no box, leaves that range unapplied.
+ */
+function anchorFits(entries: readonly Entry[], view: ViewportSize | undefined): AnchorScale | undefined {
+  if (!view || !(view.width > 0) || !(view.height > 0)) return undefined;
+  const cache = new Map<string, number | undefined>();
+  return (id: string) => {
+    const known = cache.get(id);
+    if (known !== undefined || cache.has(id)) return known;
+    const anchor = entries.find((entry) => entry.object.id === id);
+    const fitted = anchor ? boxFitScale(anchor.box, view.width, view.height) : undefined;
+    cache.set(id, fitted);
+    return fitted;
+  };
 }
 
 function minorSize(object: CanvasObject): number {

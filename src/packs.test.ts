@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bootFromLocation, openingCameraFor, resolvePack } from '../content/packs';
 import {
+  batterySprites,
   INTERNALS_SCALE,
   partSprites,
   PHONE_WIDTH_MM,
@@ -9,9 +10,9 @@ import {
   smartphoneSprite,
 } from '../content/smartphone';
 import { initialCameraFor } from './bootstrap';
-import { applyCameraCommand, deriveCameraLimits, viewBounds } from './camera';
+import { applyCameraCommand, boxFitScale, deriveCameraLimits, viewBounds, type ViewBounds } from './camera';
 import { demoPack, titleFitWidth } from './demo';
-import { resolveWorldRect } from './link';
+import { resolveWorldRect, type AxisRect } from './link';
 import type { ImagePayload } from './model';
 import { relativeZoomAlpha } from './fade';
 import { createMemoryStore } from './store';
@@ -46,10 +47,15 @@ describe('smartphone pack', () => {
       'logic-board-label',
       'midframe-label',
       'haptic-motor-label',
+      'cell-label',
+      'protection-board-label',
     ]);
     expect(smartphoneObjects.map((object) => object.id)).toEqual([
       'internals',
+      'battery-internals',
       'midframe',
+      'cell',
+      'protection-board',
       'battery',
       'logic-board',
       'camera-module',
@@ -68,6 +74,10 @@ describe('smartphone pack', () => {
       'midframe-link',
       'haptic-motor-label',
       'haptic-motor-link',
+      'cell-label',
+      'cell-link',
+      'protection-board-label',
+      'protection-board-link',
     ]);
     expect(INTERNALS_SCALE).toBe(0.625);
     const reveal = [1, 1 / INTERNALS_SCALE] as const;
@@ -112,7 +122,11 @@ describe('smartphone pack', () => {
       const part = smartphoneObjects.find((object) => object.id === id);
       if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
       expect(part.parentId).toBe('internals');
-      expect(part.fade).toEqual({ fadeIn: reveal });
+      if (id === 'battery') {
+        expect(part.fade).toEqual({ fadeIn: reveal, fadeOut: reveal, fadeOutOf: 'battery' });
+      } else {
+        expect(part.fade).toEqual({ fadeIn: reveal });
+      }
       expect(part.scale).toBeUndefined();
       expect(part.x).toBe(x);
       expect(part.y).toBe(y);
@@ -200,16 +214,25 @@ describe('smartphone pack', () => {
 
   it('shrinks the internals by one group scale and fades them in when that scale fills the opening', () => {
     const reveal = 1 / INTERNALS_SCALE;
-    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800).fitScale;
+    const view = { width: 1280, height: 800 };
+    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), view.width, view.height).fitScale;
     const store = createMemoryStore(smartphoneObjects);
     const span = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
-    const at = (ratio: number) => store.query({ bounds: span, scale: fit * ratio, fitScale: fit });
+    const at = (ratio: number) =>
+      store.query({
+        bounds: span,
+        scale: fit * ratio,
+        fitScale: fit,
+        viewWidth: view.width,
+        viewHeight: view.height,
+      });
 
     expect(at(1).map((entry) => entry.object.id)).toEqual(['phone']);
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('phone');
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('internals');
-    expect(store.countInBand(fit, fit)).toBe(1);
-    expect(store.countInBand(fit * reveal, fit)).toBe(12);
+    expect(at(reveal).map((entry) => entry.object.id)).not.toContain('cell');
+    expect(store.countInBand(fit, fit, view)).toBe(1);
+    expect(store.countInBand(fit * reveal, fit, view)).toBe(12);
     const revealed = at(reveal).map((entry) => entry.object.id);
     expect(revealed).toEqual(expect.arrayContaining([
       'camera-module-label',
@@ -271,7 +294,7 @@ describe('smartphone pack', () => {
       if (!label || label.payload.type !== 'text') throw new Error(`expected a label for ${part.id}`);
       if (!link || link.payload.type !== 'link') throw new Error(`expected a link for ${part.id}`);
       expect(label.parentId).toBe('internals');
-      expect(label.fade).toEqual(part.fade);
+      expect(label.fade).toEqual({ fadeIn: [1, 1 / INTERNALS_SCALE], fadeOut: [1, 1 / INTERNALS_SCALE], fadeOutOf: 'battery' });
       expect(label.payload).toMatchObject({
         text: names[part.id],
         style: { fontSize: 4.2 },
@@ -281,6 +304,36 @@ describe('smartphone pack', () => {
       expect(label.payload.style.fontFamily).toBeUndefined();
       expect(link.payload).toEqual({ type: 'link', from: label.id, to: part.id });
 
+      const from = resolveWorldRect(smartphoneObjects, label.id);
+      const to = resolveWorldRect(smartphoneObjects, part.id);
+      if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
+      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(15);
+    }
+
+    const inside: Record<string, string> = {
+      cell: 'Cell',
+      'protection-board': 'Protection board',
+    };
+    const nested = smartphoneObjects.filter(
+      (object) => object.parentId === 'battery-internals' && object.payload.type === 'image',
+    );
+    expect(nested.map((part) => part.id).sort()).toEqual(Object.keys(inside).sort());
+    for (const part of nested) {
+      const label = smartphoneObjects.find((object) => object.id === `${part.id}-label`);
+      const link = smartphoneObjects.find((object) => object.id === `${part.id}-link`);
+      if (!label || label.payload.type !== 'text') throw new Error(`expected a label for ${part.id}`);
+      if (!link || link.payload.type !== 'link') throw new Error(`expected a link for ${part.id}`);
+      expect(label.parentId).toBe('battery-internals');
+      expect(label.fade).toEqual(part.fade);
+      expect(part.fade).toEqual({ fadeIn: [1, 1 / INTERNALS_SCALE], fadeInOf: 'battery' });
+      expect(label.payload).toMatchObject({
+        text: inside[part.id],
+        style: { fontSize: 4.2 },
+        height: 4.2,
+      });
+      expect(label.payload.style.color).toBeUndefined();
+      expect(label.payload.style.fontFamily).toBeUndefined();
+      expect(link.payload).toEqual({ type: 'link', from: label.id, to: part.id });
       const from = resolveWorldRect(smartphoneObjects, label.id);
       const to = resolveWorldRect(smartphoneObjects, part.id);
       if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
@@ -304,6 +357,12 @@ describe('smartphone pack', () => {
         if (!a || !b) continue;
         const labelInvolved = a.id.endsWith('-label') || b.id.endsWith('-label');
         if (!labelInvolved) continue;
+        // The cell and board sit in the phone and midframe plates. Their labels
+        // share that cavity; the plates' boxes are the whole phone, not the ink.
+        const ids = [a.id, b.id];
+        const nestedLabel = ids.some((id) => id === 'cell-label' || id === 'protection-board-label');
+        const enclosingPlate = ids.some((id) => id === 'phone' || id === 'midframe');
+        if (nestedLabel && enclosingPlate) continue;
         expect(rectsOverlap(a.box, b.box), `${a.id} overlaps ${b.id}`).toBe(false);
       }
     }
@@ -330,7 +389,90 @@ describe('smartphone pack', () => {
       }
     }
   });
+
+  it('fades the battery out across its own fit and brings the cell and board in', () => {
+    const reveal = 1 / INTERNALS_SCALE;
+    const desktop = { width: 1280, height: 800 };
+    const store = createMemoryStore(smartphoneObjects);
+    const fit = deriveCameraLimits(store.contentBoxes(), desktop.width, desktop.height).fitScale;
+    const batteryFit = boxFitScale(boundsOf(mustRect('battery')), desktop.width, desktop.height);
+    expect(batteryFit).toBeGreaterThan(fit * reveal);
+
+    const narrow = { width: 390, height: 844 };
+    const narrowFit = deriveCameraLimits(store.contentBoxes(), narrow.width, narrow.height).fitScale;
+    expect(boxFitScale(boundsOf(mustRect('battery')), narrow.width, narrow.height)).toBeGreaterThan(narrowFit * reveal);
+
+    const span = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
+    const idsAt = (ratio: number) =>
+      store
+        .query({
+          bounds: span,
+          scale: batteryFit * ratio,
+          fitScale: fit,
+          viewWidth: desktop.width,
+          viewHeight: desktop.height,
+        })
+        .map((entry) => entry.object.id);
+
+    expect(idsAt(1)).toEqual(expect.arrayContaining(['battery', 'battery-label']));
+    expect(idsAt(1)).not.toEqual(expect.arrayContaining(['cell', 'cell-label', 'protection-board-label']));
+    expect(idsAt(reveal)).not.toEqual(expect.arrayContaining(['battery', 'battery-label', 'logic-board-label']));
+    expect(idsAt(reveal)).toEqual(
+      expect.arrayContaining(['cell', 'protection-board', 'cell-label', 'protection-board-label']),
+    );
+    expect(idsAt(2.5)).not.toContain('battery');
+
+    const view = desktop;
+    const cell = mustRect('cell');
+    const board = mustRect('protection-board');
+    const battery = mustRect('battery');
+    const at = (ratio: number) => ({ x: battery.x, y: battery.y, scale: batteryFit * ratio });
+    expect(store.hitTest({ x: cell.x, y: cell.y }, at(1), fit, view)?.id).toBe('battery');
+    expect(store.hitTest({ x: cell.x, y: cell.y }, at(reveal), fit, view)?.id).toBe('cell');
+    expect(store.hitTest({ x: board.x, y: board.y }, at(reveal), fit, view)?.id).toBe('protection-board');
+
+    const limits = deriveCameraLimits(store.contentBoxes(), desktop.width, desktop.height);
+    expect(limits.maxScale).toBeGreaterThanOrEqual(batteryFit * 2.5);
+    const boardObject = smartphoneObjects.find((object) => object.id === 'protection-board');
+    const cellObject = smartphoneObjects.find((object) => object.id === 'cell');
+    if (!boardObject || boardObject.payload.type !== 'image') throw new Error('expected the protection board');
+    if (!cellObject || cellObject.payload.type !== 'image') throw new Error('expected the cell');
+    expect(visibilityAlpha(boardObject.visibility, batteryFit * 2.5)).toBe(1);
+    expect(cellObject.payload.src).toBe('images/smartphone/battery-cell.webp');
+    expect(boardObject.payload.src).toBe('images/smartphone/battery-controller.webp');
+    const cellOpaque = (cellObject.payload.width * batterySprites.cell.opaqueWidth) / batterySprites.cell.width;
+    const boardOpaque =
+      (boardObject.payload.width * batterySprites.protectionBoard.opaqueWidth) /
+      batterySprites.protectionBoard.width;
+    expect(cellOpaque).toBeCloseTo(39);
+    expect(boardOpaque).toBeCloseTo(40);
+    const cellTop = cellObject.y - cellObject.payload.height / 2;
+    const boardTop = boardObject.y - boardObject.payload.height / 2;
+    const boardBottom = boardObject.y + boardObject.payload.height / 2;
+    expect(boardTop).toBeLessThan(cellTop);
+    expect(boardBottom).toBeGreaterThan(cellTop);
+    expect(boardBottom).toBeLessThan(cellObject.y);
+    const authoredBattery = smartphoneObjects.find((object) => object.id === 'battery');
+    if (!authoredBattery || authoredBattery.payload.type !== 'image') throw new Error('expected the battery');
+    expect(cell.width * reveal).toBeCloseTo(cellObject.payload.width * INTERNALS_SCALE);
+    expect(battery.width).toBeCloseTo(authoredBattery.payload.width * INTERNALS_SCALE);
+  });
 });
+
+function mustRect(id: string): AxisRect {
+  const rect = resolveWorldRect(smartphoneObjects, id);
+  if (!rect) throw new Error(`expected a world rect for ${id}`);
+  return rect;
+}
+
+function boundsOf(rect: AxisRect): ViewBounds {
+  return {
+    left: rect.x - rect.width / 2,
+    right: rect.x + rect.width / 2,
+    top: rect.y - rect.height / 2,
+    bottom: rect.y + rect.height / 2,
+  };
+}
 
 /** Degrees from the nearest axis. 0 is horizontal or vertical. */
 function axisClearanceDegrees(

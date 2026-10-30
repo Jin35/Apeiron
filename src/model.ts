@@ -71,15 +71,28 @@ export type LinkStyle = {
 };
 
 /**
- * Opacity from zoom relative to the opening fit scale.
- * `r = camera.scale / fitScale`. Each pair is `[start, end]` in that ratio.
+ * Opacity from zoom relative to a fit scale.
+ * `r = camera.scale / reference`. Each pair is `[start, end]` in that ratio.
  * Between the ends the blend is linear in `r`. At and below `start`, `fadeOut`
  * is opaque and `fadeIn` is transparent. At and above `end`, they swap.
+ * The reference is the opening fit, unless `fadeOutOf` or `fadeInOf` names an
+ * object. That object's own opening fit is the reference for that one range:
+ * the same margin and slack the pack uses for s0, applied to its world box.
  * This is not a time animation, so a reduced-motion setting does not change it.
  */
 export type ZoomFade = {
   fadeOut?: readonly [number, number];
   fadeIn?: readonly [number, number];
+  /**
+   * Object whose opening fit is `r = 1` for `fadeOut`.
+   * Omit to use the pack's opening fit.
+   */
+  fadeOutOf?: string;
+  /**
+   * Object whose opening fit is `r = 1` for `fadeIn`.
+   * Omit to use the pack's opening fit.
+   */
+  fadeInOf?: string;
 };
 
 export type CanvasObject = {

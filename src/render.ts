@@ -1,5 +1,5 @@
-import { viewBounds, type Camera } from './camera';
-import { displayOpacity } from './fade';
+import { boxFitScale, viewBounds, type Camera, type ViewBounds } from './camera';
+import { displayOpacity, type AnchorScale } from './fade';
 import { gridStep } from './grid';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
 import type { CanvasObject, LinkStyle, TextPayload } from './model';
@@ -59,7 +59,8 @@ export type RenderFrame = {
   theme?: Theme;
   /**
    * Opening fit scale (s0) for this viewport. Zoom fade on an object is
-   * `camera.scale / fitScale`. Omit it and `fade` is not applied.
+   * `camera.scale / fitScale`. Omit it and a fade with no anchor is not applied.
+   * Anchor fits use this frame's width and height.
    */
   fitScale?: number;
   /**
@@ -170,8 +171,9 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     const sorted = [...visible].sort(
       (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
     );
+    const anchorScale = anchorFits(frame.objects, viewW, viewH);
     for (const entry of sorted) {
-      const alpha = paintAlpha(entry, camera.scale, frame.fitScale);
+      const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale);
       if (!(alpha > 0)) continue;
       ctx.globalAlpha = alpha;
       const { object } = entry;
@@ -184,10 +186,10 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     // After the objects, so the stroke stays visible across other parts.
     // Clipping keeps it out of the two endpoints; their transparent pixels
     // cannot show the line either, because the segment never enters the box.
-    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale);
+    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale, anchorScale);
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
-      if (selected && paintAlpha(selected, camera.scale, frame.fitScale) > 0) {
+      if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale) > 0) {
         drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
       }
     }
@@ -198,8 +200,13 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
 }
 
 /** Visibility alpha times the object's zoom fade. Nothing here is pack-specific. */
-function paintAlpha(entry: VisibleObject, scale: number, fitScale: number | undefined): number {
-  return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale);
+function paintAlpha(
+  entry: VisibleObject,
+  scale: number,
+  fitScale: number | undefined,
+  anchorScale: AnchorScale | undefined,
+): number {
+  return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale, anchorScale);
 }
 
 /**
@@ -216,13 +223,14 @@ function drawLinks(
   viewH: number,
   objects: readonly CanvasObject[] | undefined,
   fitScale: number | undefined,
+  anchorScale: AnchorScale | undefined,
 ): void {
   if (!objects || objects.length === 0) return;
   for (const object of objects) {
     if (object.payload.type !== 'link') continue;
     const { from, to, style } = object.payload;
-    const fromAlpha = endpointAlpha(objects, from, camera.scale, fitScale);
-    const toAlpha = endpointAlpha(objects, to, camera.scale, fitScale);
+    const fromAlpha = endpointAlpha(objects, from, camera.scale, fitScale, anchorScale);
+    const toAlpha = endpointAlpha(objects, to, camera.scale, fitScale, anchorScale);
     if (fromAlpha === null || toAlpha === null) continue;
     const alpha = Math.min(fromAlpha, toAlpha);
     if (!(alpha > 0)) continue;
@@ -254,10 +262,41 @@ function endpointAlpha(
   id: string,
   scale: number,
   fitScale: number | undefined,
+  anchorScale: AnchorScale | undefined,
 ): number | null {
   const object = objects.find((candidate) => candidate.id === id);
   if (!object) return null;
-  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale);
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale);
+}
+
+/**
+ * Opening fit of each anchor named on `objects`. The rect is the authored
+ * placement, parent chain included, so it matches the store's world box.
+ */
+function anchorFits(
+  objects: readonly CanvasObject[] | undefined,
+  viewW: number,
+  viewH: number,
+): AnchorScale | undefined {
+  if (!objects || !(viewW > 0) || !(viewH > 0)) return undefined;
+  const cache = new Map<string, number | undefined>();
+  return (id: string) => {
+    const known = cache.get(id);
+    if (known !== undefined || cache.has(id)) return known;
+    const rect = resolveWorldRect(objects, id);
+    const fitted = rect ? boxFitScale(rectToBounds(rect), viewW, viewH) : undefined;
+    cache.set(id, fitted);
+    return fitted;
+  };
+}
+
+function rectToBounds(rect: AxisRect): ViewBounds {
+  return {
+    left: rect.x - rect.width / 2,
+    right: rect.x + rect.width / 2,
+    top: rect.y - rect.height / 2,
+    bottom: rect.y + rect.height / 2,
+  };
 }
 
 function projectRect(rect: AxisRect, camera: Camera, viewW: number, viewH: number): AxisRect {

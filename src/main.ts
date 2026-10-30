@@ -48,10 +48,12 @@ export function mountShell(
     const camera = zoomAnim.camera;
     const limitsNow = activeLimits(width, height);
     const fitScale = width > 0 && height > 0 ? limitsNow.fitScale : undefined;
+    const view = width > 0 && height > 0 ? { width, height } : undefined;
     const shown = store.query({
       bounds: viewBounds(camera, width, height),
       scale: camera.scale,
       ...(fitScale !== undefined ? { fitScale } : {}),
+      ...(view ? { viewWidth: view.width, viewHeight: view.height } : {}),
     });
     renderer.draw({
       camera,
@@ -64,7 +66,7 @@ export function mountShell(
       ...(selectedId ? { selectedId } : {}),
     });
     if (labelList) syncLabelList(labelList, shown);
-    const visible = store.countInBand(camera.scale, fitScale);
+    const visible = store.countInBand(camera.scale, fitScale, view);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);
@@ -103,7 +105,8 @@ export function mountShell(
       const viewW = rect.width;
       const viewH = rect.height;
       const fitScale = viewW > 0 && viewH > 0 ? activeLimits(viewW, viewH).fitScale : undefined;
-      selectedId = store.hitTest(world, camera, fitScale)?.id ?? null;
+      const view = viewW > 0 && viewH > 0 ? { width: viewW, height: viewH } : undefined;
+      selectedId = store.hitTest(world, camera, fitScale, view)?.id ?? null;
       frame(now);
       return;
     }
