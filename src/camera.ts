@@ -176,14 +176,12 @@ export function deriveCameraLimits(
   const derivedBounds = union ? expandBounds(union, CONTENT_MARGIN) : undefined;
   const bounds = finiteBounds(explicit?.bounds) ?? derivedBounds;
 
-  const fitted =
-    bounds && viewW > 0 && viewH > 0 ? fitScale(bounds, viewW, viewH) * FIT_SLACK : MIN_SCALE;
+  const openingFit = bounds ? slackFit(bounds, viewW, viewH) : MIN_SCALE;
   const readable = content.length > 0 ? readingScale(content) : MAX_SCALE;
 
   const minOverride = positiveScale(explicit?.minScale);
   const maxOverride = positiveScale(explicit?.maxScale);
-  const openingFit = clampScale(fitted);
-  let minScale = clampScale(minOverride ?? fitted);
+  let minScale = clampScale(minOverride ?? openingFit);
   let maxScale = clampScale(maxOverride ?? readable);
   if (minScale > maxScale) {
     // Keep a non-empty range. An explicit ceiling below the fit wins, and the
@@ -245,6 +243,21 @@ function readingScale(content: readonly ContentBox[]): number {
     max = Math.max(max, fromBand, fromSize);
   }
   return max;
+}
+
+/**
+ * Opening fit of one world box. Expands by `CONTENT_MARGIN`, then applies
+ * `FIT_SLACK`, the same rule `deriveCameraLimits` uses for the pack's s0.
+ * A non-positive viewport is `MIN_SCALE`.
+ */
+export function boxFitScale(box: ViewBounds, viewW: number, viewH: number): number {
+  return slackFit(expandBounds(box, CONTENT_MARGIN), viewW, viewH);
+}
+
+/** `fitScale` of bounds that are already expanded (or an explicit override), times slack. */
+function slackFit(bounds: ViewBounds, viewW: number, viewH: number): number {
+  if (!(viewW > 0) || !(viewH > 0)) return MIN_SCALE;
+  return clampScale(fitScale(bounds, viewW, viewH) * FIT_SLACK);
 }
 
 function fitScale(bounds: ViewBounds, viewW: number, viewH: number): number {

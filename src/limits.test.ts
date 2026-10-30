@@ -8,6 +8,7 @@ import {
 } from './buttonZoom';
 import {
   applyCameraCommand,
+  boxFitScale,
   CONTENT_MARGIN,
   deriveCameraLimits,
   FIT_SLACK,
@@ -63,6 +64,10 @@ describe('derived camera limits', () => {
     const fitted = fitOf(limits.bounds!, viewW, viewH) * FIT_SLACK;
     expect(limits.minScale).toBeCloseTo(fitted);
     expect(limits.fitScale).toBeCloseTo(fitted);
+    const only = plate(-100, 100, -50, 50, 10, 20);
+    expect(boxFitScale(only.box, viewW, viewH)).toBeCloseTo(
+      deriveCameraLimits([only], viewW, viewH).fitScale,
+    );
     expect(limits.maxScale).toBeCloseTo(10);
 
     const out = applyCameraCommand(

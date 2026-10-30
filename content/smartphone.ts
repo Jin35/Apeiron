@@ -30,6 +30,12 @@ export const partSprites = {
   hapticMotor: { width: 418, height: 153, opaqueWidth: 418, opaqueHeight: 153 },
 } as const satisfies Record<string, Sprite>;
 
+/** Inside the battery. Same 2px clear margin as the phone parts. */
+export const batterySprites = {
+  cell: { width: 552, height: 890, opaqueWidth: 548, opaqueHeight: 886 },
+  protectionBoard: { width: 948, height: 233, opaqueWidth: 944, opaqueHeight: 229 },
+} as const satisfies Record<string, Sprite>;
+
 /** Opaque phone width. World units are millimetres. */
 export const PHONE_WIDTH_MM = 71.5;
 
@@ -40,19 +46,41 @@ export const PHONE_WIDTH_MM = 71.5;
  */
 export const INTERNALS_SCALE = 0.625;
 
-/** `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`. */
+/**
+ * `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`.
+ * The phone uses the opening fit as `r = 1`. The battery level uses the
+ * battery's own opening fit, named on the fade, and the same end.
+ */
 const REVEAL = [1, 1 / INTERNALS_SCALE] as const;
 
 /**
- * Wide enough that the opening fit and a deep look (r well past 3) sit in
- * the flat middle of the band. Zoom fade, not this range, is what changes
- * opacity. Every part shares the same maxScale so paint order follows this
- * array: the renderer sorts by maxScale and keeps ties in the order given.
+ * Pouch cell, 39 mm across the 40 mm pack. Its opaque bottom sits 1 mm above
+ * the pack's opaque bottom.
+ */
+const CELL_WIDTH_MM = 39;
+const CELL_Y_MM = 4.53;
+
+/**
+ * Protection board, 40 mm across the cell's top edge. The flex in the art
+ * points up on the right, where the pack's connector is.
+ */
+const BOARD_WIDTH_MM = 40;
+const BOARD_Y_MM = -29.72;
+
+/**
+ * Wide enough that the opening fit and the battery level sit in the flat
+ * middle of the band. Zoom fade, not this range, is what changes opacity.
+ * Every part shares the same maxScale so paint order follows this array:
+ * the renderer sorts by maxScale and keeps ties in the order given.
  */
 const band = { minScale: 0.02, maxScale: 10000 };
 
 const fadeOut: ZoomFade = { fadeOut: REVEAL };
 const fadeIn: ZoomFade = { fadeIn: REVEAL };
+/** In with the phone parts, then out across the battery's own fit. */
+const fadeThroughBattery: ZoomFade = { fadeIn: REVEAL, fadeOut: REVEAL, fadeOutOf: 'battery' };
+/** Cell, protection board, and their labels. `r = 1` is the battery's fit. */
+const fadeInBattery: ZoomFade = { fadeIn: REVEAL, fadeInOf: 'battery' };
 
 function cutout(
   id: string,
@@ -83,19 +111,27 @@ function cutout(
 }
 
 /**
- * A callout in the internals group's millimetres: the same face and size as
- * the other part labels, fading in with the parts. `x` and `y` are the label
- * centre. The link stores ids only.
+ * A callout in its parent's millimetres: the same face and size as the other
+ * part labels. `x` and `y` are the label centre. The link stores ids only.
+ * Phone-level labels fade out as the battery's own fit is passed.
  */
-function callout(partId: string, text: string, x: number, y: number, width: number): readonly CanvasObject[] {
+function callout(
+  partId: string,
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  parentId = 'internals',
+  fade: ZoomFade = fadeThroughBattery,
+): readonly CanvasObject[] {
   return [
     {
       id: `${partId}-label`,
-      parentId: 'internals',
+      parentId,
       x,
       y,
       visibility: band,
-      fade: fadeIn,
+      fade,
       payload: {
         type: 'text',
         text,
@@ -118,11 +154,13 @@ function callout(partId: string, text: string, x: number, y: number, width: numb
  * Front view plus the parts under it. `internals` is a group on `phone`:
  * one scale about the phone centre, no pixels of its own. The parts are
  * parent-local millimetres on that group, listed back to front, then the
- * front image. Edit a part's `x`, `y`, and opaque width to rearrange it.
+ * front image. `battery-internals` is that same kind of group on `battery`.
+ * Edit a part's `x`, `y`, and opaque width to rearrange it.
  * The fade is zoom-driven, not animated.
  *
  * Labels sit in two columns outside the phone, each offset from its part so
  * the centre-to-centre leader is at least about 20° off horizontal and vertical.
+ * The cell and protection board use the same callout, on their own group.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
   {
@@ -134,8 +172,46 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     visibility: band,
     payload: { type: 'group' },
   },
+  {
+    id: 'battery-internals',
+    parentId: 'battery',
+    x: 0,
+    y: 0,
+    scale: INTERNALS_SCALE,
+    visibility: band,
+    payload: { type: 'group' },
+  },
   cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals'),
-  cutout('battery', 'images/smartphone/battery.webp', partSprites.battery, 40, -12.6, 10.2, fadeIn, 'internals'),
+  cutout(
+    'cell',
+    'images/smartphone/battery-cell.webp',
+    batterySprites.cell,
+    CELL_WIDTH_MM,
+    0,
+    CELL_Y_MM,
+    fadeInBattery,
+    'battery-internals',
+  ),
+  cutout(
+    'protection-board',
+    'images/smartphone/battery-controller.webp',
+    batterySprites.protectionBoard,
+    BOARD_WIDTH_MM,
+    0,
+    BOARD_Y_MM,
+    fadeInBattery,
+    'battery-internals',
+  ),
+  cutout(
+    'battery',
+    'images/smartphone/battery.webp',
+    partSprites.battery,
+    40,
+    -12.6,
+    10.2,
+    fadeThroughBattery,
+    'internals',
+  ),
   cutout(
     'logic-board',
     'images/smartphone/logic-board.webp',
@@ -183,6 +259,8 @@ export const smartphoneObjects: readonly CanvasObject[] = [
   ...callout('logic-board', 'Logic board', 74, -20, 23),
   ...callout('midframe', 'Midframe', 71, 26, 17),
   ...callout('haptic-motor', 'Haptic motor', 76, 42, 26),
+  ...callout('cell', 'Cell', -42, 20, 12, 'battery-internals', fadeInBattery),
+  ...callout('protection-board', 'Protection board', 50, -46, 32, 'battery-internals', fadeInBattery),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */
