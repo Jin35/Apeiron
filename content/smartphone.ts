@@ -143,15 +143,15 @@ export const smartphoneObjects: readonly CanvasObject[] = [
   ),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
   // "Battery" is group-local millimetres on `internals`, level with the battery
-  // and outside the phone outline. The opaque phone's left edge is
-  // -(PHONE_WIDTH_MM / 2) / INTERNALS_SCALE = -57.2. This 14×4.2 label sits
-  // 3 mm of paper past that edge (local x = -57.2 - 3/0.625 - 7 = -69).
+  // (`y` matches that part) and outside the phone outline. The opaque phone's
+  // left edge is -(PHONE_WIDTH_MM / 2) / INTERNALS_SCALE = -57.2. This 14×4.2
+  // label sits 3 mm of paper past that edge (local x = -57.2 - 3/0.625 - 7 = -69).
   // The link stores ids only; the renderer clips the stroke each frame.
   {
     id: 'battery-label',
     parentId: 'internals',
     x: -69,
-    y: 16.6,
+    y: 10.2,
     visibility: band,
     fade: fadeIn,
     payload: {
