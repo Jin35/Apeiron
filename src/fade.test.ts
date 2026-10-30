@@ -33,6 +33,21 @@ describe('relativeZoomAlpha', () => {
     expect(displayOpacity(0.4, undefined, 8, 4)).toBe(0.4);
   });
 
+  it('fades across r = 1 to 1.6, the width of a 0.625 scale', () => {
+    const end = 1 / 0.625;
+    const out: ZoomFade = { fadeOut: [1, end] };
+    const inn: ZoomFade = { fadeIn: [1, end] };
+    const front = (ratio: number) => Math.min(1, Math.max(0, 1 - (ratio - 1) / (end - 1)));
+    for (const ratio of [0.5, 1, 1.3, 1.6, 2.5]) {
+      expect(relativeZoomAlpha(out, ratio)).toBeCloseTo(front(ratio));
+      expect(relativeZoomAlpha(inn, ratio)).toBeCloseTo(1 - front(ratio));
+    }
+    expect(front(1)).toBe(1);
+    expect(front(1.3)).toBeCloseTo(0.5);
+    expect(front(1.6)).toBeCloseTo(0);
+    expect(front(2.5)).toBe(0);
+  });
+
   it('ignores a range that does not increase', () => {
     expect(relativeZoomAlpha({ fadeOut: [2, 2] }, 3)).toBe(1);
     expect(relativeZoomAlpha({ fadeIn: [2, 1] }, 0.5)).toBe(1);

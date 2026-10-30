@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bootFromLocation, openingCameraFor, resolvePack } from '../content/packs';
 import {
+  INTERNALS_SCALE,
   partSprites,
   PHONE_WIDTH_MM,
   smartphoneObjects,
@@ -11,6 +12,7 @@ import { initialCameraFor } from './bootstrap';
 import { applyCameraCommand, deriveCameraLimits, viewBounds } from './camera';
 import { demoPack, titleFitWidth } from './demo';
 import type { ImagePayload } from './model';
+import { relativeZoomAlpha } from './fade';
 import { createMemoryStore } from './store';
 import { darkTheme, paperTheme } from './theme';
 import { visibilityAlpha } from './visibility';
@@ -38,6 +40,7 @@ describe('smartphone pack', () => {
     expect(smartphonePack.limits).toBeUndefined();
     expect(smartphoneObjects.some((object) => object.payload.type === 'text')).toBe(false);
     expect(smartphoneObjects.map((object) => object.id)).toEqual([
+      'internals',
       'midframe',
       'battery',
       'logic-board',
@@ -46,12 +49,24 @@ describe('smartphone pack', () => {
       'haptic-motor',
       'phone',
     ]);
+    expect(INTERNALS_SCALE).toBe(0.625);
+    const reveal = [1, 1 / INTERNALS_SCALE] as const;
+    expect(reveal[1]).toBeCloseTo(1.6);
+
+    const group = smartphoneObjects.find((object) => object.id === 'internals');
+    expect(group).toMatchObject({
+      parentId: 'phone',
+      x: 0,
+      y: 0,
+      scale: INTERNALS_SCALE,
+      payload: { type: 'group' },
+    });
 
     const phone = phoneObject();
     expect(phone.x).toBe(0);
     expect(phone.y).toBe(0);
     expect(phone.parentId).toBeUndefined();
-    expect(phone.fade).toEqual({ fadeOut: [1, 2] });
+    expect(phone.fade).toEqual({ fadeOut: reveal });
     const payload = phonePayload();
     expect(payload.src).toBe('images/smartphone.webp');
     expect(payload.frame).toBe(false);
@@ -74,8 +89,9 @@ describe('smartphone pack', () => {
     for (const [id, sprite, opaqueMm, x, y] of parts) {
       const part = smartphoneObjects.find((object) => object.id === id);
       if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
-      expect(part.parentId).toBe('phone');
-      expect(part.fade).toEqual({ fadeIn: [1, 2] });
+      expect(part.parentId).toBe('internals');
+      expect(part.fade).toEqual({ fadeIn: reveal });
+      expect(part.scale).toBeUndefined();
       expect(part.x).toBe(x);
       expect(part.y).toBe(y);
       expect(part.payload.frame).toBe(false);
@@ -102,7 +118,24 @@ describe('smartphone pack', () => {
       expect(opening).toMatchObject({ x: 0, y: 0 });
       expect(opening.scale).toBeCloseTo(limits.minScale);
       expect(opening.scale).toBeCloseTo(limits.fitScale);
-      expect(limits.maxScale / limits.fitScale).toBeGreaterThan(3);
+      expect(limits.maxScale / limits.fitScale).toBeGreaterThanOrEqual(5);
+      const boxes = createMemoryStore(smartphoneObjects).contentBoxes();
+      const pan = limits.bounds;
+      if (!pan) throw new Error('expected pan bounds');
+      for (const entry of boxes) {
+        expect(entry.box.left).toBeGreaterThanOrEqual(pan.left);
+        expect(entry.box.right).toBeLessThanOrEqual(pan.right);
+        expect(entry.box.top).toBeGreaterThanOrEqual(pan.top);
+        expect(entry.box.bottom).toBeLessThanOrEqual(pan.bottom);
+      }
+      const deep = applyCameraCommand(
+        opening,
+        { type: 'zoomAt', x: viewW / 2, y: viewH / 2, factor: 5 },
+        viewW,
+        viewH,
+        limits,
+      );
+      expect(deep.scale).toBeCloseTo(opening.scale * 5);
       expect(visibilityAlpha(phoneObject().visibility, opening.scale)).toBe(1);
 
       const cssW = payload.width * opening.scale;
@@ -139,6 +172,49 @@ describe('smartphone pack', () => {
       expect(zoomedOut.x).toBeCloseTo(0);
       expect(zoomedOut.y).toBeCloseTo(0);
     }
+  });
+
+  it('shrinks the internals by one group scale and fades them in when that scale fills the opening', () => {
+    const reveal = 1 / INTERNALS_SCALE;
+    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800).fitScale;
+    const store = createMemoryStore(smartphoneObjects);
+    const span = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
+    const at = (ratio: number) => store.query({ bounds: span, scale: fit * ratio, fitScale: fit });
+
+    expect(at(1).map((entry) => entry.object.id)).toEqual(['phone']);
+    expect(at(reveal).map((entry) => entry.object.id)).not.toContain('phone');
+    expect(at(reveal).map((entry) => entry.object.id)).not.toContain('internals');
+    expect(store.countInBand(fit, fit)).toBe(1);
+    expect(store.countInBand(fit * reveal, fit)).toBe(6);
+
+    const front = (ratio: number) => Math.min(1, Math.max(0, 1 - (ratio - 1) / (reveal - 1)));
+    for (const ratio of [0.5, 1, 1.3, 1.6, 2.5]) {
+      expect(relativeZoomAlpha({ fadeOut: [1, reveal] }, ratio)).toBeCloseTo(front(ratio));
+      expect(relativeZoomAlpha({ fadeIn: [1, reveal] }, ratio)).toBeCloseTo(1 - front(ratio));
+    }
+
+    const open = at(reveal);
+    const mid = open.find((entry) => entry.object.id === 'midframe');
+    const battery = open.find((entry) => entry.object.id === 'battery');
+    const authoredMid = smartphoneObjects.find((object) => object.id === 'midframe');
+    const authoredBattery = smartphoneObjects.find((object) => object.id === 'battery');
+    if (!mid || mid.object.payload.type !== 'image') throw new Error('expected the midframe');
+    if (!battery || battery.object.payload.type !== 'image') throw new Error('expected the battery');
+    if (!authoredMid || authoredMid.payload.type !== 'image') throw new Error('expected the authored midframe');
+    if (!authoredBattery || authoredBattery.payload.type !== 'image') throw new Error('expected the authored battery');
+
+    expect(mid.object.x).toBeCloseTo(0);
+    expect(mid.object.y).toBeCloseTo(0);
+    expect(mid.object.payload.width).toBeCloseTo(authoredMid.payload.width * INTERNALS_SCALE);
+    expect(mid.object.payload.height).toBeCloseTo(authoredMid.payload.height * INTERNALS_SCALE);
+    expect(battery.object.x).toBeCloseTo(authoredBattery.x * INTERNALS_SCALE);
+    expect(battery.object.y).toBeCloseTo(authoredBattery.y * INTERNALS_SCALE);
+    expect(battery.object.payload.width).toBeCloseTo(authoredBattery.payload.width * INTERNALS_SCALE);
+
+    const phoneOpaque = PHONE_WIDTH_MM;
+    const midOpaque = (mid.object.payload.width * partSprites.midframe.opaqueWidth) / partSprites.midframe.width;
+    expect(midOpaque * reveal).toBeCloseTo(phoneOpaque);
+    expect(mid.object.payload.width * fit * reveal).toBeCloseTo(authoredMid.payload.width * fit);
   });
 });
 

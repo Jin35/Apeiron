@@ -394,6 +394,37 @@ describe('createMemoryStore', () => {
     expect(child.parentId).toBe('phone');
   });
 
+  it('scales a child about its parent, and does not place a group', () => {
+    const group: CanvasObject = {
+      id: 'internals',
+      x: 10,
+      y: -4,
+      scale: 0.5,
+      visibility: wide,
+      payload: { type: 'group' },
+    };
+    const part = withParent(imageObject('battery', 'images/battery.webp', 8, -6, 10, 20), 'internals');
+    const nested = withParent(imageObject('chip', 'images/chip.svg', 4, 2, 6, 6), 'battery');
+    nested.scale = 0;
+    const store = createMemoryStore([nested, part, group]);
+    const visible = store.query({ bounds: span, scale: 4 });
+
+    expect(ids(visible)).toEqual(['chip', 'battery']);
+    expect(store.countInBand(4)).toBe(2);
+    expect(store.imageSources()).toEqual(['images/chip.svg', 'images/battery.webp']);
+    const battery = visible.find((entry) => entry.object.id === 'battery');
+    const chip = visible.find((entry) => entry.object.id === 'chip');
+    expect(battery?.object).toMatchObject({ x: 14, y: -7 });
+    expect(battery?.object.payload).toMatchObject({ width: 5, height: 10 });
+    // The chip's own scale is ignored, so it keeps the battery's 0.5.
+    expect(chip?.object).toMatchObject({ x: 16, y: -6 });
+    expect(chip?.object.payload).toMatchObject({ width: 3, height: 3 });
+    expect(part.x).toBe(8);
+    expect(part.payload).toMatchObject({ width: 10, height: 20 });
+    expect(store.hitTest({ x: 14, y: -7 }, { x: 0, y: 0, scale: 4 })?.id).toBe('battery');
+    expect(store.hitTest({ x: 10, y: -4 }, { x: 0, y: 0, scale: 4 })).toBeNull();
+  });
+
   it('skips an object whose zoom fade has reached alpha 0', () => {
     const band: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
     const fitScale = 4;

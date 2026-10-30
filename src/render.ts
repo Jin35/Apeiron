@@ -168,6 +168,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       if (!(alpha > 0)) continue;
       ctx.globalAlpha = alpha;
       const { object } = entry;
+      if (object.payload.type === 'group') continue;
       if (object.payload.type === 'image') {
         drawImageObject(ctx, theme, camera, viewW, viewH, object, imageFor(object.payload.src));
       } else {
@@ -238,6 +239,7 @@ function drawSelection(
   viewH: number,
   object: CanvasObject,
 ) {
+  if (object.payload.type === 'group') return;
   const { width, height } = object.payload;
   if (!(width > 0) || !(height > 0)) return;
   const left = worldToCssX(object.x - width / 2, camera, viewW);
