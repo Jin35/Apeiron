@@ -40,7 +40,12 @@ describe('smartphone pack', () => {
     expect(smartphonePack.theme).toBe(paperTheme);
     expect(smartphonePack.limits).toBeUndefined();
     expect(smartphoneObjects.filter((object) => object.payload.type === 'text').map((object) => object.id)).toEqual([
+      'camera-module-label',
       'battery-label',
+      'loudspeaker-label',
+      'logic-board-label',
+      'midframe-label',
+      'haptic-motor-label',
     ]);
     expect(smartphoneObjects.map((object) => object.id)).toEqual([
       'internals',
@@ -51,8 +56,18 @@ describe('smartphone pack', () => {
       'loudspeaker',
       'haptic-motor',
       'phone',
+      'camera-module-label',
+      'camera-module-link',
       'battery-label',
       'battery-link',
+      'loudspeaker-label',
+      'loudspeaker-link',
+      'logic-board-label',
+      'logic-board-link',
+      'midframe-label',
+      'midframe-link',
+      'haptic-motor-label',
+      'haptic-motor-link',
     ]);
     expect(INTERNALS_SCALE).toBe(0.625);
     const reveal = [1, 1 / INTERNALS_SCALE] as const;
@@ -127,9 +142,8 @@ describe('smartphone pack', () => {
       const boxes = createMemoryStore(smartphoneObjects).contentBoxes();
       const pan = limits.bounds;
       if (!pan) throw new Error('expected pan bounds');
-      // The Battery label sits left of the phone, so the fitted centre shifts that way.
+      // Callouts sit outside the phone, so the fitted centre is the content centre.
       expect(opening.y).toBeCloseTo(0);
-      expect(opening.x).toBeLessThan(0);
       expect(opening.x).toBeCloseTo((pan.left + pan.right) / 2);
       for (const entry of boxes) {
         expect(entry.box.left).toBeGreaterThanOrEqual(pan.left);
@@ -151,7 +165,8 @@ describe('smartphone pack', () => {
       const cssH = payload.height * opening.scale;
       expect(cssW).toBeLessThan(viewW * 0.9);
       expect(cssH).toBeLessThan(viewH * 0.9);
-      expect(Math.max(cssW / viewW, cssH / viewH)).toBeGreaterThan(0.65);
+      // A narrow window also fits the side labels, so the phone is a smaller share there.
+      expect(Math.max(cssW / viewW, cssH / viewH)).toBeGreaterThan(viewW >= 1000 ? 0.65 : 0.5);
 
       const bounds = viewBounds(opening, viewW, viewH);
       expect(bounds.left).toBeLessThan(-payload.width / 2);
@@ -194,9 +209,17 @@ describe('smartphone pack', () => {
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('phone');
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('internals');
     expect(store.countInBand(fit, fit)).toBe(1);
-    expect(store.countInBand(fit * reveal, fit)).toBe(7);
-    expect(at(reveal).map((entry) => entry.object.id)).toContain('battery-label');
-    expect(at(reveal).map((entry) => entry.object.id)).not.toContain('battery-link');
+    expect(store.countInBand(fit * reveal, fit)).toBe(12);
+    const revealed = at(reveal).map((entry) => entry.object.id);
+    expect(revealed).toEqual(expect.arrayContaining([
+      'camera-module-label',
+      'battery-label',
+      'loudspeaker-label',
+      'logic-board-label',
+      'midframe-label',
+      'haptic-motor-label',
+    ]));
+    expect(revealed.some((id) => id.endsWith('-link'))).toBe(false);
 
     const front = (ratio: number) => Math.min(1, Math.max(0, 1 - (ratio - 1) / (reveal - 1)));
     for (const ratio of [0.5, 1, 1.3, 1.6, 2.5]) {
@@ -228,42 +251,140 @@ describe('smartphone pack', () => {
     expect(mid.object.payload.width * fit * reveal).toBeCloseTo(authoredMid.payload.width * fit);
   });
 
-  it('places a Battery label outside the phone and a link that only names the battery', () => {
-    const reveal = [1, 1 / INTERNALS_SCALE] as const;
-    const battery = smartphoneObjects.find((object) => object.id === 'battery');
-    const label = smartphoneObjects.find((object) => object.id === 'battery-label');
-    const link = smartphoneObjects.find((object) => object.id === 'battery-link');
-    if (!battery || battery.payload.type !== 'image') throw new Error('expected the battery');
-    if (!label || label.payload.type !== 'text') throw new Error('expected the Battery label');
-    if (!link || link.payload.type !== 'link') throw new Error('expected the battery link');
-
-    expect(label.parentId).toBe('internals');
-    expect(label.y).toBe(battery.y);
-    expect(label.fade).toEqual({ fadeIn: reveal });
-    expect(label.payload.text).toBe('Battery');
-    expect(label.payload.style.color).toBeUndefined();
-    expect(label.payload.style.fontFamily).toBeUndefined();
-    expect(link.payload).toEqual({ type: 'link', from: 'battery-label', to: 'battery' });
-    expect(link.fade).toBeUndefined();
-
-    const labelBox = resolveWorldRect(smartphoneObjects, 'battery-label');
-    const batteryBox = resolveWorldRect(smartphoneObjects, 'battery');
-    if (!labelBox || !batteryBox) throw new Error('expected world boxes');
-    expect(labelBox.x + labelBox.width / 2).toBeLessThan(-PHONE_WIDTH_MM / 2);
-    expect(labelBox.y).toBeCloseTo(batteryBox.y);
-    expect(labelBox.x).toBeLessThan(batteryBox.x - batteryBox.width / 2);
-
-    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800).fitScale;
-    const store = createMemoryStore(smartphoneObjects);
-    const revealScale = fit / INTERNALS_SCALE;
-    expect(store.hitTest({ x: labelBox.x, y: labelBox.y }, { x: 0, y: 0, scale: revealScale }, fit)?.id).toBe(
-      'battery-label',
+  it('keeps every part leader at least 15° off the axes', () => {
+    const names: Record<string, string> = {
+      battery: 'Battery',
+      'logic-board': 'Logic board',
+      'camera-module': 'Camera',
+      midframe: 'Midframe',
+      loudspeaker: 'Speaker',
+      'haptic-motor': 'Haptic motor',
+    };
+    const parts = smartphoneObjects.filter(
+      (object) => object.parentId === 'internals' && object.payload.type === 'image',
     );
-    expect(store.hitTest({ x: 0, y: 0 }, { x: 0, y: 0, scale: revealScale }, fit)?.id).not.toBe('battery-link');
-    expect(store.contentBoxes().some((entry) => entry.box.left === labelBox.x - labelBox.width / 2)).toBe(true);
-    expect(store.resident().some((object) => object.payload.type === 'link')).toBe(true);
+    expect(parts.map((part) => part.id).sort()).toEqual(Object.keys(names).sort());
+
+    for (const part of parts) {
+      const label = smartphoneObjects.find((object) => object.id === `${part.id}-label`);
+      const link = smartphoneObjects.find((object) => object.id === `${part.id}-link`);
+      if (!label || label.payload.type !== 'text') throw new Error(`expected a label for ${part.id}`);
+      if (!link || link.payload.type !== 'link') throw new Error(`expected a link for ${part.id}`);
+      expect(label.parentId).toBe('internals');
+      expect(label.fade).toEqual(part.fade);
+      expect(label.payload).toMatchObject({
+        text: names[part.id],
+        style: { fontSize: 4.2 },
+        height: 4.2,
+      });
+      expect(label.payload.style.color).toBeUndefined();
+      expect(label.payload.style.fontFamily).toBeUndefined();
+      expect(link.payload).toEqual({ type: 'link', from: label.id, to: part.id });
+
+      const from = resolveWorldRect(smartphoneObjects, label.id);
+      const to = resolveWorldRect(smartphoneObjects, part.id);
+      if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
+      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it('keeps part labels off the phone, the parts, and each other, and inside the pan bounds', () => {
+    const labels = smartphoneObjects.filter((object) => object.payload.type === 'text');
+    const solids = smartphoneObjects.filter((object) => object.payload.type === 'image');
+    const boxes = [...labels, ...solids].map((object) => {
+      const box = resolveWorldRect(smartphoneObjects, object.id);
+      if (!box) throw new Error(`expected a world box for ${object.id}`);
+      return { id: object.id, box };
+    });
+
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const a = boxes[i];
+        const b = boxes[j];
+        if (!a || !b) continue;
+        const labelInvolved = a.id.endsWith('-label') || b.id.endsWith('-label');
+        if (!labelInvolved) continue;
+        expect(rectsOverlap(a.box, b.box), `${a.id} overlaps ${b.id}`).toBe(false);
+      }
+    }
+
+    const limits = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800);
+    const pan = limits.bounds;
+    if (!pan) throw new Error('expected pan bounds');
+    for (const label of labels) {
+      const box = resolveWorldRect(smartphoneObjects, label.id);
+      if (!box) throw new Error(`expected a world box for ${label.id}`);
+      expect(box.x - box.width / 2).toBeGreaterThan(pan.left);
+      expect(box.x + box.width / 2).toBeLessThan(pan.right);
+      expect(box.y - box.height / 2).toBeGreaterThan(pan.top);
+      expect(box.y + box.height / 2).toBeLessThan(pan.bottom);
+    }
+
+    const leaders = partsAndLabels();
+    for (let i = 0; i < leaders.length; i += 1) {
+      for (let j = i + 1; j < leaders.length; j += 1) {
+        const a = leaders[i];
+        const b = leaders[j];
+        if (!a || !b) continue;
+        expect(segmentsCross(a.from, a.to, b.from, b.to), `${a.id} crosses ${b.id}`).toBe(false);
+      }
+    }
   });
 });
+
+/** Degrees from the nearest axis. 0 is horizontal or vertical. */
+function axisClearanceDegrees(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): number {
+  const degrees = Math.abs(Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI));
+  const toHorizontal = Math.min(degrees, 180 - degrees);
+  const toVertical = Math.abs(degrees - 90);
+  return Math.min(toHorizontal, toVertical);
+}
+
+function rectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return (
+    Math.abs(a.x - b.x) < (a.width + b.width) / 2 &&
+    Math.abs(a.y - b.y) < (a.height + b.height) / 2
+  );
+}
+
+function partsAndLabels(): Array<{
+  id: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}> {
+  const leaders = [];
+  for (const object of smartphoneObjects) {
+    if (object.payload.type !== 'link') continue;
+    const from = resolveWorldRect(smartphoneObjects, object.payload.from);
+    const to = resolveWorldRect(smartphoneObjects, object.payload.to);
+    if (!from || !to) throw new Error(`expected endpoints for ${object.id}`);
+    leaders.push({ id: object.id, from, to });
+  }
+  return leaders;
+}
+
+function orient(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+function segmentsCross(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+): boolean {
+  return orient(a, b, c) * orient(a, b, d) < 0 && orient(c, d, a) * orient(c, d, b) < 0;
+}
 
 describe('pack query', () => {
   it('loads the archipelago pack from ?pack=archipelago in dev and production', () => {
