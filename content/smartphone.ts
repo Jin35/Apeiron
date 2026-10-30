@@ -83,11 +83,46 @@ function cutout(
 }
 
 /**
+ * A callout in the internals group's millimetres: the same face and size as
+ * the other part labels, fading in with the parts. `x` and `y` are the label
+ * centre. The link stores ids only.
+ */
+function callout(partId: string, text: string, x: number, y: number, width: number): readonly CanvasObject[] {
+  return [
+    {
+      id: `${partId}-label`,
+      parentId: 'internals',
+      x,
+      y,
+      visibility: band,
+      fade: fadeIn,
+      payload: {
+        type: 'text',
+        text,
+        style: { fontSize: 4.2 },
+        width,
+        height: 4.2,
+      },
+    },
+    {
+      id: `${partId}-link`,
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: `${partId}-label`, to: partId },
+    },
+  ];
+}
+
+/**
  * Front view plus the parts under it. `internals` is a group on `phone`:
  * one scale about the phone centre, no pixels of its own. The parts are
  * parent-local millimetres on that group, listed back to front, then the
  * front image. Edit a part's `x`, `y`, and opaque width to rearrange it.
  * The fade is zoom-driven, not animated.
+ *
+ * Labels sit in two columns outside the phone, each offset from its part so
+ * the centre-to-centre leader is at least about 20° off horizontal and vertical.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
   {
@@ -142,33 +177,12 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     'internals',
   ),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
-  // "Battery" is group-local millimetres on `internals`, level with the battery
-  // (`y` matches that part) and outside the phone outline. The opaque phone's
-  // left edge is -(PHONE_WIDTH_MM / 2) / INTERNALS_SCALE = -57.2. This 14×4.2
-  // label sits 3 mm of paper past that edge (local x = -57.2 - 3/0.625 - 7 = -69).
-  // The link stores ids only; the renderer clips the stroke each frame.
-  {
-    id: 'battery-label',
-    parentId: 'internals',
-    x: -69,
-    y: 10.2,
-    visibility: band,
-    fade: fadeIn,
-    payload: {
-      type: 'text',
-      text: 'Battery',
-      style: { fontSize: 4.2 },
-      width: 14,
-      height: 4.2,
-    },
-  },
-  {
-    id: 'battery-link',
-    x: 0,
-    y: 0,
-    visibility: band,
-    payload: { type: 'link', from: 'battery-label', to: 'battery' },
-  },
+  ...callout('camera-module', 'Camera', -69, -40, 13),
+  ...callout('battery', 'Battery', -70, -14, 15),
+  ...callout('loudspeaker', 'Speaker', -70, 36, 15),
+  ...callout('logic-board', 'Logic board', 74, -20, 23),
+  ...callout('midframe', 'Midframe', 71, 26, 17),
+  ...callout('haptic-motor', 'Haptic motor', 76, 42, 26),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */
