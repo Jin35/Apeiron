@@ -12,20 +12,21 @@ The first split is merged (PRs #5–#12). The sections through [First sequence](
 
 | Module | What it does |
 | --- | --- |
-| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text, image, and group payloads. Data only. Optional `parentId` and `scale`. Optional `fade` (`fadeOut` / `fadeIn` over a ratio of the opening fit). Text carries world `width` and `height`. Text `color` is optional. Image `frame` is optional. A group is not drawn. |
+| `src/model.ts` | `CanvasObject`, `VisibilityRange`, text, image, group, and link payloads. Data only. Optional `parentId` and `scale`. Optional `fade` (`fadeOut` / `fadeIn` over a ratio of the opening fit). Text carries world `width` and `height`. Text `color` is optional. Image `frame` is optional. A group is not drawn. A link stores `from` / `to` ids and an optional stroke, not endpoint coordinates. |
 | `src/camera.ts` | `Camera`, `clampScale`, `panBy`, `zoomAt`, `retarget`, `worldPoint`, `viewBounds`, `CameraCommand`, `applyCameraCommand`, `deriveCameraLimits`. Pure functions. Content limits are enforced in `applyCameraCommand`. `fitScale` on the resolved limits is the opening fit (s0). |
-| `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). Reached only from the store. |
+| `src/visibility.ts` | `visibilityAlpha`. Log-scale fade at each end of a range (`LOG_FADE`, about 35% zoom). The store uses it for queries. The renderer uses it for a leader line's endpoint alpha. |
 | `src/fade.ts` | `relativeZoomAlpha`, `displayOpacity`. Linear in `scale / fitScale`. The renderer multiplies it onto the visibility alpha. The store uses the same curve for `query`, `countInBand`, and `hitTest`. |
 | `src/grid.ts` | `gridStep`. Screen-targeted grid spacing. Reached only from the renderer. |
-| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`, `contentBoxes`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A parent's `scale` multiplies descendant positions and sizes. A group is not an entry. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. A zoom fade to alpha 0 is below that cutoff. `contentBoxes` is the unpadded world box after that flattening. |
+| `src/link.ts` | `clipLeaderLine`, `resolveWorldRect`. Pure. The segment between two centres, clipped to the rectangles, then shortened by a gap in the same units. Overlapping bounds return nothing. `resolveWorldRect` walks `parentId` and `scale`. |
+| `src/store.ts` | `createMemoryStore`. `query`, `countInBand`, `imageSources`, `subscribe`, `hitTest`, `contentBoxes`, `resident`. `replaceObjects` rebuilds world-space entries from parent-local `x`/`y` and notifies. A parent's `scale` multiplies descendant positions and sizes. A group is not an entry. A link is not an entry either: no box, no hit, no HUD count. A missing parent or a cycle is omitted. Text and image boxes are the authored rect plus the screen-pixel pad. `hitTest` uses that rect without the pad, at the draw cutoff, and the greater `maxScale` wins. A zoom fade to alpha 0 is below that cutoff. `contentBoxes` is the unpadded world box after that flattening. `resident` is the authored list the renderer resolves links from. |
 | `src/theme.ts` | `Theme`, `darkTheme`, `paperTheme`. A content pack is `{ theme, objects, limits? }`. `grid` is optional; the paper theme omits it. |
 | `src/gestures.ts` | Maps-greedy pointer, wheel, and Safari gesture handling. `attachGestures` calls a `GestureHost` in client coordinates. A mouse click and a touch tap that stays single for `DOUBLE_TAP_MS` call `selectAt`. |
 | `src/interaction.ts` | `attachInteraction`. Owns the recognizer, the +/− buttons, keyboard pan and zoom, and client-to-local conversion. Emits canvas-local `SceneCommand`s (`CameraCommand` or `selectAt`). Arrow keys and `+`/`−` reuse `CameraCommand`. |
 | `src/buttonZoom.ts` | The 150ms +/− animation. Pure reducer. The shell holds the `ButtonZoom` value and ticks it. A reduced-motion `zoomStep` settles on the committed camera with no segments. |
 | `src/bootstrap.ts` | `initialCamera`, `initialCameraFor(viewWidth, titleWorldWidth)`, `cameraFromLocation`. Session opening camera, separate from the atlas. The archipelago title fit lives here. |
-| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates. Colors and fonts come from the frame's `theme` (the demo dark theme when it is omitted). Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. An image with `frame: false` is drawn without the plate fill or hairline. Zoom fade is applied from `frame.fitScale`; alpha 0 is not drawn. No pack is special-cased. |
+| `src/render.ts` | `createRenderer`, `draw(RenderFrame)`. Canvas 2D, image cache, grid, plates, leader lines. Colors and fonts come from the frame's `theme` (the demo dark theme when it is omitted). Text is fitted into its authored box. A `selectedId` strokes that object's box in screen pixels. An image with `frame: false` is drawn without the plate fill or hairline. Zoom fade is applied from `frame.fitScale`; alpha 0 is not drawn. A link is stroked from `frame.objects` each frame: screen-pixel width, gap outside each endpoint box, alpha the minimum of the two endpoints. No pack is special-cased. |
 | `src/demo.ts` | `demoPack` (`darkTheme` and `demoObjects`) and the title fit width. Thirty objects, six images, four overlapping bands. Secondary pack, `?pack=archipelago`. |
-| `content/smartphone.ts` | `smartphonePack`: `paperTheme`, the front view, and the parts in millimetres on an `internals` group parented to `phone`. The group's scale is `0.625`. The front fades out over relative zoom `1` to `1 / 0.625`; the parts fade in over the same range. |
+| `content/smartphone.ts` | `smartphonePack`: `paperTheme`, the front view, and the parts in millimetres on an `internals` group parented to `phone`. The group's scale is `0.625`. The front fades out over relative zoom `1` to `1 / 0.625`; the parts fade in over the same range. A "Battery" label on that group and a link to the battery fade in with the parts. |
 | `content/packs.ts` | `resolvePack`, `openingCameraFor`, `bootFromLocation`. Default id is `smartphone`. |
 | `src/main.ts` | `mountShell`. One `frame`, one `invalidate`, applies commands, writes the HUD and a visually hidden label list from the frame's `query`. Session `selectedId` is on the frame and on `dataset.selected`. `prefers-reduced-motion: reduce` settles `zoomStep` in one frame. Each frame derives camera limits from `contentBoxes` and the viewport, with the pack override on top. The page boots `smartphonePack`. |
 
@@ -43,6 +44,7 @@ interface SceneStore {
   subscribe(onChange: () => void): () => void;     // resident set changed
   hitTest(worldPoint, camera, fitScale?): CanvasObject | null; // display alpha > 0.01, unpadded box
   contentBoxes(): ContentBox[];                    // placed world boxes, for camera limits
+  resident(): readonly CanvasObject[];             // authored objects; links keep from/to ids
 }
 
 type SceneCommand = CameraCommand | { type: 'selectAt'; x: number; y: number };
@@ -59,6 +61,7 @@ type RenderFrame = {
   selectedId?: string;                             // shell session; stroked when that object is drawn
   theme?: Theme;                                   // pack look; omitted frame uses the demo dark theme
   fitScale?: number;                               // opening fit (s0); zoom fade is scale / fitScale
+  objects?: readonly CanvasObject[];               // authored; leader endpoints resolve from these
 };
 
 interface Renderer {

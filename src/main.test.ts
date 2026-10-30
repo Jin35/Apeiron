@@ -869,7 +869,8 @@ describe('theme chrome', () => {
     expect(shell.zoomOut.disabled).toBe(true);
     expect(shell.zoomIn.disabled).toBe(false);
     expect(Number(shell.status.dataset.scale)).toBeCloseTo(boot.opening.scale);
-    expect(shell.status.dataset).toMatchObject({ x: '0', y: '0' });
+    expect(Number(shell.status.dataset.x)).toBeCloseTo(boot.opening.x);
+    expect(Number(shell.status.dataset.y)).toBeCloseTo(boot.opening.y);
     expect(shell.status.textContent).toContain('1 visible');
     expect(shell.labels.texts()).toEqual([]);
     expect(shell.images.map((image) => image.src)).toEqual([expect.stringContaining('images/smartphone.webp')]);

@@ -58,6 +58,7 @@ export function mountShell(
       width,
       height,
       visible: shown,
+      objects: store.resident(),
       theme,
       ...(fitScale !== undefined ? { fitScale } : {}),
       ...(selectedId ? { selectedId } : {}),

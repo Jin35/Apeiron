@@ -11,6 +11,7 @@ import {
 import { initialCameraFor } from './bootstrap';
 import { applyCameraCommand, deriveCameraLimits, viewBounds } from './camera';
 import { demoPack, titleFitWidth } from './demo';
+import { resolveWorldRect } from './link';
 import type { ImagePayload } from './model';
 import { relativeZoomAlpha } from './fade';
 import { createMemoryStore } from './store';
@@ -38,7 +39,9 @@ describe('smartphone pack', () => {
     expect(paperTheme.grid).toBeUndefined();
     expect(smartphonePack.theme).toBe(paperTheme);
     expect(smartphonePack.limits).toBeUndefined();
-    expect(smartphoneObjects.some((object) => object.payload.type === 'text')).toBe(false);
+    expect(smartphoneObjects.filter((object) => object.payload.type === 'text').map((object) => object.id)).toEqual([
+      'battery-label',
+    ]);
     expect(smartphoneObjects.map((object) => object.id)).toEqual([
       'internals',
       'midframe',
@@ -48,6 +51,8 @@ describe('smartphone pack', () => {
       'loudspeaker',
       'haptic-motor',
       'phone',
+      'battery-label',
+      'battery-link',
     ]);
     expect(INTERNALS_SCALE).toBe(0.625);
     const reveal = [1, 1 / INTERNALS_SCALE] as const;
@@ -116,13 +121,16 @@ describe('smartphone pack', () => {
       const opening = openingCameraFor('smartphone', smartphonePack, viewW, viewH);
       const limits = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), viewW, viewH);
       const payload = phonePayload();
-      expect(opening).toMatchObject({ x: 0, y: 0 });
       expect(opening.scale).toBeCloseTo(limits.minScale);
       expect(opening.scale).toBeCloseTo(limits.fitScale);
       expect(limits.maxScale / limits.fitScale).toBeGreaterThanOrEqual(5);
       const boxes = createMemoryStore(smartphoneObjects).contentBoxes();
       const pan = limits.bounds;
       if (!pan) throw new Error('expected pan bounds');
+      // The Battery label sits left of the phone, so the fitted centre shifts that way.
+      expect(opening.y).toBeCloseTo(0);
+      expect(opening.x).toBeLessThan(0);
+      expect(opening.x).toBeCloseTo((pan.left + pan.right) / 2);
       for (const entry of boxes) {
         expect(entry.box.left).toBeGreaterThanOrEqual(pan.left);
         expect(entry.box.right).toBeLessThanOrEqual(pan.right);
@@ -158,8 +166,8 @@ describe('smartphone pack', () => {
         viewH,
         limits,
       );
-      expect(panned.x).toBeCloseTo(0);
-      expect(panned.y).toBeCloseTo(0);
+      expect(panned.x).toBeCloseTo(opening.x);
+      expect(panned.y).toBeCloseTo(opening.y);
       expect(panned.scale).toBeCloseTo(limits.minScale);
 
       const zoomedOut = applyCameraCommand(
@@ -170,8 +178,8 @@ describe('smartphone pack', () => {
         limits,
       );
       expect(zoomedOut.scale).toBeCloseTo(limits.minScale);
-      expect(zoomedOut.x).toBeCloseTo(0);
-      expect(zoomedOut.y).toBeCloseTo(0);
+      expect(zoomedOut.x).toBeCloseTo(opening.x);
+      expect(zoomedOut.y).toBeCloseTo(opening.y);
     }
   });
 
@@ -186,7 +194,9 @@ describe('smartphone pack', () => {
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('phone');
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('internals');
     expect(store.countInBand(fit, fit)).toBe(1);
-    expect(store.countInBand(fit * reveal, fit)).toBe(6);
+    expect(store.countInBand(fit * reveal, fit)).toBe(7);
+    expect(at(reveal).map((entry) => entry.object.id)).toContain('battery-label');
+    expect(at(reveal).map((entry) => entry.object.id)).not.toContain('battery-link');
 
     const front = (ratio: number) => Math.min(1, Math.max(0, 1 - (ratio - 1) / (reveal - 1)));
     for (const ratio of [0.5, 1, 1.3, 1.6, 2.5]) {
@@ -216,6 +226,42 @@ describe('smartphone pack', () => {
     const midOpaque = (mid.object.payload.width * partSprites.midframe.opaqueWidth) / partSprites.midframe.width;
     expect(midOpaque * reveal).toBeCloseTo(phoneOpaque);
     expect(mid.object.payload.width * fit * reveal).toBeCloseTo(authoredMid.payload.width * fit);
+  });
+
+  it('places a Battery label outside the phone and a link that only names the battery', () => {
+    const reveal = [1, 1 / INTERNALS_SCALE] as const;
+    const battery = smartphoneObjects.find((object) => object.id === 'battery');
+    const label = smartphoneObjects.find((object) => object.id === 'battery-label');
+    const link = smartphoneObjects.find((object) => object.id === 'battery-link');
+    if (!battery || battery.payload.type !== 'image') throw new Error('expected the battery');
+    if (!label || label.payload.type !== 'text') throw new Error('expected the Battery label');
+    if (!link || link.payload.type !== 'link') throw new Error('expected the battery link');
+
+    expect(label.parentId).toBe('internals');
+    expect(label.y).toBe(battery.y);
+    expect(label.fade).toEqual({ fadeIn: reveal });
+    expect(label.payload.text).toBe('Battery');
+    expect(label.payload.style.color).toBeUndefined();
+    expect(label.payload.style.fontFamily).toBeUndefined();
+    expect(link.payload).toEqual({ type: 'link', from: 'battery-label', to: 'battery' });
+    expect(link.fade).toBeUndefined();
+
+    const labelBox = resolveWorldRect(smartphoneObjects, 'battery-label');
+    const batteryBox = resolveWorldRect(smartphoneObjects, 'battery');
+    if (!labelBox || !batteryBox) throw new Error('expected world boxes');
+    expect(labelBox.x + labelBox.width / 2).toBeLessThan(-PHONE_WIDTH_MM / 2);
+    expect(labelBox.y).toBeCloseTo(batteryBox.y);
+    expect(labelBox.x).toBeLessThan(batteryBox.x - batteryBox.width / 2);
+
+    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800).fitScale;
+    const store = createMemoryStore(smartphoneObjects);
+    const revealScale = fit / INTERNALS_SCALE;
+    expect(store.hitTest({ x: labelBox.x, y: labelBox.y }, { x: 0, y: 0, scale: revealScale }, fit)?.id).toBe(
+      'battery-label',
+    );
+    expect(store.hitTest({ x: 0, y: 0 }, { x: 0, y: 0, scale: revealScale }, fit)?.id).not.toBe('battery-link');
+    expect(store.contentBoxes().some((entry) => entry.box.left === labelBox.x - labelBox.width / 2)).toBe(true);
+    expect(store.resident().some((object) => object.payload.type === 'link')).toBe(true);
   });
 });
 

@@ -50,6 +50,27 @@ export type GroupPayload = {
 };
 
 /**
+ * A leader line between two objects. The payload stores ids and an optional
+ * stroke. Endpoint positions are not stored: the renderer resolves them from
+ * the live parent chain each frame, so pan and zoom cannot leave the line behind.
+ */
+export type LinkPayload = {
+  type: 'link';
+  from: string;
+  to: string;
+  style?: LinkStyle;
+};
+
+export type LinkStyle = {
+  /** Stroke color. Omit to use the pack theme's ink. */
+  color?: string;
+  /** Stroke width in CSS pixels. Omit for a 1.25px hairline. */
+  width?: number;
+  /** Gap in CSS pixels between the stroke and each endpoint's bounds. Omit for 4. */
+  gap?: number;
+};
+
+/**
  * Opacity from zoom relative to the opening fit scale.
  * `r = camera.scale / fitScale`. Each pair is `[start, end]` in that ratio.
  * Between the ends the blend is linear in `r`. At and below `start`, `fadeOut`
@@ -86,5 +107,5 @@ export type CanvasObject = {
    * transparent object is not hit-tested and is left out of `query`.
    */
   fade?: ZoomFade;
-  payload: TextPayload | ImagePayload | GroupPayload;
+  payload: TextPayload | ImagePayload | GroupPayload | LinkPayload;
 };

@@ -70,6 +70,11 @@ export interface SceneStore {
    * camera limits from this; the pad used for culling is not included.
    */
   contentBoxes(): readonly ContentBox[];
+  /**
+   * Authored objects, parent-local, including groups and links.
+   * A link keeps `from` / `to` ids; the renderer resolves the endpoints.
+   */
+  resident(): readonly CanvasObject[];
 }
 
 /**
@@ -158,6 +163,9 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
         size: minorSize(entry.object),
       }));
     },
+    resident() {
+      return resident;
+    },
   };
 }
 
@@ -167,7 +175,7 @@ function shownAlpha(object: CanvasObject, scale: number, fitScale: number | unde
 }
 
 function minorSize(object: CanvasObject): number {
-  if (object.payload.type === 'group') return 0;
+  if (object.payload.type === 'group' || object.payload.type === 'link') return 0;
   const { width, height } = object.payload;
   const w = Number.isFinite(width) ? Math.abs(width) : 0;
   const h = Number.isFinite(height) ? Math.abs(height) : 0;
@@ -181,8 +189,9 @@ function minorSize(object: CanvasObject): number {
  * descendants' positions and sizes. A missing parent or a cycle leaves the
  * object out of the entries (and therefore out of `query` and `countInBand`)
  * instead of throwing. A group is a transform only and is not an entry.
- * The authored object is not mutated. `imageSources` still lists every
- * resident image, placed or not.
+ * A link is ids and stroke style only: it has no box, so it is not hit,
+ * counted, or culled. The authored object is not mutated. `imageSources`
+ * still lists every resident image, placed or not.
  */
 function placedEntries(objects: readonly CanvasObject[]): Entry[] {
   const byId = new Map<string, CanvasObject>();
@@ -221,7 +230,7 @@ function placedEntries(objects: readonly CanvasObject[]): Entry[] {
 
   const entries: Entry[] = [];
   for (const object of objects) {
-    if (object.payload.type === 'group') continue;
+    if (object.payload.type === 'group' || object.payload.type === 'link') continue;
     const placed = resolve(object, new Set());
     if (!placed) continue;
     entries.push(entryFor(atWorld(object, placed)));
@@ -255,12 +264,14 @@ function atWorld(object: CanvasObject, placement: Placement): CanvasObject {
 }
 
 function scaledPayload(payload: CanvasObject['payload'], scale: number): CanvasObject['payload'] {
-  if (payload.type === 'group' || scale === 1) return payload;
+  if (payload.type === 'group' || payload.type === 'link' || scale === 1) return payload;
   return { ...payload, width: payload.width * scale, height: payload.height * scale };
 }
 
 function entryFor(object: CanvasObject): Entry {
-  if (object.payload.type === 'group') throw new Error('a group has no box');
+  if (object.payload.type === 'group' || object.payload.type === 'link') {
+    throw new Error('this object has no box');
+  }
   const pad = object.payload.type === 'image' ? IMAGE_PAD_CSS_PX : TEXT_PAD_CSS_PX;
   return {
     object,

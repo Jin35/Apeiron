@@ -21,7 +21,7 @@ npm run build
 npm run preview
 ```
 
-The default pack is Smartphone. It opens fitted to the window. Zooming in past that fit fades the front view out and the parts in; the front is gone at 1.6× the opening scale. The parts sit on one scaled group, in millimetres, so at that zoom they are the size the phone was when it opened. On the archipelago atlas (`?pack=archipelago`), a phone-width window opens a little further out so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
+The default pack is Smartphone. It opens fitted to the window. Zooming in past that fit fades the front view out and the parts in; the front is gone at 1.6× the opening scale. The parts sit on one scaled group, in millimetres, so at that zoom they are the size the phone was when it opened. A small "Battery" label fades in with those parts, to the left of the phone, and a leader line runs from the label to the battery. On the archipelago atlas (`?pack=archipelago`), a phone-width window opens a little further out so the title fits; desktop stays at `0.1`. Zooming in with + from that view walks the band under the title: Central Sound, then the field recorder. `?scale=2&x=-3012&y=-1112` opens on Old Wharf instead. `scale` in the query is clamped to `1e-4–1e7`. Gestures and the +/− controls also stay inside the content: you cannot zoom out past the fit of the atlas, or pan the map off the screen. `?theme=paper` previews the paper theme on this atlas while `npm run dev` is running; a production build ignores it. The paper theme draws no grid.
 
 ## Objects and depth
 
@@ -34,7 +34,7 @@ Each object has:
 - optional `scale` — multiplies this object's size and its descendants; a group payload is the transform only
 - `visibility: { minScale, maxScale }` — its depth
 - optional `fade` — opacity from zoom relative to the opening fit (`fadeOut` or `fadeIn` over a ratio range)
-- a payload: `text` (string, font size, optional color, style, and world width and height) or `image` (`src` plus world width and height)
+- a payload: `text` (string, font size, optional color, style, and world width and height), `image` (`src` plus world width and height), `group` (a transform only), or `link` (`from` and `to` object ids, plus an optional stroke). A link does not store endpoint coordinates. The line is clipped to the two objects' boxes each frame, with a few screen pixels of gap, so it stays attached at any zoom or pan and is not drawn on top of the text or the image. Links are not selectable.
 
 An object is drawn only while `minScale <= camera.scale <= maxScale`. Opacity fades across a short band at each edge, measured in log scale (about a 35% zoom, or half the range when the range is narrower), so bands hand off instead of popping. Zooming in past `maxScale` hides coarse labels. Zooming out past `minScale` hides fine ones. Font size and image size are world units, so they grow as you zoom until that band ends. A later pass can swap one object for richer children that use a tighter range; the range is the hook.
 
