@@ -1,0 +1,49 @@
+# Smartphone — content hierarchy
+
+This is the plan for zoom levels: each level crossfades into its children from 1× to 1.6× of the parent's fit, and every part ships with a label and angled link.
+
+- Smartphone (front view) — built
+  - Midframe — built
+    - Aluminium frame — planned
+    - Buttons (power, volume) — planned
+    - Antenna bands — planned
+  - Display — planned
+    - Cover glass — planned
+    - Touch layer — planned
+    - OLED panel — planned
+      - Pixel (red, green and blue subpixels) — planned
+  - Battery — built
+    - Protection board — built
+      - Protection chip — planned
+      - MOSFET switches — planned
+      - Flex connector — planned
+    - Cell — built
+      - Pouch — planned
+      - Electrode stack — planned
+        - Anode (copper foil with graphite) — planned
+        - Separator — planned
+        - Cathode (aluminium foil with lithium cobalt oxide) — planned
+          - Lithium ions (particle level) — planned
+  - Logic board — built
+    - System-on-chip — planned
+      - CPU and GPU cores — planned
+      - Transistor — planned
+    - RAM — planned
+    - Storage (NAND flash) — planned
+    - Modem and RF — planned
+    - Power management chip — planned
+  - Camera module — built
+    - Lens stack — planned
+    - Image stabiliser (OIS) — planned
+    - Image sensor — planned
+      - Pixel (microlens, colour filter, photodiode) — planned
+  - Loudspeaker — built
+    - Magnet — planned
+    - Voice coil — planned
+    - Diaphragm — planned
+  - Haptic motor — built
+    - Magnet — planned
+    - Coil — planned
+    - Moving mass — planned
+  - Back glass — planned
+    - Wireless charging coil — planned
