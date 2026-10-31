@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Camera } from './camera';
+import { boxFitScale, type Camera } from './camera';
 import { clipLeaderLine, resolveWorldRect } from './link';
 import type { CanvasObject, VisibilityRange } from './model';
 import { createRenderer } from './render';
@@ -897,6 +897,111 @@ describe('createRenderer', () => {
       objects: [left, right, overlap, missing],
     });
     expect(strokesOf(ctx)).toEqual([]);
+  });
+
+  it('fades sibling parts with the entered part and keeps the link at the lower endpoint', () => {
+    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const band = { minScale: 0.01, maxScale: 10000 };
+    const reveal = [1, 2] as const;
+    const level: CanvasObject = {
+      id: 'level',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'group' },
+    };
+    const board: CanvasObject = {
+      id: 'board',
+      parentId: 'level',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'image', src: 'images/board.webp', width: 40, height: 40, frame: false },
+    };
+    const speaker: CanvasObject = {
+      id: 'speaker',
+      parentId: 'level',
+      x: 70,
+      y: 0,
+      visibility: band,
+      payload: { type: 'text', text: 'Speaker', style: { fontSize: 8 }, width: 24, height: 8 },
+    };
+    const nest: CanvasObject = {
+      id: 'nest',
+      parentId: 'board',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'group' },
+    };
+    const chip: CanvasObject = {
+      id: 'chip',
+      parentId: 'nest',
+      x: 0,
+      y: 0,
+      visibility: band,
+      fade: { fadeIn: reveal, fadeInOf: 'board' },
+      payload: { type: 'text', text: 'Chip', style: { fontSize: 8 }, width: 16, height: 8 },
+    };
+    const cover: CanvasObject = {
+      id: 'cover',
+      x: 0,
+      y: -60,
+      visibility: band,
+      payload: { type: 'text', text: 'Cover', style: { fontSize: 8 }, width: 20, height: 8 },
+    };
+    const link: CanvasObject = {
+      id: 'speaker-link',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'speaker', to: 'board' },
+    };
+    const objects = [level, board, speaker, nest, chip, cover, link];
+    const width = 400;
+    const height = 300;
+    const fit = boxFitScale({ left: -20, right: 20, top: -20, bottom: 20 }, width, height);
+    const shown = [speaker, chip, cover].map((object) => visible(object, 1));
+
+    const paintAt = (ratio: number) => {
+      const ctx = recordingContext();
+      createRenderer(canvasFor(ctx), () => {}).draw({
+        camera: { x: 0, y: 0, scale: fit * ratio },
+        width,
+        height,
+        theme,
+        visible: shown,
+        objects,
+        fitScale: 1,
+      });
+      const textAlpha = (label: string) => paintsOf(ctx).find((paint) => paint.kind === 'text' && paint.text === label)?.alpha;
+      return { textAlpha, strokes: strokesOf(ctx) };
+    };
+
+    const open = paintAt(1);
+    expect(open.textAlpha('Speaker')).toBeCloseTo(1);
+    expect(open.textAlpha('Chip')).toBeUndefined();
+    expect(open.textAlpha('Cover')).toBeCloseTo(1);
+    expect(open.strokes).toHaveLength(1);
+    expect(open.strokes[0]?.alpha).toBeCloseTo(1);
+
+    const mid = paintAt(1.5);
+    expect(mid.textAlpha('Speaker')).toBeCloseTo(0.5);
+    expect(mid.textAlpha('Chip')).toBeCloseTo(0.5);
+    expect(mid.textAlpha('Cover')).toBeCloseTo(1);
+    expect(mid.strokes).toHaveLength(1);
+    expect(mid.strokes[0]?.alpha).toBeCloseTo(0.5);
+
+    const shut = paintAt(2);
+    expect(shut.textAlpha('Speaker')).toBeUndefined();
+    expect(shut.textAlpha('Chip')).toBeCloseTo(1);
+    expect(shut.textAlpha('Cover')).toBeCloseTo(1);
+    expect(shut.strokes).toEqual([]);
+
+    const back = paintAt(1);
+    expect(back.textAlpha('Speaker')).toBeCloseTo(1);
+    expect(back.textAlpha('Chip')).toBeUndefined();
+    expect(back.strokes[0]?.alpha).toBeCloseTo(1);
   });
 });
 

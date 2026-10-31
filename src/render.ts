@@ -1,6 +1,7 @@
 import { boxFitScale, viewBounds, type Camera, type ViewBounds } from './camera';
 import { displayOpacity, type AnchorScale } from './fade';
 import { gridStep } from './grid';
+import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
 import type { CanvasObject, LinkStyle, TextPayload } from './model';
 import { darkTheme, withAlpha, type Theme } from './theme';
@@ -172,8 +173,9 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
     );
     const anchorScale = anchorFits(frame.objects, viewW, viewH);
+    const level = levelOpacity(frame.objects, camera, viewW, viewH);
     for (const entry of sorted) {
-      const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale);
+      const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale, level);
       if (!(alpha > 0)) continue;
       ctx.globalAlpha = alpha;
       const { object } = entry;
@@ -186,10 +188,10 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     // After the objects, so the stroke stays visible across other parts.
     // Clipping keeps it out of the two endpoints; their transparent pixels
     // cannot show the line either, because the segment never enters the box.
-    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale, anchorScale);
+    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale, anchorScale, level);
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
-      if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale) > 0) {
+      if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale, level) > 0) {
         drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
       }
     }
@@ -199,14 +201,15 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
   return { draw };
 }
 
-/** Visibility alpha times the object's zoom fade. Nothing here is pack-specific. */
+/** Visibility alpha times zoom fade times the sibling handover. Nothing here is pack-specific. */
 function paintAlpha(
   entry: VisibleObject,
   scale: number,
   fitScale: number | undefined,
   anchorScale: AnchorScale | undefined,
+  level: (id: string) => number,
 ): number {
-  return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale, anchorScale);
+  return displayOpacity(entry.alpha, entry.object.fade, scale, fitScale, anchorScale) * level(entry.object.id);
 }
 
 /**
@@ -224,13 +227,14 @@ function drawLinks(
   objects: readonly CanvasObject[] | undefined,
   fitScale: number | undefined,
   anchorScale: AnchorScale | undefined,
+  level: (id: string) => number,
 ): void {
   if (!objects || objects.length === 0) return;
   for (const object of objects) {
     if (object.payload.type !== 'link') continue;
     const { from, to, style } = object.payload;
-    const fromAlpha = endpointAlpha(objects, from, camera.scale, fitScale, anchorScale);
-    const toAlpha = endpointAlpha(objects, to, camera.scale, fitScale, anchorScale);
+    const fromAlpha = endpointAlpha(objects, from, camera.scale, fitScale, anchorScale, level);
+    const toAlpha = endpointAlpha(objects, to, camera.scale, fitScale, anchorScale, level);
     if (fromAlpha === null || toAlpha === null) continue;
     const alpha = Math.min(fromAlpha, toAlpha);
     if (!(alpha > 0)) continue;
@@ -263,10 +267,30 @@ function endpointAlpha(
   scale: number,
   fitScale: number | undefined,
   anchorScale: AnchorScale | undefined,
+  level: (id: string) => number,
 ): number | null {
   const object = objects.find((candidate) => candidate.id === id);
   if (!object) return null;
-  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale);
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale) * level(object.id);
+}
+
+/** Sibling handover for this camera. The same plan the store uses for culling. */
+function levelOpacity(
+  objects: readonly CanvasObject[] | undefined,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+): (id: string) => number {
+  return buildLevelPlan(
+    objects ?? [],
+    (id) => {
+      const rect = objects ? resolveWorldRect(objects, id) : null;
+      return rect ? rectToBounds(rect) : undefined;
+    },
+    camera.scale,
+    { x: camera.x, y: camera.y },
+    { width: viewW, height: viewH },
+  ).opacity;
 }
 
 /**

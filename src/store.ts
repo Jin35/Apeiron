@@ -1,5 +1,6 @@
 import { boxFitScale, type Camera, type ContentBox, type ViewBounds } from './camera';
 import { displayOpacity, type AnchorScale } from './fade';
+import { buildLevelPlan, type LevelFocus } from './levelFade';
 import type { CanvasObject } from './model';
 import { visibilityAlpha } from './visibility';
 
@@ -59,9 +60,12 @@ export interface SceneStore {
   /**
    * In band, anywhere in the world, display alpha above the HUD cutoff (0.02).
    * `fitScale` is the opening fit; omit it and zoom fade is not applied.
-   * `view` resolves anchor-relative fades. Omit it and those ranges are not applied.
+   * `view` resolves anchor-relative fades and the sibling handover. Omit it
+   * and those ranges are not applied. `focus` is the viewport centre. Omit
+   * it and the handover is not applied, so a count with no camera stays
+   * zoom-and-band only.
    */
-  countInBand(scale: number, fitScale?: number, view?: ViewportSize): number;
+  countInBand(scale: number, fitScale?: number, view?: ViewportSize, focus?: LevelFocus): number;
   /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
   /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
@@ -72,7 +76,8 @@ export interface SceneStore {
    * alpha at or below the draw cutoff is skipped, including a zoom fade to 0.
    * When several overlap, the greater `maxScale` wins and a tie goes to the later one.
    * `fitScale` is the opening fit; omit it and zoom fade is not applied.
-   * `view` resolves anchor-relative fades. Omit it and those ranges are not applied.
+   * `view` resolves anchor-relative fades and the sibling handover. Omit it
+   * and those ranges are not applied. The handover uses the camera centre.
    */
   hitTest(
     worldPoint: { x: number; y: number },
@@ -126,20 +131,24 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
   }
 
   return {
-    countInBand(scale, fitScale, view) {
+    countInBand(scale, fitScale, view, focus) {
       const anchorScale = anchorFits(entries, view);
+      const level = levelMultiplier(resident, entries, scale, view, focus);
       let count = 0;
       for (const { object } of entries) {
-        if (shownAlpha(object, scale, fitScale, anchorScale) > HUD_ALPHA) count += 1;
+        if (shownAlpha(object, scale, fitScale, anchorScale, level) > HUD_ALPHA) count += 1;
       }
       return count;
     },
     query(query) {
-      const anchorScale = anchorFits(entries, { width: query.viewWidth ?? 0, height: query.viewHeight ?? 0 });
+      const view = { width: query.viewWidth ?? 0, height: query.viewHeight ?? 0 };
+      const anchorScale = anchorFits(entries, view);
+      const level = levelMultiplier(resident, entries, query.scale, view, boundsCenter(query.bounds));
       const visible: VisibleObject[] = [];
       for (const entry of entries) {
         const alpha = visibilityAlpha(entry.object.visibility, query.scale);
-        if (displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale, anchorScale) <= DRAW_ALPHA) continue;
+        const shown = displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale, anchorScale);
+        if (shown * level(entry.object.id) <= DRAW_ALPHA) continue;
         if (!intersects(query.bounds, padBox(entry, query.scale))) continue;
         visible.push({ object: entry.object, alpha });
       }
@@ -160,9 +169,10 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
     },
     hitTest(worldPoint, camera, fitScale, view) {
       const anchorScale = anchorFits(entries, view);
+      const level = levelMultiplier(resident, entries, camera.scale, view, { x: camera.x, y: camera.y });
       let best: Entry | undefined;
       for (const entry of entries) {
-        if (shownAlpha(entry.object, camera.scale, fitScale, anchorScale) <= DRAW_ALPHA) continue;
+        if (shownAlpha(entry.object, camera.scale, fitScale, anchorScale, level) <= DRAW_ALPHA) continue;
         if (!containsPoint(entry.box, worldPoint)) continue;
         if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
           best = entry;
@@ -188,14 +198,39 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
   };
 }
 
-/** Visibility band times zoom fade. The cutoff compares this, not the band alone. */
+/** Visibility band times zoom fade times the sibling handover. The cutoff compares this. */
 function shownAlpha(
   object: CanvasObject,
   scale: number,
   fitScale: number | undefined,
   anchorScale: AnchorScale | undefined,
+  level: (id: string) => number,
 ): number {
-  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale);
+  return displayOpacity(visibilityAlpha(object.visibility, scale), object.fade, scale, fitScale, anchorScale) * level(object.id);
+}
+
+/**
+ * Sibling-handover multiplier for one camera. Boxes come from the placed
+ * entries, so a portal's fit matches the anchor fit its children fade against.
+ * Missing view or focus leaves every id at 1.
+ */
+function levelMultiplier(
+  objects: readonly CanvasObject[],
+  entries: readonly Entry[],
+  scale: number,
+  view: ViewportSize | undefined,
+  focus: LevelFocus | undefined,
+): (id: string) => number {
+  const boxes = new Map<string, ViewBounds>();
+  for (const entry of entries) boxes.set(entry.object.id, entry.box);
+  return buildLevelPlan(objects, (id) => boxes.get(id), scale, focus, view).opacity;
+}
+
+function boundsCenter(bounds: ViewBounds): LevelFocus | undefined {
+  const x = (bounds.left + bounds.right) / 2;
+  const y = (bounds.top + bounds.bottom) / 2;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+  return { x, y };
 }
 
 /**

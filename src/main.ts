@@ -66,7 +66,7 @@ export function mountShell(
       ...(selectedId ? { selectedId } : {}),
     });
     if (labelList) syncLabelList(labelList, shown);
-    const visible = store.countInBand(camera.scale, fitScale, view);
+    const visible = store.countInBand(camera.scale, fitScale, view, { x: camera.x, y: camera.y });
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);

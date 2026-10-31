@@ -48,8 +48,9 @@ export const INTERNALS_SCALE = 0.625;
 
 /**
  * `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`.
- * The phone uses the opening fit as `r = 1`. The battery level uses the
- * battery's own opening fit, named on the fade, and the same end.
+ * The phone uses the opening fit as `r = 1`. A nested level names the part
+ * it belongs to (`fadeInOf`); that part's own opening fit is `r = 1`.
+ * The platform fades the part's siblings out over the same range.
  */
 const REVEAL = [1, 1 / INTERNALS_SCALE] as const;
 
@@ -77,8 +78,6 @@ const band = { minScale: 0.02, maxScale: 10000 };
 
 const fadeOut: ZoomFade = { fadeOut: REVEAL };
 const fadeIn: ZoomFade = { fadeIn: REVEAL };
-/** In with the phone parts, then out across the battery's own fit. */
-const fadeThroughBattery: ZoomFade = { fadeIn: REVEAL, fadeOut: REVEAL, fadeOutOf: 'battery' };
 /** Cell, protection board, and their labels. `r = 1` is the battery's fit. */
 const fadeInBattery: ZoomFade = { fadeIn: REVEAL, fadeInOf: 'battery' };
 
@@ -113,7 +112,9 @@ function cutout(
 /**
  * A callout in its parent's millimetres: the same face and size as the other
  * part labels. `x` and `y` are the label centre. The link stores ids only.
- * Phone-level labels fade out as the battery's own fit is passed.
+ * The label fades in with its part. When a next level opens, the platform
+ * fades every sibling at this parent — parts, labels, and through them the
+ * leaders — so this callout does not name the part being entered.
  */
 function callout(
   partId: string,
@@ -122,7 +123,7 @@ function callout(
   y: number,
   width: number,
   parentId = 'internals',
-  fade: ZoomFade = fadeThroughBattery,
+  fade: ZoomFade = fadeIn,
 ): readonly CanvasObject[] {
   return [
     {
@@ -156,10 +157,11 @@ function callout(
  * parent-local millimetres on that group, listed back to front, then the
  * front image. `battery-internals` is that same kind of group on `battery`.
  * Edit a part's `x`, `y`, and opaque width to rearrange it.
- * The fade is zoom-driven, not animated.
+ * The fade is zoom-driven, not animated. Children of a part set `fadeInOf`
+ * to that part. Entering it fades the whole sibling level, not only the part.
  *
  * Labels sit in two columns outside the phone, each offset from its part so
- * the centre-to-centre leader is at least about 20° off horizontal and vertical.
+ * the centre-to-centre leader is at least 20° off horizontal and vertical.
  * The cell and protection board use the same callout, on their own group.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
@@ -209,7 +211,7 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     40,
     -12.6,
     10.2,
-    fadeThroughBattery,
+    fadeIn,
     'internals',
   ),
   cutout(
@@ -260,7 +262,7 @@ export const smartphoneObjects: readonly CanvasObject[] = [
   ...callout('midframe', 'Midframe', 71, 26, 17),
   ...callout('haptic-motor', 'Haptic motor', 76, 42, 26),
   ...callout('cell', 'Cell', -42, 20, 12, 'battery-internals', fadeInBattery),
-  ...callout('protection-board', 'Protection board', 50, -46, 32, 'battery-internals', fadeInBattery),
+  ...callout('protection-board', 'Protection board', 41, -12, 16, 'battery-internals', fadeInBattery),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */
