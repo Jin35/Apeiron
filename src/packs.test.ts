@@ -15,6 +15,7 @@ import { demoPack, titleFitWidth } from './demo';
 import { resolveWorldRect, type AxisRect } from './link';
 import type { ImagePayload } from './model';
 import { relativeZoomAlpha } from './fade';
+import { buildLevelPlan } from './levelFade';
 import { createMemoryStore } from './store';
 import { darkTheme, paperTheme } from './theme';
 import { visibilityAlpha } from './visibility';
@@ -122,11 +123,7 @@ describe('smartphone pack', () => {
       const part = smartphoneObjects.find((object) => object.id === id);
       if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
       expect(part.parentId).toBe('internals');
-      if (id === 'battery') {
-        expect(part.fade).toEqual({ fadeIn: reveal, fadeOut: reveal, fadeOutOf: 'battery' });
-      } else {
-        expect(part.fade).toEqual({ fadeIn: reveal });
-      }
+      expect(part.fade).toEqual({ fadeIn: reveal });
       expect(part.scale).toBeUndefined();
       expect(part.x).toBe(x);
       expect(part.y).toBe(y);
@@ -294,7 +291,7 @@ describe('smartphone pack', () => {
       if (!label || label.payload.type !== 'text') throw new Error(`expected a label for ${part.id}`);
       if (!link || link.payload.type !== 'link') throw new Error(`expected a link for ${part.id}`);
       expect(label.parentId).toBe('internals');
-      expect(label.fade).toEqual({ fadeIn: [1, 1 / INTERNALS_SCALE], fadeOut: [1, 1 / INTERNALS_SCALE], fadeOutOf: 'battery' });
+      expect(label.fade).toEqual({ fadeIn: [1, 1 / INTERNALS_SCALE] });
       expect(label.payload).toMatchObject({
         text: names[part.id],
         style: { fontSize: 4.2 },
@@ -307,7 +304,7 @@ describe('smartphone pack', () => {
       const from = resolveWorldRect(smartphoneObjects, label.id);
       const to = resolveWorldRect(smartphoneObjects, part.id);
       if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
-      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(15);
+      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(20);
     }
 
     const inside: Record<string, string> = {
@@ -337,7 +334,25 @@ describe('smartphone pack', () => {
       const from = resolveWorldRect(smartphoneObjects, label.id);
       const to = resolveWorldRect(smartphoneObjects, part.id);
       if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
-      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(15);
+      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  it('links a label to every part image that has a parent', () => {
+    const parts = smartphoneObjects.filter(
+      (object) => object.parentId !== undefined && object.payload.type === 'image',
+    );
+    expect(parts.length).toBeGreaterThan(0);
+    for (const part of parts) {
+      const link = smartphoneObjects.find((object) => {
+        if (object.payload.type !== 'link') return false;
+        return object.payload.from === part.id || object.payload.to === part.id;
+      });
+      expect(link, `${part.id} has no leader`).toBeDefined();
+      if (!link || link.payload.type !== 'link') continue;
+      const labelId = link.payload.from === part.id ? link.payload.to : link.payload.from;
+      const label = smartphoneObjects.find((object) => object.id === labelId);
+      expect(label?.payload.type, `${part.id} is not linked to a label`).toBe('text');
     }
   });
 
@@ -414,18 +429,66 @@ describe('smartphone pack', () => {
         })
         .map((entry) => entry.object.id);
 
-    expect(idsAt(1)).toEqual(expect.arrayContaining(['battery', 'battery-label']));
+    const siblings = [
+      'midframe',
+      'battery',
+      'logic-board',
+      'camera-module',
+      'loudspeaker',
+      'haptic-motor',
+      'midframe-label',
+      'battery-label',
+      'logic-board-label',
+      'camera-module-label',
+      'loudspeaker-label',
+      'haptic-motor-label',
+    ];
+    expect(idsAt(1)).toEqual(expect.arrayContaining(siblings));
     expect(idsAt(1)).not.toEqual(expect.arrayContaining(['cell', 'cell-label', 'protection-board-label']));
-    expect(idsAt(reveal)).not.toEqual(expect.arrayContaining(['battery', 'battery-label', 'logic-board-label']));
+    expect(idsAt(reveal)).not.toEqual(expect.arrayContaining(siblings));
     expect(idsAt(reveal)).toEqual(
       expect.arrayContaining(['cell', 'protection-board', 'cell-label', 'protection-board-label']),
     );
-    expect(idsAt(2.5)).not.toContain('battery');
+    expect(idsAt(2.5)).not.toEqual(expect.arrayContaining(siblings));
+    expect(idsAt(2.5)).toEqual(expect.arrayContaining(['cell', 'protection-board', 'cell-label', 'protection-board-label']));
+    // Zooming back out restores the sibling level and hides the cell again.
+    expect(idsAt(1)).toEqual(expect.arrayContaining(['loudspeaker', 'haptic-motor-label']));
+
+    const battery = mustRect('battery');
+    const planAt = (ratio: number, id: string) =>
+      buildLevelPlan(
+        smartphoneObjects,
+        (objectId) => {
+          const rect = resolveWorldRect(smartphoneObjects, objectId);
+          return rect ? boundsOf(rect) : undefined;
+        },
+        batteryFit * ratio,
+        { x: battery.x, y: battery.y },
+        desktop,
+      ).opacity(id);
+    expect(planAt(1, 'midframe')).toBeCloseTo(1);
+    expect(planAt(1.3, 'midframe')).toBeCloseTo(0.5);
+    expect(planAt(1.3, 'logic-board-label')).toBeCloseTo(0.5);
+    expect(planAt(1.3, 'battery')).toBeCloseTo(0.5);
+    expect(planAt(reveal, 'camera-module')).toBeCloseTo(0);
+    expect(planAt(2.5, 'haptic-motor')).toBe(0);
+    expect(planAt(1, 'loudspeaker')).toBeCloseTo(1);
+    // The cell level fades in on its own anchor. The handover does not dim it,
+    // and the phone's own fade is left alone.
+    expect(planAt(1.3, 'cell')).toBe(1);
+    expect(planAt(1.3, 'protection-board')).toBe(1);
+    expect(planAt(1.3, 'cell-label')).toBe(1);
+    expect(planAt(1.3, 'protection-board-label')).toBe(1);
+    expect(planAt(1.3, 'phone')).toBe(1);
+    expect(planAt(2.5, 'phone')).toBe(1);
+
+    expect(store.countInBand(batteryFit, fit, desktop, { x: battery.x, y: battery.y })).toBe(12);
+    expect(store.countInBand(batteryFit * 1.3, fit, desktop, { x: battery.x, y: battery.y })).toBe(16);
+    expect(store.countInBand(batteryFit * reveal, fit, desktop, { x: battery.x, y: battery.y })).toBe(4);
 
     const view = desktop;
     const cell = mustRect('cell');
     const board = mustRect('protection-board');
-    const battery = mustRect('battery');
     const at = (ratio: number) => ({ x: battery.x, y: battery.y, scale: batteryFit * ratio });
     expect(store.hitTest({ x: cell.x, y: cell.y }, at(1), fit, view)?.id).toBe('battery');
     expect(store.hitTest({ x: cell.x, y: cell.y }, at(reveal), fit, view)?.id).toBe('cell');
