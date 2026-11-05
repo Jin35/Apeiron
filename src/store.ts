@@ -348,7 +348,7 @@ function entryFor(object: CanvasObject): Entry {
   if (object.payload.type === 'group' || object.payload.type === 'link') {
     throw new Error('this object has no box');
   }
-  const pad = object.payload.type === 'image' ? IMAGE_PAD_CSS_PX : TEXT_PAD_CSS_PX;
+  const pad = object.payload.type === 'text' ? TEXT_PAD_CSS_PX : IMAGE_PAD_CSS_PX;
   return {
     object,
     box: centeredBox(object.x, object.y, object.payload.width, object.payload.height),

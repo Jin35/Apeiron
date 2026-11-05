@@ -11,9 +11,13 @@ export type ScreenPoint = {
   y: number;
 };
 
-/** Global camera limits, not a world edge. One decade past the overview, out to 1e7. */
+/**
+ * Global camera limits, not a world edge.
+ * `1e-4` is one decade past the overview. `1e12` reaches a 0.15 nm atom
+ * from a 150 mm phone (about 1e9×) with room to frame it.
+ */
 export const MIN_SCALE = 1e-4;
-export const MAX_SCALE = 1e7;
+export const MAX_SCALE = 1e12;
 
 /**
  * Share of the content span added on each side of the union.

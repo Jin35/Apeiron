@@ -3,7 +3,8 @@ import { displayOpacity, type AnchorScale } from './fade';
 import { gridStep } from './grid';
 import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
-import type { CanvasObject, LinkStyle, TextPayload } from './model';
+import type { CanvasObject, LinkStyle, ShapePayload, TextPayload } from './model';
+import { coordinateIsCoarse, projectCss, type CssBox } from './project';
 import { darkTheme, withAlpha, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
 
@@ -25,6 +26,10 @@ const SELECT_LINE_PX = 2;
 const SELECT_ALPHA = 0.9;
 /** Plate frame is the accent, fainter than the selection. */
 const FRAME_ALPHA = 0.45;
+
+/** Neutral mid-grey stand-in, with a light outline so it reads on the paper. */
+const PLACEHOLDER_FILL = '#8d8d8d';
+const PLACEHOLDER_LINE = '#e7e7e7';
 
 /**
  * A screen font above this is not submitted. Atlas labels peak near 185px,
@@ -177,12 +182,16 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     for (const entry of sorted) {
       const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale, level);
       if (!(alpha > 0)) continue;
+      const box = cssFor(entry.object, camera, viewW, viewH, frame.objects);
+      if (!box) continue;
       ctx.globalAlpha = alpha;
       const { object } = entry;
       if (object.payload.type === 'image') {
-        drawImageObject(ctx, theme, camera, viewW, viewH, object, imageFor(object.payload.src));
+        drawImageObject(ctx, theme, viewW, viewH, box, object.payload.frame !== false, imageFor(object.payload.src));
       } else if (object.payload.type === 'text') {
-        drawTextObject(ctx, theme, camera, viewW, viewH, object.x, object.y, object.payload);
+        drawTextObject(ctx, theme, camera, box, object.payload);
+      } else if (object.payload.type === 'shape') {
+        drawShapeObject(ctx, box, object.payload);
       }
     }
     // After the objects, so the stroke stays visible across other parts.
@@ -192,7 +201,8 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
       if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale, level) > 0) {
-        drawSelection(ctx, theme, camera, viewW, viewH, selected.object);
+        const box = cssFor(selected.object, camera, viewW, viewH, frame.objects);
+        if (box) drawSelection(ctx, theme, box);
       }
     }
     ctx.restore();
@@ -239,14 +249,10 @@ function drawLinks(
     const alpha = Math.min(fromAlpha, toAlpha);
     if (!(alpha > 0)) continue;
 
-    const fromRect = resolveWorldRect(objects, from);
-    const toRect = resolveWorldRect(objects, to);
+    const fromRect = endpointCss(objects, from, camera, viewW, viewH);
+    const toRect = endpointCss(objects, to, camera, viewW, viewH);
     if (!fromRect || !toRect) continue;
-    const segment = clipLeaderLine(
-      projectRect(fromRect, camera, viewW, viewH),
-      projectRect(toRect, camera, viewW, viewH),
-      leaderGap(style),
-    );
+    const segment = clipLeaderLine(fromRect, toRect, leaderGap(style));
     if (!segment) continue;
 
     ctx.globalAlpha = alpha;
@@ -383,26 +389,12 @@ function speck(n: number): number {
   return x >>> 0;
 }
 
-function drawSelection(
-  ctx: CanvasRenderingContext2D,
-  theme: Theme,
-  camera: Camera,
-  viewW: number,
-  viewH: number,
-  object: CanvasObject,
-) {
-  if (object.payload.type === 'group' || object.payload.type === 'link') return;
-  const { width, height } = object.payload;
-  if (!(width > 0) || !(height > 0)) return;
-  const left = worldToCssX(object.x - width / 2, camera, viewW);
-  const top = worldToCssY(object.y - height / 2, camera, viewH);
-  const cssW = width * camera.scale;
-  const cssH = height * camera.scale;
-  if (!(cssW > 0) || !(cssH > 0)) return;
+function drawSelection(ctx: CanvasRenderingContext2D, theme: Theme, box: CssBox) {
+  if (!(box.width > 0) || !(box.height > 0)) return;
   ctx.globalAlpha = 1;
   ctx.strokeStyle = withAlpha(theme.accent, SELECT_ALPHA);
   ctx.lineWidth = SELECT_LINE_PX;
-  ctx.strokeRect(left, top, cssW, cssH);
+  ctx.strokeRect(box.left, box.top, box.width, box.height);
 }
 
 function drawGrid(
@@ -445,22 +437,15 @@ function drawGrid(
 function drawImageObject(
   ctx: CanvasRenderingContext2D,
   theme: Theme,
-  camera: Camera,
   viewW: number,
   viewH: number,
-  object: CanvasObject,
+  box: CssBox,
+  framed: boolean,
   image: HTMLImageElement,
 ) {
-  if (object.payload.type !== 'image') return;
-  const { width, height } = object.payload;
-  if (!(width > 0) || !(height > 0)) return;
-  const left = worldToCssX(object.x - width / 2, camera, viewW);
-  const top = worldToCssY(object.y - height / 2, camera, viewH);
-  const cssW = width * camera.scale;
-  const cssH = height * camera.scale;
+  const { left, top, width: cssW, height: cssH } = box;
   if (!(cssW > 0) || !(cssH > 0)) return;
 
-  const framed = object.payload.frame !== false;
   if (coordsArePrecise(left, top, cssW, cssH)) {
     if (framed) {
       ctx.fillStyle = PLATE;
@@ -494,6 +479,40 @@ function drawImageObject(
   if (framed) strokeCrossingEdges(ctx, theme, left, top, left + cssW, top + cssH, viewW, viewH);
 }
 
+/** Grey stand-in. Views are dashed; processes are pills; parts are rounded squares. */
+function drawShapeObject(ctx: CanvasRenderingContext2D, box: CssBox, payload: ShapePayload) {
+  const { left, top, width, height } = box;
+  if (!(width > 0) || !(height > 0)) return;
+  const radius =
+    payload.kind === 'process' ? Math.min(width, height) / 2 : Math.min(width, height) * 0.18;
+  ctx.beginPath();
+  roundedRect(ctx, left, top, width, height, radius);
+  ctx.fillStyle = PLACEHOLDER_FILL;
+  ctx.fill();
+  ctx.strokeStyle = PLACEHOLDER_LINE;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash(payload.kind === 'view' ? [7, 5] : []);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function roundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
 /** Halo stroke as a fraction of the font size. Counted when the ink is fitted to the box. */
 const TEXT_HALO = 0.055;
 
@@ -501,14 +520,11 @@ function drawTextObject(
   ctx: CanvasRenderingContext2D,
   theme: Theme,
   camera: Camera,
-  viewW: number,
-  viewH: number,
-  x: number,
-  y: number,
+  box: CssBox,
   payload: TextPayload,
 ) {
-  const { text: label, style, width, height } = payload;
-  if (!(width > 0) || !(height > 0)) return;
+  const { text: label, style } = payload;
+  if (!(box.width > 0) || !(box.height > 0)) return;
   const screenFont = style.fontSize * camera.scale;
   if (!(screenFont > 0) || screenFont > MAX_SCREEN_FONT_PX) return;
 
@@ -521,13 +537,13 @@ function drawTextObject(
   ctx.lineJoin = 'round';
   spaced.letterSpacing = style.letterSpacing ?? '0px';
 
-  const fontPx = screenFont * textFit(ctx, label, screenFont, width * camera.scale, height * camera.scale);
+  const fontPx = screenFont * textFit(ctx, label, screenFont, box.width, box.height);
   if (fontPx !== screenFont) ctx.font = `${weight} ${fontPx}px ${family}`;
 
   ctx.strokeStyle = 'rgba(10, 12, 16, 0.75)';
   ctx.lineWidth = fontPx * TEXT_HALO;
-  const sx = worldToCssX(x, camera, viewW);
-  const sy = worldToCssY(y, camera, viewH);
+  const sx = box.left + box.width / 2;
+  const sy = box.top + box.height / 2;
   ctx.strokeText(label, sx, sy);
   ctx.fillStyle = style.color ?? theme.ink;
   ctx.fillText(label, sx, sy);
@@ -570,6 +586,65 @@ function worldToCssX(worldX: number, camera: Camera, viewW: number): number {
 
 function worldToCssY(worldY: number, camera: Camera, viewH: number): number {
   return (worldY - camera.y) * camera.scale + viewH / 2;
+}
+
+/**
+ * CSS box for one visible object. The flattened world position is exact at
+ * ordinary scales. Past the point where a ulp of that position is a visible
+ * jump, the box is recomputed from the authored parent chain relative to the
+ * camera, which keeps a deep child on its own pixel.
+ */
+function cssFor(
+  object: CanvasObject,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+  authored: readonly CanvasObject[] | undefined,
+): CssBox | null {
+  if (object.payload.type === 'group' || object.payload.type === 'link') return null;
+  const { width, height } = object.payload;
+  const coarse =
+    coordinateIsCoarse(object.x, camera.scale) ||
+    coordinateIsCoarse(object.y, camera.scale) ||
+    !(width > 0) ||
+    !(height > 0);
+  if (coarse && authored) {
+    const projected = projectCss(authored, object.id, camera, viewW, viewH);
+    if (projected) return projected;
+  }
+  if (!(width > 0) || !(height > 0)) return null;
+  const cssW = width * camera.scale;
+  const cssH = height * camera.scale;
+  if (!(cssW > 0) || !(cssH > 0)) return null;
+  return {
+    left: worldToCssX(object.x - width / 2, camera, viewW),
+    top: worldToCssY(object.y - height / 2, camera, viewH),
+    width: cssW,
+    height: cssH,
+  };
+}
+
+/** Leader endpoint in CSS pixels. Deep endpoints use the same chain walk as plates. */
+function endpointCss(
+  objects: readonly CanvasObject[],
+  id: string,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+): AxisRect | null {
+  const world = resolveWorldRect(objects, id);
+  if (world && (coordinateIsCoarse(world.x, camera.scale) || coordinateIsCoarse(world.y, camera.scale))) {
+    const box = projectCss(objects, id, camera, viewW, viewH);
+    if (!box) return null;
+    return {
+      x: box.left + box.width / 2,
+      y: box.top + box.height / 2,
+      width: box.width,
+      height: box.height,
+    };
+  }
+  if (!world) return null;
+  return projectRect(world, camera, viewW, viewH);
 }
 
 function coordsArePrecise(left: number, top: number, width: number, height: number): boolean {

@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate": "node scripts/generate-hierarchy.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

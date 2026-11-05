@@ -92,8 +92,8 @@ describe('derived camera limits', () => {
   });
 
   it('reads a tiny object past its band, and never past the global clamp', () => {
-    const deep = deriveCameraLimits([plate(0, 1e-6, 0, 1e-6, 2, 1e-6)], viewW, viewH);
-    expect(READABLE_PX / 1e-6).toBeGreaterThan(MAX_SCALE);
+    const deep = deriveCameraLimits([plate(0, 1e-14, 0, 1e-14, 2, 1e-14)], viewW, viewH);
+    expect(READABLE_PX / 1e-14).toBeGreaterThan(MAX_SCALE);
     expect(deep.maxScale).toBe(MAX_SCALE);
 
     const capped = deriveCameraLimits([plate(-1, 1, -1, 1, 1e12, 10)], viewW, viewH);

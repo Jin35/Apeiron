@@ -38,16 +38,16 @@ const SHOWN: LevelPlan = { opacity: () => 1 };
  * over that range of its own opening fit. While the camera is in that part's
  * fit-scale range — every scale at or above `fit * start`, so the level stays
  * entered after the blend finishes — the part and every sibling that shares
- * its `parentId` fade out over the same range. Descendants are a different
- * parent, so they keep their own fade. Labels sit on the parent group with
- * the part, so they leave with it. No pack is named here.
+ * its `parentId` fade out over the same range. Labels sit on the parent group with
+ * the part, so they leave with it. Descendants of a sibling that has faded
+ * leave with that sibling; the active part's own children do not. No pack is
+ * named here.
  *
- * The active portal is the entered one nearest `focus`. An equal distance
- * goes to the smaller id. The choice is a pure function of the camera, so a
- * still view cannot flicker. Ancestor portals of that part stay applied, and
- * so does every other entered portal in the same sibling group: switching
- * which sibling is nearest can only hold the level down, never pop it back.
- * Zooming out leaves the range and the multiplier returns to 1.
+ * The active portal keeps its own fade curve, so a larger sibling that
+ * finished earlier cannot blank the part under the camera. Every other
+ * sibling still takes the furthest-along curve: panning onto a less-faded
+ * neighbour does not bring the rest of the level back. Descendants of a
+ * faded sibling leave with it. The active part's children do not.
  */
 export function buildLevelPlan(
   objects: readonly CanvasObject[],
@@ -70,29 +70,65 @@ export function buildLevelPlan(
   if (entered.length === 0) return SHOWN;
 
   const fading = fadingPortals(nearestPortal(entered, focus), entered, parentOf);
-  return { opacity: factorsFor(objects, fading, scale) };
+  return { opacity: factorsFor(objects, fading, scale, parentOf) };
 }
 
 function factorsFor(
   objects: readonly CanvasObject[],
   fading: readonly Portal[],
   scale: number,
+  parentOf: ReadonlyMap<string, string | undefined>,
 ): (id: string) => number {
+  const active = fading[0];
   const factors = new Map<string, number>();
   const seen = new Set<string>();
   for (const object of objects) {
     if (seen.has(object.id)) continue;
     seen.add(object.id);
     if (object.payload.type === 'group' || object.payload.type === 'link') continue;
+    // The part under the camera keeps its own curve, and so does its label.
+    // A larger sibling that already finished must not blank the part you
+    // zoomed to; it still holds the rest of the level down.
+    const own = active !== undefined && (object.id === active.id || object.id === `${active.id}-label`);
     let factor = 1;
     let touched = false;
     for (const portal of fading) {
       if (object.parentId !== portal.parentId) continue;
+      if (own && portal.id !== active?.id) continue;
       const curve = relativeZoomAlpha({ fadeOut: portal.range }, scale / portal.fit);
       factor = touched ? Math.min(factor, curve) : curve;
       touched = true;
     }
     if (touched) factors.set(object.id, factor);
+  }
+  // A faded sibling takes its descendants with it. The active part's own
+  // children stay: they are the level being revealed. Ancestors are protected
+  // the same way, so a nested portal does not inherit the outer fade twice.
+  const protectedIds = new Set<string>();
+  if (active) {
+    const walk = new Set<string>();
+    let id: string | undefined = active.id;
+    while (id && !walk.has(id)) {
+      walk.add(id);
+      protectedIds.add(id);
+      id = parentOf.get(id);
+    }
+  }
+  let grew = true;
+  let guard = 0;
+  while (grew && guard < 64) {
+    grew = false;
+    guard += 1;
+    for (const object of objects) {
+      if (factors.has(object.id)) continue;
+      if (object.payload.type === 'group' || object.payload.type === 'link') continue;
+      const parent = object.parentId;
+      if (!parent || protectedIds.has(parent)) continue;
+      const parentFactor = factors.get(parent);
+      if (parentFactor === undefined) continue;
+      factors.set(object.id, parentFactor);
+      grew = true;
+    }
   }
   return (id: string) => factors.get(id) ?? 1;
 }
