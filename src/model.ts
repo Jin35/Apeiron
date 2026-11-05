@@ -58,10 +58,9 @@ export type GroupPayload = {
    * steps down, and the front steps up. Every other part keeps the side
    * and the order of its assembled position, in a column beside the frame.
    * A level with nothing on the origin moves each part straight out along
-   * the ray from the origin instead. The parts are then scaled about the
-   * origin until they sit inside the assembled bounds, so a group scale of
-   * 0.625 still meets its parent at `1 / 0.625`. Labels are not parts.
-   * Omit, or a non-positive value, to keep the assembled layout.
+   * the ray from the origin. Across the children's fade the level eases from
+   * the assembled arrangement, matched to the parent, to this spread fitted
+   * to the viewport. Omit, or a non-positive value, to keep the assembled layout.
    */
   explode?: number;
 };

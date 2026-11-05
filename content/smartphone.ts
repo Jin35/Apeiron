@@ -87,8 +87,8 @@ const BOARD_Y_MM = -29.72;
  * frame. The battery has no plate, so the cell and the board move apart
  * along the line between them.
  */
-const PHONE_EXPLODE_MM = 14;
-const BATTERY_EXPLODE_MM = 10;
+const PHONE_EXPLODE_MM = 8;
+const BATTERY_EXPLODE_MM = 6;
 
 /**
  * Wide enough that the opening fit and the battery level sit in the flat

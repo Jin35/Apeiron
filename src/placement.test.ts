@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { resolveWorldRect } from './link';
 import type { CanvasObject, VisibilityRange } from './model';
 import { explodeLevel, type LevelPart } from './placement';
-import { createMemoryStore } from './store';
 
 const band: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
 
@@ -17,7 +16,7 @@ describe('explodeLevel', () => {
     expect(explodeLevel(parts, Number.NaN).map((part) => part.scale)).toEqual([1, 1, 1]);
   });
 
-  it('moves each part out along its ray, leaves the frame centred, and restores the long side', () => {
+  it('moves each part out along its ray and leaves the frame centred', () => {
     const laid = explodeLevel(parts, 30);
     const byId = new Map(laid.map((part) => [part.id, part]));
     const frameLaid = byId.get('frame');
@@ -27,22 +26,13 @@ describe('explodeLevel', () => {
 
     expect(frameLaid.x).toBeCloseTo(0);
     expect(frameLaid.y).toBeCloseTo(0);
-    expect(leftLaid.scale).toBeCloseTo(frameLaid.scale);
-    expect(leftLaid.scale).toBeLessThan(1);
+    expect(leftLaid.scale).toBe(1);
     // Same direction as the assembled offset, and not a different ray.
     expect(leftLaid.x * left.y - leftLaid.y * left.x).toBeCloseTo(0);
     expect(leftLaid.x * left.x + leftLaid.y * left.y).toBeGreaterThan(0);
     expect(upperLaid.x * upper.y - upperLaid.y * upper.x).toBeCloseTo(0);
     expect(upperLaid.x * upper.x + upperLaid.y * upper.y).toBeGreaterThan(0);
 
-    const assembled = measure(parts.map((part) => at(part, part.x, part.y, 1)));
-    const fitted = measure(laid.map((part) => {
-      const source = parts.find((candidate) => candidate.id === part.id);
-      if (!source) throw new Error(part.id);
-      return at(source, part.x, part.y, part.scale);
-    }));
-    expect(fitted.height).toBeLessThanOrEqual(assembled.height + 1e-6);
-    expect(fitted.width).toBeLessThanOrEqual(assembled.width + 1e-6);
     expect(gapBetween(
       at(left, leftLaid.x, leftLaid.y, leftLaid.scale),
       at(frame, frameLaid.x, frameLaid.y, frameLaid.scale),
@@ -98,44 +88,33 @@ describe('placement', () => {
     const objects: CanvasObject[] = [
       group('level', gap),
       image('frame', 0, 0, 40, 80, 'level'),
-      image('part', -10, 8, 16, 20, 'level'),
+      { ...image('part', -10, 8, 16, 20, 'level'), fade: { fadeIn: [1, 1.6] } },
       text('part-label', -40, 12, 'level'),
+      {
+        id: 'part-link',
+        x: 0,
+        y: 0,
+        visibility: band,
+        payload: { type: 'link', from: 'part-label', to: 'part' },
+      },
       image('nested', 4, -2, 6, 8, 'part'),
     ];
 
-    expect(resolveWorldRect(objects, 'part')).toMatchObject({
-      x: part.x * 0.625,
-      y: part.y * 0.625,
-      width: 16 * part.scale * 0.625,
-      height: 20 * part.scale * 0.625,
-    });
-    expect(resolveWorldRect(objects, 'frame')).toMatchObject({
-      x: 0,
-      y: 0,
-      width: 40 * part.scale * 0.625,
-    });
-    expect(resolveWorldRect(objects, 'part-label')).toEqual({
-      x: -40 * 0.625,
-      y: 12 * 0.625,
-      width: 12 * 0.625,
-      height: 4 * 0.625,
-    });
-    // The part's fit scale is the space its children are authored in.
-    const nested = resolveWorldRect(objects, 'nested');
-    const parent = resolveWorldRect(objects, 'part');
-    expect(nested).toMatchObject({
-      x: (parent?.x ?? 0) + 4 * (parent?.width ?? 0) / 16,
-      width: 6 * (parent?.width ?? 0) / 16,
-    });
+    // No camera: assembled, and matched to the parent (the 0.625 group undoes the 1.6).
+    expect(resolveWorldRect(objects, 'part')).toMatchObject({ x: -10, y: 8, width: 16, height: 20 });
+    expect(resolveWorldRect(objects, 'frame')).toMatchObject({ x: 0, y: 0, width: 40, height: 80 });
+    const fadedView = { scale: 4, fitScale: 1, width: 800, height: 600 };
+    const label = resolveWorldRect(objects, 'part-label', fadedView);
+    const fadedPart = resolveWorldRect(objects, 'part', fadedView);
+    if (!label || !fadedPart) throw new Error('expected the part and its label');
+    expect(Math.abs(label.x - fadedPart.x)).toBeGreaterThan(fadedPart.width / 2);
+    expect(axisClearance(label, fadedPart)).toBeGreaterThanOrEqual(20);
 
-    const store = createMemoryStore(objects);
-    const visible = store.query({
-      bounds: { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 },
-      scale: 4,
-    });
-    const placed = visible.find((entry) => entry.object.id === 'part');
-    expect(placed?.object.x).toBeCloseTo(part.x * 0.625);
-    expect(placed?.object.payload).toMatchObject({ width: 16 * part.scale * 0.625 });
+    const nested = resolveWorldRect(objects, 'nested');
+    expect(nested).toMatchObject({ x: -6, width: 6 });
+
+    const faded = resolveWorldRect(objects, 'part', fadedView);
+    expect(faded?.x).not.toBeCloseTo(-10);
   });
 });
 
@@ -143,18 +122,9 @@ function at(part: LevelPart, x: number, y: number, scale: number): LevelPart {
   return { id: part.id, x, y, width: part.width * scale, height: part.height * scale };
 }
 
-function measure(parts: readonly LevelPart[]): { width: number; height: number } {
-  let left = Number.POSITIVE_INFINITY;
-  let right = Number.NEGATIVE_INFINITY;
-  let top = Number.POSITIVE_INFINITY;
-  let bottom = Number.NEGATIVE_INFINITY;
-  for (const part of parts) {
-    left = Math.min(left, part.x - part.width / 2);
-    right = Math.max(right, part.x + part.width / 2);
-    top = Math.min(top, part.y - part.height / 2);
-    bottom = Math.max(bottom, part.y + part.height / 2);
-  }
-  return { width: right - left, height: bottom - top };
+function axisClearance(from: { x: number; y: number }, to: { x: number; y: number }): number {
+  const degrees = Math.abs(Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI));
+  return Math.min(Math.min(degrees, 180 - degrees), Math.abs(degrees - 90));
 }
 
 function gapBetween(a: LevelPart, b: LevelPart): number {
