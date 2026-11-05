@@ -281,28 +281,43 @@ describe('smartphone pack', () => {
     if (!authoredMid || authoredMid.payload.type !== 'image') throw new Error('expected the authored midframe');
     if (!authoredBattery || authoredBattery.payload.type !== 'image') throw new Error('expected the authored battery');
 
-    // The frame stays centred. The front plate steps up, the back plate steps down.
-    expect(Math.abs(mid.object.x)).toBeLessThan(mid.object.payload.width * 0.2);
-    expect(Math.abs(mid.object.y)).toBeLessThan(mid.object.payload.height * 0.2);
+    // Wide window: back glass, midframe and its parts, display, left to right.
     const display = open.find((entry) => entry.object.id === 'display');
     const backGlass = open.find((entry) => entry.object.id === 'back-glass');
     if (!display || !backGlass) throw new Error('expected the plates');
-    expect(display.object.y).toBeLessThan(mid.object.y);
-    expect(backGlass.object.y).toBeGreaterThan(mid.object.y);
-    expect(battery.object.x).toBeLessThan(0);
+    expect(backGlass.object.x).toBeLessThan(battery.object.x);
+    expect(battery.object.x).toBeLessThan(mid.object.x);
+    expect(mid.object.x).toBeLessThan(display.object.x);
+    expect(Math.abs(display.object.y - mid.object.y)).toBeLessThan(mid.object.payload.height);
 
     const shown = { scale: fit * reveal, fitScale: fit, width: view.width, height: view.height };
-    const visibleIds = [
-      ...levelParts('internals').map((part) => part.id),
-      ...levelParts('internals').map((part) => `${part.id}-label`),
-    ];
-    const placed = unionRects(visibleIds.map((id) => mustRect(id, shown)));
+    const imageIds = levelParts('internals').map((part) => part.id);
+    const placed = unionRects(imageIds.map((id) => mustRect(id, shown)));
     const screenW = placed.width * shown.scale;
     const screenH = placed.height * shown.scale;
     const fill = Math.max(screenW / view.width, screenH / view.height);
-    expect(fill).toBeGreaterThan(0.84);
-    expect(fill).toBeLessThan(0.91);
+    expect(fill).toBeGreaterThan(0.83);
+    expect(fill).toBeLessThan(0.88);
+    const labelPx = mustRect('battery-label', shown).height * shown.scale;
+    expect(labelPx).toBeGreaterThan(16);
+    expect(labelPx).toBeLessThan(21);
     expect(laidClearance('internals')).toBeGreaterThan(3);
+
+    const narrow = { width: 390, height: 844 };
+    const narrowFit = deriveCameraLimits(store.contentBoxes(), narrow.width, narrow.height).fitScale;
+    const narrowView = { scale: narrowFit * reveal, fitScale: narrowFit, width: narrow.width, height: narrow.height };
+    const narrowMid = mustRect('midframe', narrowView);
+    const narrowDisplay = mustRect('display', narrowView);
+    const narrowBack = mustRect('back-glass', narrowView);
+    expect(narrowDisplay.y).toBeLessThan(narrowMid.y);
+    expect(narrowBack.y).toBeGreaterThan(narrowMid.y);
+    const narrowImages = unionRects(imageIds.map((id) => mustRect(id, narrowView)));
+    const narrowFill = Math.max(
+      (narrowImages.width * narrowView.scale) / narrow.width,
+      (narrowImages.height * narrowView.scale) / narrow.height,
+    );
+    expect(narrowFill).toBeGreaterThan(0.83);
+    expect(narrowFill).toBeLessThan(0.88);
   });
 
   it('keeps every part leader at least 15° off the axes', () => {
@@ -424,16 +439,21 @@ describe('smartphone pack', () => {
       }
     }
 
-    const limits = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), 1280, 800);
-    const pan = limits.bounds;
-    if (!pan) throw new Error('expected pan bounds');
+    const desktop = { width: 1280, height: 800 };
+    const fit = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), desktop.width, desktop.height).fitScale;
+    const phoneView = { scale: fit / INTERNALS_SCALE, fitScale: fit, width: desktop.width, height: desktop.height };
     for (const label of labels) {
-      const box = resolveWorldRect(smartphoneObjects, label.id, fullyExploded());
+      if (label.parentId !== 'internals') continue;
+      const box = resolveWorldRect(smartphoneObjects, label.id, phoneView);
       if (!box) throw new Error(`expected a world box for ${label.id}`);
-      expect(box.x - box.width / 2).toBeGreaterThan(pan.left);
-      expect(box.x + box.width / 2).toBeLessThan(pan.right);
-      expect(box.y - box.height / 2).toBeGreaterThan(pan.top);
-      expect(box.y + box.height / 2).toBeLessThan(pan.bottom);
+      const left = (box.x - box.width / 2) * phoneView.scale + desktop.width / 2;
+      const right = (box.x + box.width / 2) * phoneView.scale + desktop.width / 2;
+      const top = (box.y - box.height / 2) * phoneView.scale + desktop.height / 2;
+      const bottom = (box.y + box.height / 2) * phoneView.scale + desktop.height / 2;
+      expect(left, label.id).toBeGreaterThan(0);
+      expect(right, label.id).toBeLessThan(desktop.width);
+      expect(top, label.id).toBeGreaterThan(0);
+      expect(bottom, label.id).toBeLessThan(desktop.height);
     }
 
     const leaders = partsAndLabels();
@@ -574,15 +594,13 @@ describe('smartphone pack', () => {
     const cellBox = mustRect('cell', exploded);
     const boardBox = mustRect('protection-board', exploded);
     expect(boardBox.y).toBeLessThan(cellBox.y);
-    const level = unionRects([
-      cellBox,
-      boardBox,
-      mustRect('cell-label', exploded),
-      mustRect('protection-board-label', exploded),
-    ]);
+    const level = unionRects([cellBox, boardBox]);
     const fill = Math.max((level.width * exploded.scale) / desktop.width, (level.height * exploded.scale) / desktop.height);
-    expect(fill).toBeGreaterThan(0.84);
-    expect(fill).toBeLessThan(0.91);
+    expect(fill).toBeGreaterThan(0.83);
+    expect(fill).toBeLessThan(0.88);
+    const cellLabelPx = mustRect('cell-label', exploded).height * exploded.scale;
+    expect(cellLabelPx).toBeGreaterThan(16);
+    expect(cellLabelPx).toBeLessThan(21);
     expect(laidClearance('battery-internals')).toBeGreaterThan(3);
   });
 });

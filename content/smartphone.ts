@@ -22,24 +22,19 @@ export const smartphoneSprite = {
 } as const satisfies Sprite;
 
 /**
- * Level-1 cutouts. The box is the opaque millimetre size: each file is sized
- * from its own `width_mm`, not from a shared pixel density. A transparent
- * margin, when the file has one, is folded into `width` / `height` from that
- * file's pixel box over its opaque pixels.
+ * Level-1 cutouts, in pixels. World size maps the part's `width_mm` onto the
+ * opaque width and keeps this file's aspect. The image has no placement of
+ * its own; millimetres and `z` live on the object.
  */
-function opaqueMm(widthMm: number, heightMm: number): Sprite {
-  return { width: widthMm, height: heightMm, opaqueWidth: widthMm, opaqueHeight: heightMm };
-}
-
 export const partSprites = {
-  backGlass: opaqueMm(71.34, 146.71),
-  midframe: opaqueMm(71.5, 150.53),
-  battery: opaqueMm(40, 74.12),
-  logicBoard: opaqueMm(21, 44),
-  cameraModule: opaqueMm(24.03, 34.73),
-  loudspeaker: opaqueMm(18, 10.59),
-  hapticMotor: opaqueMm(22, 8.05),
-  display: opaqueMm(71.34, 146.71),
+  backGlass: { width: 464, height: 950, opaqueWidth: 460, opaqueHeight: 946 },
+  midframe: { width: 450, height: 943, opaqueWidth: 446, opaqueHeight: 939 },
+  battery: { width: 487, height: 899, opaqueWidth: 483, opaqueHeight: 895 },
+  logicBoard: { width: 414, height: 863, opaqueWidth: 410, opaqueHeight: 859 },
+  cameraModule: { width: 161, height: 230, opaqueWidth: 155, opaqueHeight: 224 },
+  loudspeaker: { width: 383, height: 227, opaqueWidth: 379, opaqueHeight: 223 },
+  hapticMotor: { width: 426, height: 161, opaqueWidth: 418, opaqueHeight: 153 },
+  display: { width: 464, height: 950, opaqueWidth: 460, opaqueHeight: 946 },
 } as const satisfies Record<string, Sprite>;
 
 /** Inside the battery. Same 2px clear margin as the phone parts. */
@@ -81,13 +76,13 @@ const BOARD_WIDTH_MM = 40;
 const BOARD_Y_MM = -29.72;
 
 /**
- * Clear space, in millimetres, between parts of a level before the platform
- * fits that level back inside its assembled bounds. The phone's plates share
- * the origin and step apart by `z`; the loose parts keep their side of the
- * frame. The battery has no plate, so the cell and the board move apart
- * along the line between them.
+ * Clear space, in millimetres, between parts of a level. The phone's plates
+ * share the origin. On a wide view they step apart sideways by `z` and the
+ * loose parts stay in columns beside the frame; on a tall view the plates
+ * stack and the loose parts stay on the frame. The battery has no plate, so
+ * the cell and the board move apart along the line between them.
  */
-const PHONE_EXPLODE_MM = 8;
+const PHONE_EXPLODE_MM = 12;
 const BATTERY_EXPLODE_MM = 6;
 
 /**
@@ -140,12 +135,19 @@ function cutout(
  * fades every sibling at this parent — parts, labels, and through them the
  * leaders — so this callout does not name the part being entered.
  */
+/**
+ * Wide enough for the words at the label's 4.2 mm face. The platform sizes
+ * the box up to about 18px on screen; a narrow box would shrink that face.
+ */
+function labelWidth(text: string): number {
+  return Math.round(text.length * 0.55 * 4.2 * 10) / 10;
+}
+
 function callout(
   partId: string,
   text: string,
   x: number,
   y: number,
-  width: number,
   parentId = 'internals',
   fade: ZoomFade = fadeIn,
 ): readonly CanvasObject[] {
@@ -161,7 +163,7 @@ function callout(
         type: 'text',
         text,
         style: { fontSize: 4.2 },
-        width,
+        width: labelWidth(text),
         height: 4.2,
       },
     },
@@ -188,9 +190,9 @@ function callout(
  * to that part. Entering it fades the whole sibling level, not only the part,
  * and only that part's children come in.
  *
- * Labels sit in two columns outside the phone, each offset from its part so
- * the centre-to-centre leader is at least 20° off horizontal and vertical.
- * The cell and protection board use the same callout, on their own group.
+ * The platform places each label just off its part: a short leader, at least
+ * 20° off both axes. The cell and protection board use the same callout, on
+ * their own group.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
   {
@@ -290,16 +292,16 @@ export const smartphoneObjects: readonly CanvasObject[] = [
   ),
   cutout('display', 'images/smartphone/display.webp', partSprites.display, 71.34, 0, 0, fadeIn, 'internals', 7),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
-  ...callout('back-glass', 'Back glass', -70, 80, 22),
-  ...callout('camera-module', 'Camera', -70, -40, 13),
-  ...callout('battery', 'Battery', -72, 28, 15),
-  ...callout('loudspeaker', 'Speaker', -70, 46, 15),
-  ...callout('display', 'Display', 72, -80, 15),
-  ...callout('logic-board', 'Logic board', 74, -26, 23),
-  ...callout('midframe', 'Midframe', 72, 28, 17),
-  ...callout('haptic-motor', 'Haptic motor', 76, 40, 26),
-  ...callout('cell', 'Cell', -46, 32, 12, 'battery-internals', fadeInBattery),
-  ...callout('protection-board', 'Protection board', 41, -12, 16, 'battery-internals', fadeInBattery),
+  ...callout('back-glass', 'Back glass', -70, 80),
+  ...callout('camera-module', 'Camera', -70, -40),
+  ...callout('battery', 'Battery', -72, 28),
+  ...callout('loudspeaker', 'Speaker', -70, 46),
+  ...callout('display', 'Display', 72, -80),
+  ...callout('logic-board', 'Logic board', 74, -26),
+  ...callout('midframe', 'Midframe', 72, 28),
+  ...callout('haptic-motor', 'Haptic motor', 76, 40),
+  ...callout('cell', 'Cell', -46, 32, 'battery-internals', fadeInBattery),
+  ...callout('protection-board', 'Protection board', 41, -12, 'battery-internals', fadeInBattery),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */

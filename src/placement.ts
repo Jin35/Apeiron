@@ -2,16 +2,25 @@ import { boxFitScale } from './camera';
 import type { CanvasObject } from './model';
 
 /**
- * Share of the limiting viewport side the fully exploded level should fill.
- * Inside the 85–90% band: large parts, a little paper around them.
+ * Share of the limiting viewport side the fully exploded images should fill.
+ * Labels sit in the margin at a fixed screen size, so they are not in this fit.
  */
-export const EXPLODED_FILL = 0.875;
+export const EXPLODED_FILL = 0.85;
 
-/** Clear millimetres between a label and its part. Short leaders. */
-const LABEL_GAP = 4;
+/** Painted label height at the end of the level's fade, in CSS pixels. */
+const LABEL_PX = 18;
 
-/** Centre-to-centre angle of a leader, off horizontal. Stays above the 20° rule. */
-const LABEL_ANGLE = (38 * Math.PI) / 180;
+/** Shortest leader, edge to edge, in CSS pixels. */
+const LEADER_PX = 12;
+
+/** Clear space between two labels, in CSS pixels. */
+const LABEL_PAD_PX = 6;
+
+/** Labels stay this far inside the viewport, in CSS pixels. */
+const VIEW_PAD_PX = 8;
+
+/** Leaders are authored at least this far off both axes. The rule is 20°. */
+const MIN_LEADER_RAD = (22 * Math.PI) / 180;
 
 /**
  * World position of one object. `scale` multiplies the payload size and
@@ -47,6 +56,22 @@ export type ExplodedPart = {
   scale: number;
 };
 
+/** Which way plates step off the frame. `x` is a row, `y` is a stack. */
+export type ExplodeAxis = 'x' | 'y';
+
+export type ExplodeOptions = {
+  /**
+   * Plate step direction. Default `y`: lower `z` steps down, higher `z` steps up.
+   * `x` puts lower `z` on the left and higher `z` on the right.
+   */
+  axis?: ExplodeAxis;
+  /**
+   * Parts that are not on the origin move into columns beside the frame.
+   * Set false to leave them at their assembled offsets. Default true.
+   */
+  spreadInternals?: boolean;
+};
+
 type Edges = {
   left: number;
   right: number;
@@ -71,17 +96,22 @@ export type PlacementView = {
  * with the fade, so the spread itself is just the arrangement.
  *
  * Two or more parts on the origin are the plates, ordered by `z`. The
- * middle plate is the frame and stays centred. Lower `z` steps down and
- * higher `z` steps up until `gap` is clear. Every other part keeps its side
- * of the frame and stacks in assembled-`y` order beside it. A level with
- * fewer than two parts on the origin moves each part out along the ray from
- * the origin. `gap` of 0 returns the assembled positions.
+ * middle plate is the frame and stays centred. The other plates step along
+ * `options.axis` until `gap` is clear. Every other part keeps its side of
+ * the frame and stacks in assembled-`y` order beside it, unless
+ * `spreadInternals` is false. A level with fewer than two parts on the
+ * origin moves each part out along the ray from the origin. `gap` of 0
+ * returns the assembled positions.
  */
-export function explodeLevel(parts: readonly LevelPart[], gap: number): readonly ExplodedPart[] {
+export function explodeLevel(
+  parts: readonly LevelPart[],
+  gap: number,
+  options?: ExplodeOptions,
+): readonly ExplodedPart[] {
   if (!(gap > 0) || !Number.isFinite(gap)) {
     return parts.map((part) => ({ id: part.id, x: part.x, y: part.y, scale: 1 }));
   }
-  const moved = spread(parts, gap);
+  const moved = spread(parts, gap, options);
   const byId = new Map(moved.map((part) => [part.id, part]));
   return parts.map((part) => {
     const at = byId.get(part.id) ?? part;
@@ -165,9 +195,12 @@ function layoutAdjustments(
       height: child.payload.type === 'image' ? child.payload.height : 0,
       ...(child.z !== undefined ? { z: child.z } : {}),
     }));
-    const spread = explodeLevel(parts, gap);
-    const spreadAt = new Map(spread.map((part) => [part.id, part]));
     const labels = labelSides(byId, group.id, new Set(parts.map((part) => part.id)));
+    const options = explodeOptions(view);
+    const opened = options.axis === 'x' ? Math.max(gap, gutterGap(parts, labels, byId, view)) : gap;
+    const spread = explodeLevel(parts, opened, options);
+    const spreadAt = new Map(spread.map((part) => [part.id, part]));
+    const plateIds = new Set(parts.filter(onOrigin).map((part) => part.id));
 
     const assembledPoints = new Map(parts.map((part) => [part.id, { x: part.x, y: part.y }]));
     const explodedPoints = new Map(parts.map((part) => {
@@ -175,21 +208,21 @@ function layoutAdjustments(
       return [part.id, { x: at?.x ?? part.x, y: at?.y ?? part.y }];
     }));
     for (const [labelId, partId] of labels) {
-      const label = byId.get(labelId);
       const part = parts.find((candidate) => candidate.id === partId);
-      if (!label || label.payload.type !== 'text' || !part) continue;
-      const size = { width: label.payload.width, height: label.payload.height };
-      const exploded = explodedPoints.get(partId) ?? { x: part.x, y: part.y };
-      // At the start of the fade the label is on its part (invisible, and it
-      // does not widen the opening fit). It steps out beside the part as the
-      // level explodes, so the leader stays short.
+      if (!part) continue;
+      // At the start of the fade the label sits on its part. It is invisible
+      // there, and it does not widen the opening fit.
       assembledPoints.set(labelId, { x: part.x, y: part.y });
-      explodedPoints.set(labelId, placeLabel({ ...part, x: exploded.x, y: exploded.y }, size));
     }
 
-    // The spread is not symmetric (a tall cell under a thin board). Shift it
-    // onto the group origin so the fitted level sits in the middle of the view.
-    const explodedShift = boundsCenter(edgesOf(boundsParts(parts, labels, explodedPoints, byId)));
+    // The spread is not symmetric (a tall cell under a thin board, or a wider
+    // column on one side). Shift the images onto the group origin so the
+    // fitted level sits in the middle of the view. Labels are placed after
+    // that, in the margin.
+    const explodedShift = boundsCenter(edgesOf(parts.map((part) => {
+      const at = explodedPoints.get(part.id);
+      return { ...part, x: at?.x ?? part.x, y: at?.y ?? part.y };
+    })));
     for (const [id, point] of explodedPoints) {
       explodedPoints.set(id, { x: point.x - explodedShift.x, y: point.y - explodedShift.y });
     }
@@ -198,15 +231,28 @@ function layoutAdjustments(
     const assembledScale = 1 / groupScale;
     let explodedScale = assembledScale;
     let t = 0;
+    let pxPerLocal = 0;
+    let ancestor = groupScale;
+    let cameraAtEnd = 0;
     const fade = fadeOf([...images, ...childrenOf(byId, group.id, 'text')]);
     if (view && view.width > 0 && view.height > 0 && view.scale > 0 && fade) {
       const reference = fade.anchor ? anchorFit(fade.anchor, byId, adjustments, view) : view.fitScale;
       if (reference !== undefined && reference > 0) {
         t = fadeProgress(view.scale / reference, fade.start, fade.end);
-        const bounds = edgesOf(boundsParts(parts, labels, explodedPoints, byId));
-        const ancestor = worldScale(group.id, byId, adjustments);
-        const cameraAtEnd = reference * fade.end;
+        const bounds = edgesOf(parts.map((part) => {
+          const at = explodedPoints.get(part.id);
+          return { ...part, x: at?.x ?? part.x, y: at?.y ?? part.y };
+        }));
+        ancestor = worldScale(group.id, byId, adjustments);
+        cameraAtEnd = reference * fade.end;
         explodedScale = viewportFillScale(bounds, view.width, view.height, ancestor, cameraAtEnd);
+        pxPerLocal = explodedScale * ancestor * cameraAtEnd;
+        const shifted = parts.map((part) => {
+          const at = explodedPoints.get(part.id);
+          return { ...part, x: at?.x ?? part.x, y: at?.y ?? part.y };
+        });
+        const placed = arrangeLabels(shifted, labels, byId, view, pxPerLocal, options.axis ?? 'x', plateIds);
+        for (const [labelId, at] of placed) explodedPoints.set(labelId, at);
       }
     }
     const scale = lerp(assembledScale, explodedScale, t);
@@ -218,11 +264,59 @@ function layoutAdjustments(
     for (const [labelId] of labels) {
       const from = assembledPoints.get(labelId);
       const to = explodedPoints.get(labelId);
-      if (!from || !to) continue;
-      adjustments.set(labelId, { id: labelId, x: lerp(from.x, to.x, t) * scale, y: lerp(from.y, to.y, t) * scale, scale });
+      const label = byId.get(labelId);
+      if (!from || !to || !label || label.payload.type !== 'text') continue;
+      const sizeScale = pxPerLocal > 0
+        ? labelSizeScale(label.payload.height, ancestor, cameraAtEnd)
+        : scale;
+      adjustments.set(labelId, {
+        id: labelId,
+        x: lerp(from.x, to.x, t) * scale,
+        y: lerp(from.y, to.y, t) * scale,
+        scale: sizeScale,
+      });
     }
   }
   return adjustments;
+}
+
+/**
+ * Wide views lay the plates out in a row and pull the loose parts off the
+ * frame. Tall views stack the plates and leave the loose parts on the frame,
+ * where a side label still has room.
+ */
+function explodeOptions(view: PlacementView | undefined): ExplodeOptions {
+  if (view && view.height > view.width) return { axis: 'y', spreadInternals: false };
+  return { axis: 'x', spreadInternals: false };
+}
+
+/**
+ * On a wide view the plates sit in a row and the loose parts stay on the
+ * frame. The gutter between plates has to hold the widest of those labels.
+ * Returns a gap in the level's millimetres, or 0 when there is nothing to open.
+ */
+function gutterGap(
+  parts: readonly LevelPart[],
+  labels: ReadonlyMap<string, string>,
+  byId: ReadonlyMap<string, CanvasObject>,
+  view: PlacementView | undefined,
+): number {
+  if (!view || !(view.width > 0)) return 0;
+  const plates = parts.filter(onOrigin);
+  if (plates.length < 2) return 0;
+  let widest = 0;
+  for (const [labelId, partId] of labels) {
+    if (plates.some((plate) => plate.id === partId)) continue;
+    const label = byId.get(labelId);
+    if (!label || label.payload.type !== 'text' || !(label.payload.height > 0)) continue;
+    widest = Math.max(widest, (absSize(label.payload.width) / label.payload.height) * LABEL_PX);
+  }
+  const need = widest + LEADER_PX + LABEL_PAD_PX + VIEW_PAD_PX;
+  const sum = plates.reduce((total, plate) => total + absSize(plate.width), 0);
+  const gaps = plates.length - 1;
+  const denom = EXPLODED_FILL * view.width - need * gaps;
+  if (!(denom > 0) || !(need > 0)) return 0;
+  return (need * sum) / denom;
 }
 
 function childrenOf(
@@ -258,42 +352,212 @@ function labelSides(
   return sides;
 }
 
-function placeLabel(
-  part: { x: number; y: number; width: number; height: number },
-  label: { width: number; height: number },
-): { x: number; y: number } {
-  const { sx, sy } = labelQuadrant(part);
-  let dx = absSize(part.width) / 2 + LABEL_GAP + absSize(label.width) / 2;
-  let dy = absSize(part.height) / 2 + LABEL_GAP + absSize(label.height) / 2;
-  const minRatio = Math.tan(LABEL_ANGLE);
-  if (dy / dx < minRatio) dy = dx * minRatio;
-  if (dx / dy < minRatio) dx = dy * minRatio;
-  return { x: part.x + sx * dx, y: part.y + sy * dy };
-}
-
-function labelQuadrant(part: { x: number; y: number }): { sx: number; sy: number } {
-  if (Math.hypot(part.x, part.y) <= ON_ORIGIN_MM) return { sx: 1, sy: 1 };
-  if (Math.abs(part.x) <= ON_ORIGIN_MM) return part.y < 0 ? { sx: 1, sy: -1 } : { sx: -1, sy: 1 };
-  return { sx: part.x < 0 ? -1 : 1, sy: part.y < 0 ? -1 : 1 };
-}
-
-function boundsParts(
+/**
+ * Screen-sized labels in the level's local millimetres. Each one sits just
+ * off its part, on a diagonal, clear of the other boxes and inside the view
+ * at the end of the fade. Outer parts claim a spot first.
+ */
+function arrangeLabels(
   parts: readonly LevelPart[],
   labels: ReadonlyMap<string, string>,
-  points: ReadonlyMap<string, { x: number; y: number }>,
   byId: ReadonlyMap<string, CanvasObject>,
-): LevelPart[] {
-  const boxes: LevelPart[] = parts.map((part) => {
-    const at = points.get(part.id);
-    return { ...part, x: at?.x ?? part.x, y: at?.y ?? part.y };
+  view: PlacementView,
+  pxPerLocal: number,
+  layout: ExplodeAxis,
+  plateIds: ReadonlySet<string>,
+): Map<string, { x: number; y: number }> {
+  const placed = new Map<string, { x: number; y: number }>();
+  if (!(pxPerLocal > 0)) return placed;
+  const leader = LEADER_PX / pxPerLocal;
+  const pad = LABEL_PAD_PX / pxPerLocal;
+  const viewBox = viewEdges(view, pxPerLocal);
+  const obstacles: LevelPart[] = parts.map((part) => ({ ...part }));
+  const leaders: Array<{ from: { x: number; y: number }; to: { x: number; y: number } }> = [];
+  const order = [...labels.entries()].sort((a, b) => {
+    const partA = parts.find((part) => part.id === a[1]);
+    const partB = parts.find((part) => part.id === b[1]);
+    const da = partA ? Math.hypot(partA.x, partA.y) : 0;
+    const db = partB ? Math.hypot(partB.x, partB.y) : 0;
+    return db - da || a[0].localeCompare(b[0]);
   });
-  for (const [labelId] of labels) {
+  for (const [labelId, partId] of order) {
     const label = byId.get(labelId);
-    const at = points.get(labelId);
-    if (!label || label.payload.type !== 'text' || !at) continue;
-    boxes.push({ id: labelId, x: at.x, y: at.y, width: label.payload.width, height: label.payload.height });
+    const part = parts.find((candidate) => candidate.id === partId);
+    if (!label || label.payload.type !== 'text' || !part) continue;
+    const size = labelLocalSize(label.payload.width, label.payload.height, pxPerLocal);
+    const prefer: ExplodeAxis = plateIds.has(part.id) && layout === 'x' ? 'y' : 'x';
+    const spot = findLabelSpot(part, size, leader, pad, prefer, obstacles, leaders, viewBox);
+    placed.set(labelId, spot);
+    obstacles.push({ id: labelId, x: spot.x, y: spot.y, width: size.width, height: size.height });
+    leaders.push({ from: { x: part.x, y: part.y }, to: spot });
   }
-  return boxes;
+  return placed;
+}
+
+function labelLocalSize(width: number, height: number, pxPerLocal: number): { width: number; height: number } {
+  const localH = LABEL_PX / pxPerLocal;
+  const aspect = absSize(height) > 0 ? absSize(width) / absSize(height) : 1;
+  return { width: localH * aspect, height: localH };
+}
+
+function labelSizeScale(authoredHeight: number, ancestor: number, cameraAtEnd: number): number {
+  if (!(authoredHeight > 0) || !(ancestor > 0) || !(cameraAtEnd > 0)) return 1;
+  return LABEL_PX / (authoredHeight * ancestor * cameraAtEnd);
+}
+
+function viewEdges(view: PlacementView, pxPerLocal: number): Edges {
+  const pad = VIEW_PAD_PX / pxPerLocal;
+  return {
+    left: -view.width / 2 / pxPerLocal + pad,
+    right: view.width / 2 / pxPerLocal - pad,
+    top: -view.height / 2 / pxPerLocal + pad,
+    bottom: view.height / 2 / pxPerLocal - pad,
+  };
+}
+
+type LabelSide = 'left' | 'right' | 'up' | 'down';
+
+function findLabelSpot(
+  part: LevelPart,
+  size: { width: number; height: number },
+  leader: number,
+  pad: number,
+  prefer: ExplodeAxis,
+  obstacles: readonly LevelPart[],
+  leaders: readonly { from: { x: number; y: number }; to: { x: number; y: number } }[],
+  viewBox: Edges,
+): { x: number; y: number } {
+  let best: { x: number; y: number; score: number } | undefined;
+  const sides = sidesFor(part, prefer);
+  for (let index = 0; index < sides.length; index += 1) {
+    const side = sides[index];
+    if (!side) continue;
+    for (const align of [-0.7, -0.35, 0, 0.35, 0.7]) {
+      const spot = slideSide(part, size, side, align, leader, pad, obstacles, leaders, viewBox);
+      if (!spot) continue;
+      const score = index * 10000 + Math.hypot(spot.x - part.x, spot.y - part.y);
+      if (!best || score < best.score) best = { ...spot, score };
+    }
+  }
+  if (best) return { x: best.x, y: best.y };
+  const fallback = sides[0] === 'left' || sides[0] === 'right' || sides[0] === 'up' || sides[0] === 'down'
+    ? sides[0]
+    : 'up';
+  return nudgeAngle(part, {
+    x: part.x + (fallback === 'left' ? -1 : fallback === 'right' ? 1 : 0) * (absSize(part.width) / 2 + absSize(size.width) / 2 + leader),
+    y: part.y + (fallback === 'up' ? -1 : fallback === 'down' ? 1 : 0) * (absSize(part.height) / 2 + absSize(size.height) / 2 + leader),
+  }, fallback);
+}
+
+function sidesFor(part: { x: number; y: number }, prefer: ExplodeAxis): LabelSide[] {
+  if (prefer === 'y') {
+    const vertical: LabelSide[] = part.y <= 0 ? ['up', 'down'] : ['down', 'up'];
+    const horizontal: LabelSide[] = part.x <= 0 ? ['left', 'right'] : ['right', 'left'];
+    return [...vertical, ...horizontal];
+  }
+  const horizontal: LabelSide[] = part.x <= 0 ? ['left', 'right'] : ['right', 'left'];
+  const vertical: LabelSide[] = part.y <= 0 ? ['up', 'down'] : ['down', 'up'];
+  return [...horizontal, ...vertical];
+}
+
+/**
+ * Step the label out along one side until it clears every obstacle, stays
+ * inside the view, and the leader is at least 22° off both axes.
+ */
+function slideSide(
+  part: LevelPart,
+  size: { width: number; height: number },
+  side: LabelSide,
+  align: number,
+  leader: number,
+  pad: number,
+  obstacles: readonly LevelPart[],
+  leaders: readonly { from: { x: number; y: number }; to: { x: number; y: number } }[],
+  viewBox: Edges,
+): { x: number; y: number } | null {
+  const halfW = absSize(part.width) / 2;
+  const halfH = absSize(part.height) / 2;
+  const labelW = absSize(size.width) / 2;
+  const labelH = absSize(size.height) / 2;
+  const along = side === 'left' || side === 'right' ? align * halfH : align * halfW;
+  for (let step = 0; step < 36; step += 1) {
+    const extra = leader * step * 0.45;
+    const raw = {
+      x: side === 'right'
+        ? part.x + halfW + leader + extra + labelW
+        : side === 'left'
+          ? part.x - halfW - leader - extra - labelW
+          : part.x + along,
+      y: side === 'down'
+        ? part.y + halfH + leader + extra + labelH
+        : side === 'up'
+          ? part.y - halfH - leader - extra - labelH
+          : part.y + along,
+    };
+    const at = nudgeAngle(part, raw, side);
+    const box: LevelPart = { id: `${part.id}-label`, x: at.x, y: at.y, width: size.width, height: size.height };
+    if (!insideEdges(box, viewBox)) return null;
+    if (!offAxis(part, at)) continue;
+    if (!clearsAll(box, obstacles, pad, leader)) continue;
+    if (leaders.some((other) => segmentsCross(part, at, other.from, other.to))) continue;
+    return at;
+  }
+  return null;
+}
+
+/** Push the shorter component out so the centre line clears both axes. */
+function nudgeAngle(
+  part: { x: number; y: number },
+  at: { x: number; y: number },
+  side: LabelSide,
+): { x: number; y: number } {
+  let dx = at.x - part.x;
+  let dy = at.y - part.y;
+  const min = Math.tan(MIN_LEADER_RAD);
+  if (Math.abs(dy) < Math.abs(dx) * min) {
+    const sign = side === 'up' || dy < 0 ? -1 : 1;
+    dy = sign * (Math.abs(dx) * min + 1e-4);
+  }
+  if (Math.abs(dx) < Math.abs(dy) * min) {
+    const sign = side === 'left' || dx < 0 ? -1 : 1;
+    dx = sign * (Math.abs(dy) * min + 1e-4);
+  }
+  return { x: part.x + dx, y: part.y + dy };
+}
+
+function offAxis(from: { x: number; y: number }, to: { x: number; y: number }): boolean {
+  const angle = Math.abs(Math.atan2(to.y - from.y, to.x - from.x));
+  const toHorizontal = Math.min(angle, Math.PI - angle);
+  const toVertical = Math.abs(angle - Math.PI / 2);
+  return Math.min(toHorizontal, toVertical) >= MIN_LEADER_RAD - 1e-3;
+}
+
+function clearsAll(box: LevelPart, obstacles: readonly LevelPart[], labelGap: number, partGap: number): boolean {
+  for (const other of obstacles) {
+    const gap = other.id.endsWith('-label') ? labelGap : partGap;
+    if (separation(box, other) < gap - 1e-6) return false;
+  }
+  return true;
+}
+
+function insideEdges(box: LevelPart, view: Edges): boolean {
+  const halfW = absSize(box.width) / 2;
+  const halfH = absSize(box.height) / 2;
+  return box.x - halfW >= view.left
+    && box.x + halfW <= view.right
+    && box.y - halfH >= view.top
+    && box.y + halfH <= view.bottom;
+}
+
+function segmentsCross(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+): boolean {
+  const side = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }) =>
+    (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
 }
 
 function fadeOf(children: readonly CanvasObject[]): { start: number; end: number; anchor?: string } | undefined {
@@ -369,32 +633,43 @@ function boundsCenter(bounds: Edges): { x: number; y: number } {
 
 const ON_ORIGIN_MM = 1e-6;
 
-function spread(parts: readonly LevelPart[], gap: number): LevelPart[] {
+function spread(parts: readonly LevelPart[], gap: number, options: ExplodeOptions | undefined): LevelPart[] {
   const plates = parts.filter(onOrigin).sort(byDepth);
-  if (plates.length >= 2) return spreadPlates(parts, plates, gap);
+  if (plates.length >= 2) return spreadPlates(parts, plates, gap, options ?? {});
   return spreadRadial(parts, gap);
 }
 
 /**
- * Plates step off the frame along y (up is negative). Internals form one
- * column on each side, top to bottom in assembled order, so the stack stays
- * as tall as the phone and the crossfade still fills the screen.
+ * Plates step off the frame. `y` stacks them (higher `z` is up). `x` lays
+ * them in a row (higher `z` is to the right). Internals form one column on
+ * each side, top to bottom in assembled order, unless they stay assembled.
  */
-function spreadPlates(parts: readonly LevelPart[], plates: readonly LevelPart[], gap: number): LevelPart[] {
+function spreadPlates(
+  parts: readonly LevelPart[],
+  plates: readonly LevelPart[],
+  gap: number,
+  options: ExplodeOptions,
+): LevelPart[] {
   const frame = plates[Math.floor((plates.length - 1) / 2)] ?? plates[0];
   if (!frame) return parts.map((part) => ({ ...part }));
   const placed: LevelPart[] = [{ ...frame, x: 0, y: 0 }];
   const internals = parts.filter((part) => !onOrigin(part));
-  placeColumn(internals.filter((part) => part.x < 0), -1, frame, gap, placed);
-  placeColumn(internals.filter((part) => part.x >= 0), 1, frame, gap, placed);
+  if (options.spreadInternals === false) {
+    for (const part of internals) placed.push({ ...part });
+  } else {
+    placeColumn(internals.filter((part) => part.x < 0), -1, frame, gap, placed);
+    placeColumn(internals.filter((part) => part.x >= 0), 1, frame, gap, placed);
+  }
   const others = plates.filter((part) => part.id !== frame.id).sort((a, b) => {
     const dz = Math.abs(depth(a) - depth(frame)) - Math.abs(depth(b) - depth(frame));
     return dz !== 0 ? dz : a.id.localeCompare(b.id);
   });
+  const axis = options.axis ?? 'y';
   for (const plate of others) {
-    // Higher z is the front of the phone, drawn above the frame.
+    // Higher z is the front of the phone.
     const sign = depth(plate) >= depth(frame) ? 1 : -1;
-    placed.push(slide(plate, { x: 0, y: -sign }, placed, gap));
+    const dir = axis === 'x' ? { x: sign, y: 0 } : { x: 0, y: -sign };
+    placed.push(slide(plate, dir, placed, gap));
   }
   return placed;
 }

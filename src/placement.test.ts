@@ -72,6 +72,34 @@ describe('explodeLevel', () => {
     expect(back.y).toBeGreaterThan(Math.abs(leftLaid.y));
     expect(front.y).toBeLessThan(-Math.abs(rightLaid.y));
   });
+
+  it('lays plates in a row when the axis is horizontal', () => {
+    const laid = explodeLevel(
+      [
+        { id: 'back', x: 0, y: 0, z: 0, width: 70, height: 140 },
+        { id: 'frame', x: 0, y: 0, z: 1, width: 70, height: 150 },
+        { id: 'left', x: -10, y: 8, z: 2, width: 20, height: 30 },
+        { id: 'right', x: 12, y: -20, z: 3, width: 16, height: 18 },
+        { id: 'front', x: 0, y: 0, z: 4, width: 70, height: 140 },
+      ],
+      8,
+      { axis: 'x' },
+    );
+    const byId = new Map(laid.map((part) => [part.id, part]));
+    const frameLaid = byId.get('frame');
+    const back = byId.get('back');
+    const front = byId.get('front');
+    const leftLaid = byId.get('left');
+    const rightLaid = byId.get('right');
+    if (!frameLaid || !back || !front || !leftLaid || !rightLaid) throw new Error('expected every part');
+    expect(back.x).toBeLessThan(leftLaid.x);
+    expect(leftLaid.x).toBeLessThan(frameLaid.x);
+    expect(frameLaid.x).toBeCloseTo(0);
+    expect(rightLaid.x).toBeGreaterThan(frameLaid.x);
+    expect(front.x).toBeGreaterThan(rightLaid.x);
+    expect(Math.abs(back.y)).toBeLessThan(1e-6);
+    expect(Math.abs(front.y)).toBeLessThan(1e-6);
+  });
 });
 
 describe('placement', () => {
