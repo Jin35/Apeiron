@@ -7,7 +7,7 @@ This is the plan for zoom levels: each level crossfades into its children from 1
     - Aluminium frame — planned
     - Buttons (power, volume) — planned
     - Antenna bands — planned
-  - Display — planned
+  - Display — built
     - Cover glass — planned
     - Touch layer — planned
     - OLED panel — planned
@@ -45,5 +45,5 @@ This is the plan for zoom levels: each level crossfades into its children from 1
     - Magnet — planned
     - Coil — planned
     - Moving mass — planned
-  - Back glass — planned
+  - Back glass — built
     - Wireless charging coil — planned

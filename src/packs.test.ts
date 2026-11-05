@@ -14,6 +14,7 @@ import { applyCameraCommand, boxFitScale, deriveCameraLimits, viewBounds, type V
 import { demoPack, titleFitWidth } from './demo';
 import { resolveWorldRect, type AxisRect } from './link';
 import type { ImagePayload } from './model';
+import { explodeLevel, type LevelPart } from './placement';
 import { relativeZoomAlpha } from './fade';
 import { buildLevelPlan } from './levelFade';
 import { createMemoryStore } from './store';
@@ -42,9 +43,11 @@ describe('smartphone pack', () => {
     expect(smartphonePack.theme).toBe(paperTheme);
     expect(smartphonePack.limits).toBeUndefined();
     expect(smartphoneObjects.filter((object) => object.payload.type === 'text').map((object) => object.id)).toEqual([
+      'back-glass-label',
       'camera-module-label',
       'battery-label',
       'loudspeaker-label',
+      'display-label',
       'logic-board-label',
       'midframe-label',
       'haptic-motor-label',
@@ -54,6 +57,7 @@ describe('smartphone pack', () => {
     expect(smartphoneObjects.map((object) => object.id)).toEqual([
       'internals',
       'battery-internals',
+      'back-glass',
       'midframe',
       'cell',
       'protection-board',
@@ -62,13 +66,18 @@ describe('smartphone pack', () => {
       'camera-module',
       'loudspeaker',
       'haptic-motor',
+      'display',
       'phone',
+      'back-glass-label',
+      'back-glass-link',
       'camera-module-label',
       'camera-module-link',
       'battery-label',
       'battery-link',
       'loudspeaker-label',
       'loudspeaker-link',
+      'display-label',
+      'display-link',
       'logic-board-label',
       'logic-board-link',
       'midframe-label',
@@ -90,8 +99,18 @@ describe('smartphone pack', () => {
       x: 0,
       y: 0,
       scale: INTERNALS_SCALE,
-      payload: { type: 'group' },
+      payload: { type: 'group', explode: expect.any(Number) },
     });
+    const nestedGroup = smartphoneObjects.find((object) => object.id === 'battery-internals');
+    expect(nestedGroup).toMatchObject({
+      parentId: 'battery',
+      x: 0,
+      y: 0,
+      scale: INTERNALS_SCALE,
+      payload: { type: 'group', explode: expect.any(Number) },
+    });
+    if (group?.payload.type === 'group') expect(group.payload.explode).toBeGreaterThan(0);
+    if (nestedGroup?.payload.type === 'group') expect(nestedGroup.payload.explode).toBeGreaterThan(0);
 
     const phone = phoneObject();
     expect(phone.x).toBe(0);
@@ -109,22 +128,25 @@ describe('smartphone pack', () => {
     expect(opaqueHeight).toBeGreaterThan(140);
     expect(opaqueHeight).toBeLessThan(150);
 
-    const parts: Array<[string, { width: number; height: number; opaqueWidth: number; opaqueHeight: number }, number, number, number]> = [
-      ['midframe', partSprites.midframe, PHONE_WIDTH_MM, 0, 0],
-      ['battery', partSprites.battery, 40, -12.6, 10.2],
-      ['logic-board', partSprites.logicBoard, 21, 19.8, -44],
-      ['camera-module', partSprites.cameraModule, 21, -22, -62.5],
-      ['loudspeaker', partSprites.loudspeaker, 18, -11, 66],
-      ['haptic-motor', partSprites.hapticMotor, 22, 13, 66.5],
+    const parts: Array<[string, { width: number; height: number; opaqueWidth: number; opaqueHeight: number }, number, number, number, number]> = [
+      ['back-glass', partSprites.backGlass, 71.34, 0, 0, 0],
+      ['midframe', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, 1],
+      ['battery', partSprites.battery, 40, -12.6, 10.2, 2],
+      ['logic-board', partSprites.logicBoard, 21, 19.8, -44, 3],
+      ['camera-module', partSprites.cameraModule, 24.03, -18.8, -47.5, 4],
+      ['loudspeaker', partSprites.loudspeaker, 18, -11, 66, 5],
+      ['haptic-motor', partSprites.hapticMotor, 22, 13, 66.5, 6],
+      ['display', partSprites.display, 71.34, 0, 0, 7],
     ];
     const midAuthored = smartphoneObjects.find((object) => object.id === 'midframe');
     if (!midAuthored || midAuthored.payload.type !== 'image') throw new Error('expected the midframe');
-    for (const [id, sprite, opaqueMm, x, y] of parts) {
+    for (const [id, sprite, opaqueMm, x, y, z] of parts) {
       const part = smartphoneObjects.find((object) => object.id === id);
       if (!part || part.payload.type !== 'image') throw new Error(`expected ${id}`);
       expect(part.parentId).toBe('internals');
       expect(part.fade).toEqual({ fadeIn: reveal });
       expect(part.scale).toBeUndefined();
+      expect(part.z).toBe(z);
       expect(part.x).toBe(x);
       expect(part.y).toBe(y);
       expect(part.payload.frame).toBe(false);
@@ -229,12 +251,14 @@ describe('smartphone pack', () => {
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('internals');
     expect(at(reveal).map((entry) => entry.object.id)).not.toContain('cell');
     expect(store.countInBand(fit, fit, view)).toBe(1);
-    expect(store.countInBand(fit * reveal, fit, view)).toBe(12);
+    expect(store.countInBand(fit * reveal, fit, view)).toBe(16);
     const revealed = at(reveal).map((entry) => entry.object.id);
     expect(revealed).toEqual(expect.arrayContaining([
+      'back-glass-label',
       'camera-module-label',
       'battery-label',
       'loudspeaker-label',
+      'display-label',
       'logic-board-label',
       'midframe-label',
       'haptic-motor-label',
@@ -257,28 +281,45 @@ describe('smartphone pack', () => {
     if (!authoredMid || authoredMid.payload.type !== 'image') throw new Error('expected the authored midframe');
     if (!authoredBattery || authoredBattery.payload.type !== 'image') throw new Error('expected the authored battery');
 
+    // The frame stays on the origin. Every other part is the assembled point,
+    // pulled out by the level gap and fitted back, times the group scale.
+    const laid = explodeLevel(levelParts('internals'), explodeOf('internals'));
+    const midLaid = laid.find((part) => part.id === 'midframe');
+    const batteryLaid = laid.find((part) => part.id === 'battery');
+    if (!midLaid || !batteryLaid) throw new Error('expected the laid-out parts');
+    expect(midLaid.x).toBeCloseTo(0);
+    expect(midLaid.y).toBeCloseTo(0);
     expect(mid.object.x).toBeCloseTo(0);
     expect(mid.object.y).toBeCloseTo(0);
-    expect(mid.object.payload.width).toBeCloseTo(authoredMid.payload.width * INTERNALS_SCALE);
-    expect(mid.object.payload.height).toBeCloseTo(authoredMid.payload.height * INTERNALS_SCALE);
-    expect(battery.object.x).toBeCloseTo(authoredBattery.x * INTERNALS_SCALE);
-    expect(battery.object.y).toBeCloseTo(authoredBattery.y * INTERNALS_SCALE);
-    expect(battery.object.payload.width).toBeCloseTo(authoredBattery.payload.width * INTERNALS_SCALE);
+    expect(mid.object.payload.width).toBeCloseTo(authoredMid.payload.width * INTERNALS_SCALE * midLaid.scale);
+    expect(mid.object.payload.height).toBeCloseTo(authoredMid.payload.height * INTERNALS_SCALE * midLaid.scale);
+    expect(battery.object.x).toBeCloseTo(batteryLaid.x * INTERNALS_SCALE);
+    expect(battery.object.y).toBeCloseTo(batteryLaid.y * INTERNALS_SCALE);
+    expect(battery.object.payload.width).toBeCloseTo(authoredBattery.payload.width * INTERNALS_SCALE * batteryLaid.scale);
 
-    const phoneOpaque = PHONE_WIDTH_MM;
-    const midOpaque = (mid.object.payload.width * partSprites.midframe.opaqueWidth) / partSprites.midframe.width;
-    expect(midOpaque * reveal).toBeCloseTo(phoneOpaque);
-    expect(mid.object.payload.width * fit * reveal).toBeCloseTo(authoredMid.payload.width * fit);
+    // The longer assembled side is restored, so at 1/0.625 the exploded
+    // group is the size the assembled group was. That is the phone's screen.
+    const assembled = unionLevel('internals');
+    const placed = unionWorld(levelParts('internals').map((part) => part.id));
+    const major = assembled.height >= assembled.width ? 'height' : 'width';
+    // Fitted back inside the assembled footprint, and still tall enough to
+    // fill the screen the way the phone did at 1/0.625.
+    expect(placed[major]).toBeLessThanOrEqual(assembled[major] * INTERNALS_SCALE * 1.001);
+    expect(placed[major] * reveal).toBeGreaterThan(assembled[major] * 0.9);
+    expect(laidClearance('internals')).toBeGreaterThan(3);
+    expect(clearanceOf(levelParts('internals').map((part) => part.id))).toBeGreaterThan(0);
   });
 
   it('keeps every part leader at least 15° off the axes', () => {
     const names: Record<string, string> = {
+      'back-glass': 'Back glass',
       battery: 'Battery',
       'logic-board': 'Logic board',
       'camera-module': 'Camera',
       midframe: 'Midframe',
       loudspeaker: 'Speaker',
       'haptic-motor': 'Haptic motor',
+      display: 'Display',
     };
     const parts = smartphoneObjects.filter(
       (object) => object.parentId === 'internals' && object.payload.type === 'image',
@@ -304,7 +345,8 @@ describe('smartphone pack', () => {
       const from = resolveWorldRect(smartphoneObjects, label.id);
       const to = resolveWorldRect(smartphoneObjects, part.id);
       if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
-      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(20);
+      const angle = axisClearanceDegrees(from, to);
+      expect(angle, part.id).toBeGreaterThanOrEqual(20);
     }
 
     const inside: Record<string, string> = {
@@ -334,7 +376,7 @@ describe('smartphone pack', () => {
       const from = resolveWorldRect(smartphoneObjects, label.id);
       const to = resolveWorldRect(smartphoneObjects, part.id);
       if (!from || !to) throw new Error(`expected world boxes for ${part.id}`);
-      expect(axisClearanceDegrees(from, to)).toBeGreaterThanOrEqual(20);
+      expect(axisClearanceDegrees(from, to), part.id).toBeGreaterThanOrEqual(20);
     }
   });
 
@@ -430,18 +472,22 @@ describe('smartphone pack', () => {
         .map((entry) => entry.object.id);
 
     const siblings = [
+      'back-glass',
       'midframe',
       'battery',
       'logic-board',
       'camera-module',
       'loudspeaker',
       'haptic-motor',
+      'display',
+      'back-glass-label',
       'midframe-label',
       'battery-label',
       'logic-board-label',
       'camera-module-label',
       'loudspeaker-label',
       'haptic-motor-label',
+      'display-label',
     ];
     expect(idsAt(1)).toEqual(expect.arrayContaining(siblings));
     expect(idsAt(1)).not.toEqual(expect.arrayContaining(['cell', 'cell-label', 'protection-board-label']));
@@ -482,8 +528,8 @@ describe('smartphone pack', () => {
     expect(planAt(1.3, 'phone')).toBe(1);
     expect(planAt(2.5, 'phone')).toBe(1);
 
-    expect(store.countInBand(batteryFit, fit, desktop, { x: battery.x, y: battery.y })).toBe(12);
-    expect(store.countInBand(batteryFit * 1.3, fit, desktop, { x: battery.x, y: battery.y })).toBe(16);
+    expect(store.countInBand(batteryFit, fit, desktop, { x: battery.x, y: battery.y })).toBe(16);
+    expect(store.countInBand(batteryFit * 1.3, fit, desktop, { x: battery.x, y: battery.y })).toBe(20);
     expect(store.countInBand(batteryFit * reveal, fit, desktop, { x: battery.x, y: battery.y })).toBe(4);
 
     const view = desktop;
@@ -517,10 +563,136 @@ describe('smartphone pack', () => {
     expect(boardBottom).toBeLessThan(cellObject.y);
     const authoredBattery = smartphoneObjects.find((object) => object.id === 'battery');
     if (!authoredBattery || authoredBattery.payload.type !== 'image') throw new Error('expected the battery');
-    expect(cell.width * reveal).toBeCloseTo(cellObject.payload.width * INTERNALS_SCALE);
-    expect(battery.width).toBeCloseTo(authoredBattery.payload.width * INTERNALS_SCALE);
+    const laid = explodeLevel(levelParts('battery-internals'), explodeOf('battery-internals'));
+    const cellLaid = laid.find((part) => part.id === 'cell');
+    if (!cellLaid) throw new Error('expected the laid-out cell');
+    const batteryWorld = mustRect('battery');
+    const batteryScale = batteryWorld.width / authoredBattery.payload.width;
+    expect(cell.width).toBeCloseTo(cellObject.payload.width * cellLaid.scale * INTERNALS_SCALE * batteryScale);
+    expect(battery.width).toBeCloseTo(authoredBattery.payload.width * batteryScale);
+    const assembled = unionLevel('battery-internals');
+    const placed = unionWorld(['cell', 'protection-board']);
+    const major = assembled.height >= assembled.width ? 'height' : 'width';
+    // The cell and the board are fitted back inside the battery they were assembled in.
+    const fittedMajor = assembled[major] * INTERNALS_SCALE * batteryScale;
+    expect(placed[major]).toBeLessThanOrEqual(fittedMajor * 1.001);
+    expect(placed[major]).toBeGreaterThan(fittedMajor * 0.8);
+    expect(laidClearance('battery-internals')).toBeGreaterThan(4);
+    expect(clearanceOf(['cell', 'protection-board'])).toBeGreaterThan(0);
+    // Still the direction they were assembled in: board toward the top, cell toward the bottom.
+    expect(mustRect('protection-board').y).toBeLessThan(mustRect('cell').y);
   });
 });
+
+function explodeOf(groupId: string): number {
+  const group = smartphoneObjects.find((object) => object.id === groupId);
+  if (!group || group.payload.type !== 'group' || group.payload.explode === undefined) {
+    throw new Error(`expected an explode gap on ${groupId}`);
+  }
+  return group.payload.explode;
+}
+
+function levelParts(groupId: string): LevelPart[] {
+  const parts: LevelPart[] = [];
+  for (const object of smartphoneObjects) {
+    if (object.parentId !== groupId || object.payload.type !== 'image') continue;
+    parts.push({
+      id: object.id,
+      x: object.x,
+      y: object.y,
+      width: object.payload.width,
+      height: object.payload.height,
+      ...(object.z !== undefined ? { z: object.z } : {}),
+    });
+  }
+  return parts;
+}
+
+function unionLevel(groupId: string): { width: number; height: number } {
+  return unionRects(
+    levelParts(groupId).map((part) => ({
+      x: part.x,
+      y: part.y,
+      width: part.width,
+      height: part.height,
+    })),
+  );
+}
+
+function unionWorld(ids: readonly string[]): { width: number; height: number } {
+  return unionRects(ids.map((id) => mustRect(id)));
+}
+
+function unionRects(rects: readonly AxisRect[]): { width: number; height: number } {
+  let left = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const rect of rects) {
+    left = Math.min(left, rect.x - rect.width / 2);
+    right = Math.max(right, rect.x + rect.width / 2);
+    top = Math.min(top, rect.y - rect.height / 2);
+    bottom = Math.max(bottom, rect.y + rect.height / 2);
+  }
+  return { width: right - left, height: bottom - top };
+}
+
+/** Gap between the fitted parts, in the level's own millimetres. */
+function laidClearance(groupId: string): number {
+  const parts = levelParts(groupId);
+  const laid = explodeLevel(parts, explodeOf(groupId));
+  const boxes = laid.map((part) => {
+    const source = parts.find((candidate) => candidate.id === part.id);
+    if (!source) throw new Error(part.id);
+    return {
+      x: part.x,
+      y: part.y,
+      width: source.width * part.scale,
+      height: source.height * part.scale,
+    };
+  });
+  return clearanceBetween(boxes);
+}
+
+function pairClearance(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): number {
+  const dx = Math.abs(a.x - b.x) - (a.width + b.width) / 2;
+  const dy = Math.abs(a.y - b.y) - (a.height + b.height) / 2;
+  if (dx >= 0 && dy >= 0) return Math.hypot(dx, dy);
+  if (dx >= 0) return dx;
+  if (dy >= 0) return dy;
+  return Math.max(dx, dy);
+}
+
+function clearanceBetween(boxes: readonly { x: number; y: number; width: number; height: number }[]): number {
+  let gap = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      const a = boxes[i];
+      const b = boxes[j];
+      if (!a || !b) continue;
+      gap = Math.min(gap, pairClearance(a, b));
+    }
+  }
+  return gap;
+}
+
+/** Smallest gap between the world boxes. Negative means they overlap. */
+function clearanceOf(ids: readonly string[]): number {
+  const rects = ids.map((id) => mustRect(id));
+  let gap = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < rects.length; i += 1) {
+    for (let j = i + 1; j < rects.length; j += 1) {
+      const a = rects[i];
+      const b = rects[j];
+      if (!a || !b) continue;
+      gap = Math.min(gap, pairClearance(a, b));
+    }
+  }
+  return gap;
+}
 
 function mustRect(id: string): AxisRect {
   const rect = resolveWorldRect(smartphoneObjects, id);

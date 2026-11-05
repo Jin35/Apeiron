@@ -2,6 +2,7 @@ import { boxFitScale, type Camera, type ContentBox, type ViewBounds } from './ca
 import { displayOpacity, type AnchorScale } from './fade';
 import { buildLevelPlan, type LevelFocus } from './levelFade';
 import type { CanvasObject } from './model';
+import { createPlacement, type WorldPlacement } from './placement';
 import { visibilityAlpha } from './visibility';
 
 /** HUD counts an object only above this opacity. */
@@ -262,7 +263,8 @@ function minorSize(object: CanvasObject): number {
 /**
  * Parent-local `x` / `y` become world coordinates here, so `query` keeps
  * scanning scale-independent boxes. A parent's `scale` multiplies its
- * descendants' positions and sizes. A missing parent or a cycle leaves the
+ * descendants' positions and sizes. A group's `explode` moves its image
+ * children before that scale. A missing parent or a cycle leaves the
  * object out of the entries (and therefore out of `query` and `countInBand`)
  * instead of throwing. A group is a transform only and is not an entry.
  * A link is ids and stroke style only: it has no box, so it is not hit,
@@ -270,63 +272,22 @@ function minorSize(object: CanvasObject): number {
  * still lists every resident image, placed or not.
  */
 function placedEntries(objects: readonly CanvasObject[]): Entry[] {
-  const byId = new Map<string, CanvasObject>();
-  for (const object of objects) {
-    // First id wins, so a duplicate cannot move a parent out from under its children.
-    if (!byId.has(object.id)) byId.set(object.id, object);
-  }
-
-  const world = new Map<CanvasObject, Placement | null>();
-
-  function resolve(object: CanvasObject, stack: Set<CanvasObject>): Placement | null {
-    const known = world.get(object);
-    if (known !== undefined) return known;
-    if (stack.has(object)) return null;
-
-    stack.add(object);
-    let placed: Placement | null = null;
-    const local = localScale(object.scale);
-    if (object.parentId === undefined) {
-      placed = { x: object.x, y: object.y, scale: local };
-    } else {
-      const parent = byId.get(object.parentId);
-      const origin = parent ? resolve(parent, stack) : null;
-      if (origin) {
-        placed = {
-          x: origin.x + object.x * origin.scale,
-          y: origin.y + object.y * origin.scale,
-          scale: origin.scale * local,
-        };
-      }
-    }
-    stack.delete(object);
-    world.set(object, placed);
-    return placed;
-  }
-
+  const place = createPlacement(objects);
   const entries: Entry[] = [];
   for (const object of objects) {
     if (object.payload.type === 'group' || object.payload.type === 'link') continue;
-    const placed = resolve(object, new Set());
+    const placed = place(object);
     if (!placed) continue;
     entries.push(entryFor(atWorld(object, placed)));
   }
   return entries;
 }
 
-type Placement = { x: number; y: number; scale: number };
-
-/** A missing or non-positive scale is 1, so bad data does not collapse the map. */
-function localScale(scale: number | undefined): number {
-  if (scale === undefined || !Number.isFinite(scale) || !(scale > 0)) return 1;
-  return scale;
-}
-
 /**
  * Query objects are world-space, so a parent link is not left on them.
  * `placement.scale` is already in the position and the payload size.
  */
-function atWorld(object: CanvasObject, placement: Placement): CanvasObject {
+function atWorld(object: CanvasObject, placement: WorldPlacement): CanvasObject {
   const payload = scaledPayload(object.payload, placement.scale);
   if (object.parentId === undefined && payload === object.payload) return object;
   return {

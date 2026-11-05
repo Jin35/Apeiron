@@ -44,9 +44,26 @@ export type ImagePayload = {
   frame?: boolean;
 };
 
-/** A transform only. Not drawn, not hit, and not counted. */
+/**
+ * A transform only. Not drawn, not hit, and not counted.
+ * `explode` is the level's layout: image children keep their assembled
+ * position, and the platform pulls that level apart.
+ */
 export type GroupPayload = {
   type: 'group';
+  /**
+   * Minimum clear space, in this group's units, between the image children
+   * once they are pulled apart. Plates that share the group origin step
+   * along the long axis by `z`: the middle plate stays centred, the back
+   * steps down, and the front steps up. Every other part keeps the side
+   * and the order of its assembled position, in a column beside the frame.
+   * A level with nothing on the origin moves each part straight out along
+   * the ray from the origin instead. The parts are then scaled about the
+   * origin until they sit inside the assembled bounds, so a group scale of
+   * 0.625 still meets its parent at `1 / 0.625`. Labels are not parts.
+   * Omit, or a non-positive value, to keep the assembled layout.
+   */
+  explode?: number;
 };
 
 /**
@@ -104,6 +121,11 @@ export type CanvasObject = {
    */
   x: number;
   y: number;
+  /**
+   * Stack order in the parent's exploded view. Higher is closer to the
+   * front. Omit for 0. Parts that share the group origin are the plates.
+   */
+  z?: number;
   /** When set, `x` and `y` are parent-local. */
   parentId?: string;
   /**
