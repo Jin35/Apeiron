@@ -21,13 +21,20 @@ export const smartphoneSprite = {
   opaqueHeight: 947,
 } as const satisfies Sprite;
 
+/**
+ * Level-1 cutouts, in pixels. World size maps the part's `width_mm` onto the
+ * opaque width and keeps this file's aspect. The image has no placement of
+ * its own; millimetres and `z` live on the object.
+ */
 export const partSprites = {
+  backGlass: { width: 464, height: 950, opaqueWidth: 460, opaqueHeight: 946 },
   midframe: { width: 450, height: 943, opaqueWidth: 446, opaqueHeight: 939 },
   battery: { width: 487, height: 899, opaqueWidth: 483, opaqueHeight: 895 },
   logicBoard: { width: 414, height: 863, opaqueWidth: 410, opaqueHeight: 859 },
-  cameraModule: { width: 537, height: 500, opaqueWidth: 533, opaqueHeight: 496 },
+  cameraModule: { width: 161, height: 230, opaqueWidth: 155, opaqueHeight: 224 },
   loudspeaker: { width: 383, height: 227, opaqueWidth: 379, opaqueHeight: 223 },
-  hapticMotor: { width: 418, height: 153, opaqueWidth: 418, opaqueHeight: 153 },
+  hapticMotor: { width: 426, height: 161, opaqueWidth: 418, opaqueHeight: 153 },
+  display: { width: 464, height: 950, opaqueWidth: 460, opaqueHeight: 946 },
 } as const satisfies Record<string, Sprite>;
 
 /** Inside the battery. Same 2px clear margin as the phone parts. */
@@ -69,6 +76,16 @@ const BOARD_WIDTH_MM = 40;
 const BOARD_Y_MM = -29.72;
 
 /**
+ * Clear space, in millimetres, between parts of a level. The phone's plates
+ * share the origin. On a wide view they step apart sideways by `z` and the
+ * loose parts stay in columns beside the frame; on a tall view the plates
+ * stack and the loose parts stay on the frame. The battery has no plate, so
+ * the cell and the board move apart along the line between them.
+ */
+const PHONE_EXPLODE_MM = 12;
+const BATTERY_EXPLODE_MM = 6;
+
+/**
  * Wide enough that the opening fit and the battery level sit in the flat
  * middle of the band. Zoom fade, not this range, is what changes opacity.
  * Every part shares the same maxScale so paint order follows this array:
@@ -90,12 +107,14 @@ function cutout(
   y: number,
   fade: ZoomFade,
   parentId?: string,
+  z?: number,
 ): CanvasObject {
   const mmPerPx = opaqueWidthMm / sprite.opaqueWidth;
   return {
     id,
     x,
     y,
+    ...(z !== undefined ? { z } : {}),
     ...(parentId ? { parentId } : {}),
     visibility: band,
     fade,
@@ -116,12 +135,19 @@ function cutout(
  * fades every sibling at this parent — parts, labels, and through them the
  * leaders — so this callout does not name the part being entered.
  */
+/**
+ * Wide enough for the words at the label's 4.2 mm face. The platform sizes
+ * the box up to about 18px on screen; a narrow box would shrink that face.
+ */
+function labelWidth(text: string): number {
+  return Math.round(text.length * 0.55 * 4.2 * 10) / 10;
+}
+
 function callout(
   partId: string,
   text: string,
   x: number,
   y: number,
-  width: number,
   parentId = 'internals',
   fade: ZoomFade = fadeIn,
 ): readonly CanvasObject[] {
@@ -137,7 +163,7 @@ function callout(
         type: 'text',
         text,
         style: { fontSize: 4.2 },
-        width,
+        width: labelWidth(text),
         height: 4.2,
       },
     },
@@ -155,14 +181,18 @@ function callout(
  * Front view plus the parts under it. `internals` is a group on `phone`:
  * one scale about the phone centre, no pixels of its own. The parts are
  * parent-local millimetres on that group, listed back to front, then the
- * front image. `battery-internals` is that same kind of group on `battery`.
- * Edit a part's `x`, `y`, and opaque width to rearrange it.
+ * front image. `x` and `y` are the assembled position. The group's `explode`
+ * pulls the parts apart; the platform fits that level back so the crossfade
+ * still fills the screen. `battery-internals` is that same kind of group on
+ * `battery`. Edit a part's assembled `x`, `y`, and opaque width, or the
+ * level's explode gap, to rearrange it.
  * The fade is zoom-driven, not animated. Children of a part set `fadeInOf`
- * to that part. Entering it fades the whole sibling level, not only the part.
+ * to that part. Entering it fades the whole sibling level, not only the part,
+ * and only that part's children come in.
  *
- * Labels sit in two columns outside the phone, each offset from its part so
- * the centre-to-centre leader is at least 20° off horizontal and vertical.
- * The cell and protection board use the same callout, on their own group.
+ * The platform places each label just off its part: a short leader, at least
+ * 20° off both axes. The cell and protection board use the same callout, on
+ * their own group.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
   {
@@ -172,7 +202,7 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     y: 0,
     scale: INTERNALS_SCALE,
     visibility: band,
-    payload: { type: 'group' },
+    payload: { type: 'group', explode: PHONE_EXPLODE_MM },
   },
   {
     id: 'battery-internals',
@@ -181,9 +211,10 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     y: 0,
     scale: INTERNALS_SCALE,
     visibility: band,
-    payload: { type: 'group' },
+    payload: { type: 'group', explode: BATTERY_EXPLODE_MM },
   },
-  cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals'),
+  cutout('back-glass', 'images/smartphone/back-glass.webp', partSprites.backGlass, 71.34, 0, 0, fadeIn, 'internals', 0),
+  cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals', 1),
   cutout(
     'cell',
     'images/smartphone/battery-cell.webp',
@@ -213,6 +244,7 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     10.2,
     fadeIn,
     'internals',
+    2,
   ),
   cutout(
     'logic-board',
@@ -223,16 +255,18 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     -44,
     fadeIn,
     'internals',
+    3,
   ),
   cutout(
     'camera-module',
     'images/smartphone/camera-module.webp',
     partSprites.cameraModule,
-    21,
-    -22,
-    -62.5,
+    24.03,
+    -18.8,
+    -47.5,
     fadeIn,
     'internals',
+    4,
   ),
   cutout(
     'loudspeaker',
@@ -243,6 +277,7 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     66,
     fadeIn,
     'internals',
+    5,
   ),
   cutout(
     'haptic-motor',
@@ -253,16 +288,20 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     66.5,
     fadeIn,
     'internals',
+    6,
   ),
+  cutout('display', 'images/smartphone/display.webp', partSprites.display, 71.34, 0, 0, fadeIn, 'internals', 7),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
-  ...callout('camera-module', 'Camera', -69, -40, 13),
-  ...callout('battery', 'Battery', -70, -14, 15),
-  ...callout('loudspeaker', 'Speaker', -70, 36, 15),
-  ...callout('logic-board', 'Logic board', 74, -20, 23),
-  ...callout('midframe', 'Midframe', 71, 26, 17),
-  ...callout('haptic-motor', 'Haptic motor', 76, 42, 26),
-  ...callout('cell', 'Cell', -42, 20, 12, 'battery-internals', fadeInBattery),
-  ...callout('protection-board', 'Protection board', 41, -12, 16, 'battery-internals', fadeInBattery),
+  ...callout('back-glass', 'Back glass', -70, 80),
+  ...callout('camera-module', 'Camera', -70, -40),
+  ...callout('battery', 'Battery', -72, 28),
+  ...callout('loudspeaker', 'Speaker', -70, 46),
+  ...callout('display', 'Display', 72, -80),
+  ...callout('logic-board', 'Logic board', 74, -26),
+  ...callout('midframe', 'Midframe', 72, 28),
+  ...callout('haptic-motor', 'Haptic motor', 76, 40),
+  ...callout('cell', 'Cell', -46, 32, 'battery-internals', fadeInBattery),
+  ...callout('protection-board', 'Protection board', 41, -12, 'battery-internals', fadeInBattery),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */

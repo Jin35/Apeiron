@@ -148,6 +148,93 @@ describe('level handover', () => {
     expect(store.hitTest({ x: 8, y: 0 }, { x: 0, y: 0, scale: fit * 2 }, 1, view)?.id).toBe('chip');
     expect(store.hitTest({ x: 0, y: 0 }, { x: 0, y: 0, scale: fit }, 1, view)?.id).toBe('board');
   });
+
+  it('shows only the active sibling\'s children at any zoom or pan, and hides them again on the way out', () => {
+    const scene = twoSiblingLevels();
+    const store = createMemoryStore(scene);
+    const alphaFit = fitOf({ objects: scene, boxOf: (id) => boxFrom(store, id) }, 'alpha');
+    const betaFit = fitOf({ objects: scene, boxOf: (id) => boxFrom(store, id) }, 'beta');
+    // The parts are close in size, so both child fades are open together for a while.
+    expect(alphaFit * 2).toBeGreaterThan(betaFit);
+    expect(betaFit).toBeGreaterThan(alphaFit);
+
+    const alpha = focusOn({ objects: scene, boxOf: (id) => boxFrom(store, id) }, 'alpha');
+    const beta = focusOn({ objects: scene, boxOf: (id) => boxFrom(store, id) }, 'beta');
+    const middle = { x: (alpha.x + beta.x) / 2, y: (alpha.y + beta.y) / 2 };
+    const families = [
+      { id: 'alpha', fit: alphaFit, at: alpha, children: ['alpha-home', 'alpha-near'] },
+      { id: 'beta', fit: betaFit, at: beta, children: ['beta-home', 'beta-near'] },
+    ] as const;
+    const spans = [alpha, beta, middle, { x: alpha.x, y: alpha.y + 30 }];
+    const overlap = betaFit * 1.2;
+    expect(overlap).toBeGreaterThan(betaFit);
+    expect(overlap).toBeLessThan(alphaFit * 2);
+    const scales = [alphaFit * 0.5, alphaFit, overlap, alphaFit * 2, betaFit * 3];
+
+    const idsAt = (scale: number, focus: { x: number; y: number }) =>
+      store
+        .query({
+          bounds: wideAround(focus),
+          scale,
+          fitScale: 1,
+          viewWidth: view.width,
+          viewHeight: view.height,
+        })
+        .map((entry) => entry.object.id);
+
+    for (const scale of scales) {
+      for (const focus of spans) {
+        const active = activePortal(scale, focus, families.map((family) => ({ id: family.id, fit: family.fit, ...family.at })));
+        const shown = idsAt(scale, focus);
+        const plan = buildLevelPlan(scene, (id) => boxFrom(store, id), scale, focus, view);
+        for (const family of families) {
+          const entered = scale / family.fit >= 1;
+          for (const id of family.children) {
+            if (entered && active !== family.id) {
+              expect(plan.opacity(id), `${id} at scale ${scale} focus ${focus.x}`).toBe(0);
+              expect(shown, `${id} drew beside ${active ?? 'nothing'}`).not.toContain(id);
+              continue;
+            }
+            if (active !== family.id) {
+              expect(shown).not.toContain(id);
+              continue;
+            }
+            expect(plan.opacity(id)).toBe(1);
+            const fade = relativeZoomAlpha({ fadeIn: [1, 2] }, scale / family.fit);
+            if (fade > 0.01) expect(shown).toContain(id);
+            else expect(shown).not.toContain(id);
+          }
+        }
+      }
+    }
+
+    const deep = Math.max(alphaFit, betaFit) * 3;
+    const alphaChildren = [...families[0].children];
+    const betaChildren = [...families[1].children];
+    // beta's child sits on alpha, and alpha's child sits on beta. The viewport
+    // around either part contains both. Only the nearer part's children draw.
+    expect(idsAt(deep, alpha)).toEqual(expect.arrayContaining(alphaChildren));
+    expect(idsAt(deep, alpha)).not.toEqual(expect.arrayContaining(betaChildren));
+    expect(idsAt(deep, beta)).toEqual(expect.arrayContaining(betaChildren));
+    expect(idsAt(deep, beta)).not.toEqual(expect.arrayContaining(alphaChildren));
+    // Equal distance: the smaller id wins, same rule as the sibling fade.
+    expect(idsAt(deep, middle)).toEqual(expect.arrayContaining(alphaChildren));
+    expect(idsAt(deep, middle)).not.toEqual(expect.arrayContaining(betaChildren));
+
+    const onAlpha = { x: alpha.x, y: alpha.y, scale: deep };
+    // The other family's child occupies this same point and must not win the hit.
+    expect(store.hitTest(alpha, onAlpha, 1, view)?.id).toBe('alpha-home');
+    expect(store.hitTest(beta, onAlpha, 1, view)?.id).toBe('alpha-near');
+    expect(store.hitTest(beta, { x: beta.x, y: beta.y, scale: deep }, 1, view)?.id).toBe('beta-home');
+    expect(store.hitTest(alpha, { x: beta.x, y: beta.y, scale: deep }, 1, view)?.id).toBe('beta-near');
+
+    // Zooming back out restores the parts and drops every child. In again, same children.
+    const back = idsAt(alphaFit, alpha);
+    expect(back).toEqual(expect.arrayContaining(['alpha', 'beta']));
+    expect(back).not.toEqual(expect.arrayContaining([...alphaChildren, ...betaChildren]));
+    expect(idsAt(deep, alpha)).toEqual(expect.arrayContaining(alphaChildren));
+    expect(idsAt(deep, alpha)).not.toEqual(expect.arrayContaining(betaChildren));
+  });
 });
 
 type Scene = {
@@ -271,6 +358,68 @@ function sharedLevel(): Scene {
   return { objects, boxOf: (id) => boxes.get(id) };
 }
 
+/**
+ * Two parts on one level, each with two children. One child of each part is
+ * placed on its sibling, so a viewport around either part contains both
+ * families. `beta` is smaller, so its fit — and its children's fade — starts
+ * higher and overlaps `alpha`'s.
+ */
+function twoSiblingLevels(): CanvasObject[] {
+  const reveal: ZoomFade = { fadeIn: [1, 2] };
+  return [
+    group('level'),
+    image('alpha', -90, 0, 64, 48, 'level'),
+    image('beta', 90, 0, 50, 36, 'level'),
+    image('alpha-home', 0, 0, 12, 10, 'alpha', { ...reveal, fadeInOf: 'alpha' }),
+    image('alpha-near', 180, 0, 12, 10, 'alpha', { ...reveal, fadeInOf: 'alpha' }),
+    image('beta-home', 0, 0, 12, 10, 'beta', { ...reveal, fadeInOf: 'beta' }),
+    image('beta-near', -180, 0, 12, 10, 'beta', { ...reveal, fadeInOf: 'beta' }),
+  ];
+}
+
+function boxFrom(store: ReturnType<typeof createMemoryStore>, id: string): ViewBounds | undefined {
+  const boxes = store.contentBoxes();
+  let index = 0;
+  for (const object of store.resident()) {
+    if (object.payload.type === 'group' || object.payload.type === 'link') continue;
+    if (object.id === id) return boxes[index]?.box;
+    index += 1;
+  }
+  return undefined;
+}
+
+function wideAround(focus: { x: number; y: number }): ViewBounds {
+  return {
+    left: focus.x - 400,
+    right: focus.x + 400,
+    top: focus.y - 400,
+    bottom: focus.y + 400,
+  };
+}
+
+/** The entered portal nearest `focus`, with an id tie. Mirrors the platform rule. */
+function activePortal(
+  scale: number,
+  focus: { x: number; y: number },
+  portals: readonly { id: string; fit: number; x: number; y: number }[],
+): string | undefined {
+  const entered = portals.filter((portal) => scale / portal.fit >= 1);
+  if (entered.length === 0) return undefined;
+  let best = entered[0];
+  if (!best) return undefined;
+  let bestDistance = (best.x - focus.x) ** 2 + (best.y - focus.y) ** 2;
+  for (let i = 1; i < entered.length; i += 1) {
+    const portal = entered[i];
+    if (!portal) continue;
+    const distance = (portal.x - focus.x) ** 2 + (portal.y - focus.y) ** 2;
+    if (distance < bestDistance || (distance === bestDistance && portal.id < best.id)) {
+      best = portal;
+      bestDistance = distance;
+    }
+  }
+  return best.id;
+}
+
 function rect(x: number, y: number, width: number, height: number): ViewBounds {
   return {
     left: x - width / 2,
@@ -298,12 +447,14 @@ function image(
   width: number,
   height: number,
   parentId?: string,
+  fade?: ZoomFade,
 ): CanvasObject {
   return {
     id,
     x,
     y,
     ...(parentId ? { parentId } : {}),
+    ...(fade ? { fade } : {}),
     visibility: band,
     payload: { type: 'image', src: `images/${id}.webp`, width, height, frame: false },
   };

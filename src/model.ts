@@ -44,9 +44,26 @@ export type ImagePayload = {
   frame?: boolean;
 };
 
-/** A transform only. Not drawn, not hit, and not counted. */
+/**
+ * A transform only. Not drawn, not hit, and not counted.
+ * `explode` is the level's layout: image children keep their assembled
+ * position, and the platform pulls that level apart.
+ */
 export type GroupPayload = {
   type: 'group';
+  /**
+   * Minimum clear space, in this group's units, between the image children
+   * once they are pulled apart. Plates that share the group origin step by
+   * `z`. On a wide view they sit in a row (back to the left, front to the
+   * right) and the other parts keep their side of the frame. On a tall view
+   * the plates stack (back down, front up) and the other parts stay at their
+   * assembled offsets. A level with nothing on the origin moves each part
+   * straight out along the ray from the origin. Across the children's fade
+   * the level eases from the assembled arrangement, matched to the parent,
+   * to this spread fitted so the images fill the viewport. Omit, or a
+   * non-positive value, to keep the assembled layout.
+   */
+  explode?: number;
 };
 
 /**
@@ -104,6 +121,11 @@ export type CanvasObject = {
    */
   x: number;
   y: number;
+  /**
+   * Stack order in the parent's exploded view. Higher is closer to the
+   * front. Omit for 0. Parts that share the group origin are the plates.
+   */
+  z?: number;
   /** When set, `x` and `y` are parent-local. */
   parentId?: string;
   /**

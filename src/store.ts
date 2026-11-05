@@ -2,6 +2,7 @@ import { boxFitScale, type Camera, type ContentBox, type ViewBounds } from './ca
 import { displayOpacity, type AnchorScale } from './fade';
 import { buildLevelPlan, type LevelFocus } from './levelFade';
 import type { CanvasObject } from './model';
+import { createPlacement, type PlacementView, type WorldPlacement } from './placement';
 import { visibilityAlpha } from './visibility';
 
 /** HUD counts an object only above this opacity. */
@@ -132,20 +133,22 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
 
   return {
     countInBand(scale, fitScale, view, focus) {
-      const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, scale, view, focus);
+      const live = entriesFor(resident, entries, scale, fitScale, view);
+      const anchorScale = anchorFits(live, view);
+      const level = levelMultiplier(resident, live, scale, view, focus);
       let count = 0;
-      for (const { object } of entries) {
+      for (const { object } of live) {
         if (shownAlpha(object, scale, fitScale, anchorScale, level) > HUD_ALPHA) count += 1;
       }
       return count;
     },
     query(query) {
       const view = { width: query.viewWidth ?? 0, height: query.viewHeight ?? 0 };
-      const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, query.scale, view, boundsCenter(query.bounds));
+      const live = entriesFor(resident, entries, query.scale, query.fitScale, view);
+      const anchorScale = anchorFits(live, view);
+      const level = levelMultiplier(resident, live, query.scale, view, boundsCenter(query.bounds));
       const visible: VisibleObject[] = [];
-      for (const entry of entries) {
+      for (const entry of live) {
         const alpha = visibilityAlpha(entry.object.visibility, query.scale);
         const shown = displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale, anchorScale);
         if (shown * level(entry.object.id) <= DRAW_ALPHA) continue;
@@ -168,10 +171,11 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
       };
     },
     hitTest(worldPoint, camera, fitScale, view) {
-      const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, camera.scale, view, { x: camera.x, y: camera.y });
+      const live = entriesFor(resident, entries, camera.scale, fitScale, view);
+      const anchorScale = anchorFits(live, view);
+      const level = levelMultiplier(resident, live, camera.scale, view, { x: camera.x, y: camera.y });
       let best: Entry | undefined;
-      for (const entry of entries) {
+      for (const entry of live) {
         if (shownAlpha(entry.object, camera.scale, fitScale, anchorScale, level) <= DRAW_ALPHA) continue;
         if (!containsPoint(entry.box, worldPoint)) continue;
         if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
@@ -262,71 +266,43 @@ function minorSize(object: CanvasObject): number {
 /**
  * Parent-local `x` / `y` become world coordinates here, so `query` keeps
  * scanning scale-independent boxes. A parent's `scale` multiplies its
- * descendants' positions and sizes. A missing parent or a cycle leaves the
+ * descendants' positions and sizes. A group's `explode` moves its image
+ * children before that scale. A missing parent or a cycle leaves the
  * object out of the entries (and therefore out of `query` and `countInBand`)
  * instead of throwing. A group is a transform only and is not an entry.
  * A link is ids and stroke style only: it has no box, so it is not hit,
  * counted, or culled. The authored object is not mutated. `imageSources`
  * still lists every resident image, placed or not.
  */
-function placedEntries(objects: readonly CanvasObject[]): Entry[] {
-  const byId = new Map<string, CanvasObject>();
-  for (const object of objects) {
-    // First id wins, so a duplicate cannot move a parent out from under its children.
-    if (!byId.has(object.id)) byId.set(object.id, object);
-  }
+function entriesFor(
+  objects: readonly CanvasObject[],
+  fallback: readonly Entry[],
+  scale: number,
+  fitScale: number | undefined,
+  view: ViewportSize | undefined,
+): Entry[] {
+  if (!view || !(view.width > 0) || !(view.height > 0) || !(scale > 0)) return [...fallback];
+  const placement: PlacementView = { scale, width: view.width, height: view.height, ...(fitScale !== undefined ? { fitScale } : {}) };
+  return placedEntries(objects, placement);
+}
 
-  const world = new Map<CanvasObject, Placement | null>();
-
-  function resolve(object: CanvasObject, stack: Set<CanvasObject>): Placement | null {
-    const known = world.get(object);
-    if (known !== undefined) return known;
-    if (stack.has(object)) return null;
-
-    stack.add(object);
-    let placed: Placement | null = null;
-    const local = localScale(object.scale);
-    if (object.parentId === undefined) {
-      placed = { x: object.x, y: object.y, scale: local };
-    } else {
-      const parent = byId.get(object.parentId);
-      const origin = parent ? resolve(parent, stack) : null;
-      if (origin) {
-        placed = {
-          x: origin.x + object.x * origin.scale,
-          y: origin.y + object.y * origin.scale,
-          scale: origin.scale * local,
-        };
-      }
-    }
-    stack.delete(object);
-    world.set(object, placed);
-    return placed;
-  }
-
+function placedEntries(objects: readonly CanvasObject[], view?: PlacementView): Entry[] {
+  const place = createPlacement(objects, view);
   const entries: Entry[] = [];
   for (const object of objects) {
     if (object.payload.type === 'group' || object.payload.type === 'link') continue;
-    const placed = resolve(object, new Set());
+    const placed = place(object);
     if (!placed) continue;
     entries.push(entryFor(atWorld(object, placed)));
   }
   return entries;
 }
 
-type Placement = { x: number; y: number; scale: number };
-
-/** A missing or non-positive scale is 1, so bad data does not collapse the map. */
-function localScale(scale: number | undefined): number {
-  if (scale === undefined || !Number.isFinite(scale) || !(scale > 0)) return 1;
-  return scale;
-}
-
 /**
  * Query objects are world-space, so a parent link is not left on them.
  * `placement.scale` is already in the position and the payload size.
  */
-function atWorld(object: CanvasObject, placement: Placement): CanvasObject {
+function atWorld(object: CanvasObject, placement: WorldPlacement): CanvasObject {
   const payload = scaledPayload(object.payload, placement.scale);
   if (object.parentId === undefined && payload === object.payload) return object;
   return {
