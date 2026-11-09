@@ -47,11 +47,26 @@ export const batterySprites = {
 export const PHONE_WIDTH_MM = 71.5;
 
 /**
- * The internals assembly is this fraction of the phone, about the phone centre.
- * The front finishes fading at `r = 1 / INTERNALS_SCALE`, which is when the
- * shrunk midframe is back to the screen size the front had at the opening.
+ * The front finishes fading at `r = 1 / INTERNALS_SCALE` (1.6× the opening fit).
+ * The parts group uses its own scale: the exploded row is authored at its final size.
  */
 export const INTERNALS_SCALE = 0.625;
+
+/**
+ * Scale of the parts group. On a 1280×800 window, at 1.6× the opening fit,
+ * the back glass, the midframe and the display fill about 85% of the limiting side.
+ */
+const PARTS_SCALE = 0.562631;
+
+/** Scale of the battery's inner group, in the battery's own space. */
+const BATTERY_PARTS_SCALE = 0.643568;
+
+/**
+ * Label scale in its group's space. With the group scale above, the face is
+ * about 18px at that level's reveal on a 1280×800 window.
+ */
+const PARTS_LABEL_SCALE = 1.159545;
+const BATTERY_LABEL_SCALE = 0.499237;
 
 /**
  * `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`.
@@ -61,29 +76,16 @@ export const INTERNALS_SCALE = 0.625;
  */
 const REVEAL = [1, 1 / INTERNALS_SCALE] as const;
 
-/**
- * Pouch cell, 39 mm across the 40 mm pack. Its opaque bottom sits 1 mm above
- * the pack's opaque bottom.
- */
+/** Pouch cell, 39 mm across the 40 mm pack. `CELL_Y_MM` is its exploded centre. */
 const CELL_WIDTH_MM = 39;
-const CELL_Y_MM = 4.53;
+const CELL_Y_MM = 7.936;
 
 /**
- * Protection board, 40 mm across the cell's top edge. The flex in the art
- * points up on the right, where the pack's connector is.
+ * Protection board, 40 mm across. The flex in the art points up on the right,
+ * where the pack's connector is. `BOARD_Y_MM` is its exploded centre, above the cell.
  */
 const BOARD_WIDTH_MM = 40;
-const BOARD_Y_MM = -29.72;
-
-/**
- * Clear space, in millimetres, between parts of a level. The phone's plates
- * share the origin. On a wide view they step apart sideways by `z` and the
- * loose parts stay in columns beside the frame; on a tall view the plates
- * stack and the loose parts stay on the frame. The battery has no plate, so
- * the cell and the board move apart along the line between them.
- */
-const PHONE_EXPLODE_MM = 12;
-const BATTERY_EXPLODE_MM = 6;
+const BOARD_Y_MM = -34.67;
 
 /**
  * Wide enough that the opening fit and the battery level sit in the flat
@@ -129,15 +131,15 @@ function cutout(
 }
 
 /**
- * A callout in its parent's millimetres: the same face and size as the other
- * part labels. `x` and `y` are the label centre. The link stores ids only.
+ * A callout in its parent's millimetres. `x` and `y` are the label centre,
+ * already where the leader should land. The link stores ids only.
  * The label fades in with its part. When a next level opens, the platform
  * fades every sibling at this parent — parts, labels, and through them the
  * leaders — so this callout does not name the part being entered.
  */
 /**
- * Wide enough for the words at the label's 4.2 mm face. The platform sizes
- * the box up to about 18px on screen; a narrow box would shrink that face.
+ * Wide enough for the words at the label's 4.2 mm face. `scale` then brings
+ * that face to about 18px at the level's reveal on a wide window.
  */
 function labelWidth(text: string): number {
   return Math.round(text.length * 0.55 * 4.2 * 10) / 10;
@@ -150,6 +152,7 @@ function callout(
   y: number,
   parentId = 'internals',
   fade: ZoomFade = fadeIn,
+  scale = PARTS_LABEL_SCALE,
 ): readonly CanvasObject[] {
   return [
     {
@@ -157,6 +160,7 @@ function callout(
       parentId,
       x,
       y,
+      scale,
       visibility: band,
       fade,
       payload: {
@@ -181,18 +185,15 @@ function callout(
  * Front view plus the parts under it. `internals` is a group on `phone`:
  * one scale about the phone centre, no pixels of its own. The parts are
  * parent-local millimetres on that group, listed back to front, then the
- * front image. `x` and `y` are the assembled position. The group's `explode`
- * pulls the parts apart; the platform fits that level back so the crossfade
- * still fills the screen. `battery-internals` is that same kind of group on
- * `battery`. Edit a part's assembled `x`, `y`, and opaque width, or the
- * level's explode gap, to rearrange it.
- * The fade is zoom-driven, not animated. Children of a part set `fadeInOf`
- * to that part. Entering it fades the whole sibling level, not only the part,
- * and only that part's children come in.
+ * front image. `x` and `y` are the final positions of the wide exploded row.
+ * Nothing moves as you zoom. `battery-internals` is that same kind of group
+ * on `battery`, with the cell and the protection board already apart.
+ * The fade is zoom-driven opacity. Children of a part set
+ * `fadeInOf` to that part. Entering it fades the whole sibling level, not
+ * only the part, and only that part's children come in.
  *
- * The platform places each label just off its part: a short leader, at least
- * 20° off both axes. The cell and protection board use the same callout, on
- * their own group.
+ * Each label sits just off its part: a short leader, at least 20° off both
+ * axes, about 18px on a 1280×800 window when that level has finished fading in.
  */
 export const smartphoneObjects: readonly CanvasObject[] = [
   {
@@ -200,20 +201,20 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     parentId: 'phone',
     x: 0,
     y: 0,
-    scale: INTERNALS_SCALE,
+    scale: PARTS_SCALE,
     visibility: band,
-    payload: { type: 'group', explode: PHONE_EXPLODE_MM },
+    payload: { type: 'group' },
   },
   {
     id: 'battery-internals',
     parentId: 'battery',
     x: 0,
     y: 0,
-    scale: INTERNALS_SCALE,
+    scale: BATTERY_PARTS_SCALE,
     visibility: band,
-    payload: { type: 'group', explode: BATTERY_EXPLODE_MM },
+    payload: { type: 'group' },
   },
-  cutout('back-glass', 'images/smartphone/back-glass.webp', partSprites.backGlass, 71.34, 0, 0, fadeIn, 'internals', 0),
+  cutout('back-glass', 'images/smartphone/back-glass.webp', partSprites.backGlass, 71.34, -111.205, 0, fadeIn, 'internals', 0),
   cutout('midframe', 'images/smartphone/midframe.webp', partSprites.midframe, PHONE_WIDTH_MM, 0, 0, fadeIn, 'internals', 1),
   cutout(
     'cell',
@@ -290,18 +291,18 @@ export const smartphoneObjects: readonly CanvasObject[] = [
     'internals',
     6,
   ),
-  cutout('display', 'images/smartphone/display.webp', partSprites.display, 71.34, 0, 0, fadeIn, 'internals', 7),
+  cutout('display', 'images/smartphone/display.webp', partSprites.display, 71.34, 111.205, 0, fadeIn, 'internals', 7),
   cutout('phone', 'images/smartphone.webp', smartphoneSprite, PHONE_WIDTH_MM, 0, 0, fadeOut),
-  ...callout('back-glass', 'Back glass', -70, 80),
-  ...callout('camera-module', 'Camera', -70, -40),
-  ...callout('battery', 'Battery', -72, 28),
-  ...callout('loudspeaker', 'Speaker', -70, 46),
-  ...callout('display', 'Display', 72, -80),
-  ...callout('logic-board', 'Logic board', 74, -26),
-  ...callout('midframe', 'Midframe', 72, 28),
-  ...callout('haptic-motor', 'Haptic motor', 76, 40),
-  ...callout('cell', 'Cell', -46, 32, 'battery-internals', fadeInBattery),
-  ...callout('protection-board', 'Protection board', 41, -12, 'battery-internals', fadeInBattery),
+  ...callout('back-glass', 'Back glass', -143.264, -79.348),
+  ...callout('camera-module', 'Camera', -48.43, -59.471),
+  ...callout('battery', 'Battery', -49.788, -4.825),
+  ...callout('loudspeaker', 'Speaker', -47.344, 80.684),
+  ...callout('display', 'Display', 79.146, -79.348),
+  ...callout('logic-board', 'Logic board', 54.22, -57.906),
+  ...callout('midframe', 'Midframe', 32.835, -81.27),
+  ...callout('haptic-motor', 'Haptic motor', 50.822, 81.781),
+  ...callout('cell', 'Cell', -23.337, 17.365, 'battery-internals', fadeInBattery, BATTERY_LABEL_SCALE),
+  ...callout('protection-board', 'Protection board', -30.718, -22.259, 'battery-internals', fadeInBattery, BATTERY_LABEL_SCALE),
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */

@@ -3,7 +3,6 @@ import { displayOpacity, type AnchorScale } from './fade';
 import { gridStep } from './grid';
 import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
-import type { PlacementView } from './placement';
 import type { CanvasObject, LinkStyle, TextPayload } from './model';
 import { darkTheme, withAlpha, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
@@ -173,9 +172,8 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     const sorted = [...visible].sort(
       (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
     );
-    const placement = placementView(camera, frame.fitScale, viewW, viewH);
-    const anchorScale = anchorFits(frame.objects, viewW, viewH, placement);
-    const level = levelOpacity(frame.objects, camera, viewW, viewH, placement);
+    const anchorScale = anchorFits(frame.objects, viewW, viewH);
+    const level = levelOpacity(frame.objects, camera, viewW, viewH);
     for (const entry of sorted) {
       const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale, level);
       if (!(alpha > 0)) continue;
@@ -190,7 +188,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     // After the objects, so the stroke stays visible across other parts.
     // Clipping keeps it out of the two endpoints; their transparent pixels
     // cannot show the line either, because the segment never enters the box.
-    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale, anchorScale, level, placement);
+    drawLinks(ctx, theme, camera, viewW, viewH, frame.objects, frame.fitScale, anchorScale, level);
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
       if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale, level) > 0) {
@@ -230,7 +228,6 @@ function drawLinks(
   fitScale: number | undefined,
   anchorScale: AnchorScale | undefined,
   level: (id: string) => number,
-  placement: PlacementView | undefined,
 ): void {
   if (!objects || objects.length === 0) return;
   for (const object of objects) {
@@ -242,8 +239,8 @@ function drawLinks(
     const alpha = Math.min(fromAlpha, toAlpha);
     if (!(alpha > 0)) continue;
 
-    const fromRect = resolveWorldRect(objects, from, placement);
-    const toRect = resolveWorldRect(objects, to, placement);
+    const fromRect = resolveWorldRect(objects, from);
+    const toRect = resolveWorldRect(objects, to);
     if (!fromRect || !toRect) continue;
     const segment = clipLeaderLine(
       projectRect(fromRect, camera, viewW, viewH),
@@ -283,12 +280,11 @@ function levelOpacity(
   camera: Camera,
   viewW: number,
   viewH: number,
-  placement: PlacementView | undefined,
 ): (id: string) => number {
   return buildLevelPlan(
     objects ?? [],
     (id) => {
-      const rect = objects ? resolveWorldRect(objects, id, placement) : null;
+      const rect = objects ? resolveWorldRect(objects, id) : null;
       return rect ? rectToBounds(rect) : undefined;
     },
     camera.scale,
@@ -301,28 +297,17 @@ function levelOpacity(
  * Opening fit of each anchor named on `objects`. The rect is the authored
  * placement, parent chain included, so it matches the store's world box.
  */
-function placementView(
-  camera: Camera,
-  fitScale: number | undefined,
-  viewW: number,
-  viewH: number,
-): PlacementView | undefined {
-  if (!(viewW > 0) || !(viewH > 0) || !(camera.scale > 0)) return undefined;
-  return { scale: camera.scale, width: viewW, height: viewH, ...(fitScale !== undefined ? { fitScale } : {}) };
-}
-
 function anchorFits(
   objects: readonly CanvasObject[] | undefined,
   viewW: number,
   viewH: number,
-  placement: PlacementView | undefined,
 ): AnchorScale | undefined {
   if (!objects || !(viewW > 0) || !(viewH > 0)) return undefined;
   const cache = new Map<string, number | undefined>();
   return (id: string) => {
     const known = cache.get(id);
     if (known !== undefined || cache.has(id)) return known;
-    const rect = resolveWorldRect(objects, id, placement);
+    const rect = resolveWorldRect(objects, id);
     const fitted = rect ? boxFitScale(rectToBounds(rect), viewW, viewH) : undefined;
     cache.set(id, fitted);
     return fitted;
