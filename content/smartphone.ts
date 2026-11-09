@@ -1,5 +1,7 @@
 import type { CanvasObject, ZoomFade } from '../src/model';
 import { paperTheme, type ContentPack } from '../src/theme';
+import { hierarchyNodes } from './hierarchy.generated';
+import { layoutTree } from './treeLayout';
 
 /**
  * Pixel size of a trimmed cut-out, and of the pixels that are actually opaque.
@@ -195,7 +197,7 @@ function callout(
  * Each label sits just off its part: a short leader, at least 20° off both
  * axes, about 18px on a 1280×800 window when that level has finished fading in.
  */
-export const smartphoneObjects: readonly CanvasObject[] = [
+const builtSmartphoneObjects: readonly CanvasObject[] = [
   {
     id: 'internals',
     parentId: 'phone',
@@ -303,6 +305,20 @@ export const smartphoneObjects: readonly CanvasObject[] = [
   ...callout('haptic-motor', 'Haptic motor', 50.822, 81.781),
   ...callout('cell', 'Cell', -23.337, 17.365, 'battery-internals', fadeInBattery, BATTERY_LABEL_SCALE),
   ...callout('protection-board', 'Protection board', -30.718, -22.259, 'battery-internals', fadeInBattery, BATTERY_LABEL_SCALE),
+];
+
+const laidOut = layoutTree(hierarchyNodes, builtSmartphoneObjects);
+
+/** Nodes the exploded layout had to draw smaller than child size ÷ parent size, and any it could not place. */
+export const smartphoneLayoutReport = {
+  shrunk: laidOut.shrunk,
+  unplaced: laidOut.unplaced,
+};
+
+/** Hand-authored phone, parts, cell, and board, then every other hierarchy node. */
+export const smartphoneObjects: readonly CanvasObject[] = [
+  ...builtSmartphoneObjects,
+  ...laidOut.objects,
 ];
 
 /** Aged paper and the phone. Camera limits are derived; the fit is the opening scale. */

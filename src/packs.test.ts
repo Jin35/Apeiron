@@ -41,7 +41,7 @@ describe('smartphone pack', () => {
     expect(paperTheme.grid).toBeUndefined();
     expect(smartphonePack.theme).toBe(paperTheme);
     expect(smartphonePack.limits).toBeUndefined();
-    expect(smartphoneObjects.filter((object) => object.payload.type === 'text').map((object) => object.id)).toEqual([
+    const handLabels = [
       'back-glass-label',
       'camera-module-label',
       'battery-label',
@@ -52,8 +52,10 @@ describe('smartphone pack', () => {
       'haptic-motor-label',
       'cell-label',
       'protection-board-label',
-    ]);
-    expect(smartphoneObjects.map((object) => object.id)).toEqual([
+    ];
+    expect(smartphoneObjects.filter((object) => object.payload.type === 'text').map((object) => object.id).slice(0, handLabels.length)).toEqual(handLabels);
+    expect(smartphoneObjects.filter((object) => object.payload.type === 'text').length).toBeGreaterThan(handLabels.length);
+    const handIds = [
       'internals',
       'battery-internals',
       'back-glass',
@@ -87,7 +89,9 @@ describe('smartphone pack', () => {
       'cell-link',
       'protection-board-label',
       'protection-board-link',
-    ]);
+    ];
+    expect(smartphoneObjects.map((object) => object.id).slice(0, handIds.length)).toEqual(handIds);
+    expect(smartphoneObjects.length).toBeGreaterThan(handIds.length);
     expect(INTERNALS_SCALE).toBe(0.625);
     const reveal = [1, 1 / INTERNALS_SCALE] as const;
     expect(reveal[1]).toBeCloseTo(1.6);
@@ -422,11 +426,13 @@ describe('smartphone pack', () => {
 
   it('keeps part labels off the phone, the parts, and each other, and inside the pan bounds', () => {
     const labels = smartphoneObjects.filter((object) => object.payload.type === 'text');
-    const solids = smartphoneObjects.filter((object) => object.payload.type === 'image');
+    const solids = smartphoneObjects.filter(
+      (object) => object.payload.type === 'image' || object.payload.type === 'shape',
+    );
     const boxes = [...labels, ...solids].map((object) => {
       const box = resolveWorldRect(smartphoneObjects, object.id);
       if (!box) throw new Error(`expected a world box for ${object.id}`);
-      return { id: object.id, box };
+      return { id: object.id, parentId: object.parentId, box };
     });
 
     for (let i = 0; i < boxes.length; i += 1) {
@@ -436,17 +442,9 @@ describe('smartphone pack', () => {
         if (!a || !b) continue;
         const labelInvolved = a.id.endsWith('-label') || b.id.endsWith('-label');
         if (!labelInvolved) continue;
-        // The cell and board sit in the phone and midframe plates. Their labels
-        // share that cavity; the plates' boxes are the whole phone, not the ink.
-        const ids = [a.id, b.id];
-        // The front view is gone once the level has faded in, and the plates
-        // are the things the labels name. A label may sit over the phone's box.
-        // The front view and the battery plate are faded out when these labels
-        // are on screen. The check is the parts and labels that are showing.
-        if (ids.some((id) => id === 'phone' || id === 'battery')) continue;
-        const nestedLabel = ids.some((id) => id === 'cell-label' || id === 'protection-board-label');
-        const enclosingPlate = ids.some((id) => id === 'midframe');
-        if (nestedLabel && enclosingPlate) continue;
+        // Only siblings are on screen together. A nested label sits inside an
+        // ancestor plate; that plate has already faded out.
+        if (a.parentId !== b.parentId) continue;
         expect(rectsOverlap(a.box, b.box), `${a.id} overlaps ${b.id}`).toBe(false);
       }
     }
@@ -469,12 +467,21 @@ describe('smartphone pack', () => {
     }
 
     const leaders = partsAndLabels();
-    for (let i = 0; i < leaders.length; i += 1) {
-      for (let j = i + 1; j < leaders.length; j += 1) {
-        const a = leaders[i];
-        const b = leaders[j];
-        if (!a || !b) continue;
-        expect(segmentsCross(a.from, a.to, b.from, b.to), `${a.id} crosses ${b.id}`).toBe(false);
+    const byParent = new Map<string, typeof leaders>();
+    for (const leader of leaders) {
+      const key = parentOf(leader.toId) ?? '';
+      const list = byParent.get(key) ?? [];
+      list.push(leader);
+      byParent.set(key, list);
+    }
+    for (const group of byParent.values()) {
+      for (let i = 0; i < group.length; i += 1) {
+        for (let j = i + 1; j < group.length; j += 1) {
+          const a = group[i];
+          const b = group[j];
+          if (!a || !b) continue;
+          expect(segmentsCross(a.from, a.to, b.from, b.to), `${a.id} crosses ${b.id}`).toBe(false);
+        }
       }
     }
   });
@@ -491,7 +498,13 @@ describe('smartphone pack', () => {
     const narrowFit = deriveCameraLimits(store.contentBoxes(), narrow.width, narrow.height).fitScale;
     expect(boxFitScale(boundsOf(mustRect('battery')), narrow.width, narrow.height)).toBeGreaterThan(narrowFit * reveal);
 
-    const span = { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 };
+    const batteryCentre = mustRect('battery');
+    const span = {
+      left: batteryCentre.x - 1e6,
+      right: batteryCentre.x + 1e6,
+      top: batteryCentre.y - 1e6,
+      bottom: batteryCentre.y + 1e6,
+    };
     const idsAt = (ratio: number) =>
       store
         .query({
@@ -503,34 +516,18 @@ describe('smartphone pack', () => {
         })
         .map((entry) => entry.object.id);
 
-    const siblings = [
-      'back-glass',
-      'midframe',
-      'battery',
-      'logic-board',
-      'camera-module',
-      'loudspeaker',
-      'haptic-motor',
-      'display',
-      'back-glass-label',
-      'midframe-label',
-      'battery-label',
-      'logic-board-label',
-      'camera-module-label',
-      'loudspeaker-label',
-      'haptic-motor-label',
-      'display-label',
-    ];
-    expect(idsAt(1)).toEqual(expect.arrayContaining(siblings));
-    expect(idsAt(1)).not.toEqual(expect.arrayContaining(['cell', 'cell-label', 'protection-board-label']));
-    expect(idsAt(reveal)).not.toEqual(expect.arrayContaining(siblings));
+    // Larger parts have already finished their own handover by the time the
+    // battery fills the view. The battery stays, on its own curve. The cell
+    // has not started. Only the battery's children come in after that.
+    expect(idsAt(1)).toEqual(expect.arrayContaining(['battery', 'battery-label']));
+    expect(idsAt(1)).not.toEqual(expect.arrayContaining(['cell', 'cell-label', 'protection-board', 'loudspeaker', 'midframe']));
+    expect(idsAt(reveal)).not.toEqual(expect.arrayContaining(['battery', 'loudspeaker', 'midframe', 'display']));
     expect(idsAt(reveal)).toEqual(
       expect.arrayContaining(['cell', 'protection-board', 'cell-label', 'protection-board-label']),
     );
-    expect(idsAt(2.5)).not.toEqual(expect.arrayContaining(siblings));
+    expect(idsAt(2.5)).not.toEqual(expect.arrayContaining(['battery', 'loudspeaker', 'midframe']));
     expect(idsAt(2.5)).toEqual(expect.arrayContaining(['cell', 'protection-board', 'cell-label', 'protection-board-label']));
-    // Zooming back out restores the sibling level and hides the cell again.
-    expect(idsAt(1)).toEqual(expect.arrayContaining(['loudspeaker', 'haptic-motor-label']));
+    expect(idsAt(1)).toEqual(expect.arrayContaining(['battery', 'battery-label']));
 
     const planAt = (ratio: number, id: string) => {
       const batteryNow = mustRect('battery');
@@ -545,13 +542,16 @@ describe('smartphone pack', () => {
         desktop,
       ).opacity(id);
     };
-    expect(planAt(1, 'midframe')).toBeCloseTo(1);
-    expect(planAt(1.3, 'midframe')).toBeCloseTo(0.5);
-    expect(planAt(1.3, 'logic-board-label')).toBeCloseTo(0.5);
+    expect(planAt(1, 'battery')).toBeCloseTo(1);
+    expect(planAt(1, 'battery-label')).toBeCloseTo(1);
+    expect(planAt(1, 'midframe')).toBeCloseTo(0);
+    expect(planAt(1.3, 'midframe')).toBeCloseTo(0);
+    expect(planAt(1.3, 'logic-board-label')).toBeCloseTo(0);
     expect(planAt(1.3, 'battery')).toBeCloseTo(0.5);
+    expect(planAt(1.3, 'battery-label')).toBeCloseTo(0.5);
     expect(planAt(reveal, 'camera-module')).toBeCloseTo(0);
     expect(planAt(2.5, 'haptic-motor')).toBe(0);
-    expect(planAt(1, 'loudspeaker')).toBeCloseTo(1);
+    expect(planAt(1, 'loudspeaker')).toBeCloseTo(0);
     // The cell level fades in on its own anchor. The handover does not dim it,
     // and the phone's own fade is left alone.
     expect(planAt(1.3, 'cell')).toBe(1);
@@ -562,8 +562,8 @@ describe('smartphone pack', () => {
     expect(planAt(2.5, 'phone')).toBe(1);
 
     const battery = mustRect('battery');
-    expect(store.countInBand(batteryFit, fit, desktop, { x: battery.x, y: battery.y })).toBe(16);
-    expect(store.countInBand(batteryFit * 1.3, fit, desktop, { x: battery.x, y: battery.y })).toBe(20);
+    expect(store.countInBand(batteryFit, fit, desktop, { x: battery.x, y: battery.y })).toBe(2);
+    expect(store.countInBand(batteryFit * 1.3, fit, desktop, { x: battery.x, y: battery.y })).toBe(6);
     expect(store.countInBand(batteryFit * reveal, fit, desktop, { x: battery.x, y: battery.y })).toBe(4);
 
     const view = desktop;
@@ -676,6 +676,7 @@ function rectsOverlap(
 
 function partsAndLabels(): Array<{
   id: string;
+  toId: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
 }> {
@@ -685,9 +686,13 @@ function partsAndLabels(): Array<{
     const from = resolveWorldRect(smartphoneObjects, object.payload.from);
     const to = resolveWorldRect(smartphoneObjects, object.payload.to);
     if (!from || !to) throw new Error(`expected endpoints for ${object.id}`);
-    leaders.push({ id: object.id, from, to });
+    leaders.push({ id: object.id, toId: object.payload.to, from, to });
   }
   return leaders;
+}
+
+function parentOf(id: string): string | undefined {
+  return smartphoneObjects.find((object) => object.id === id)?.parentId;
 }
 
 function orient(

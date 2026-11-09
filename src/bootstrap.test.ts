@@ -51,7 +51,8 @@ describe('opening camera', () => {
       y: 2,
       scale: 0.001,
     });
-    expect(cameraFromLocation(fallback, '?scale=1e8&x=1&y=2').scale).toBe(MAX_SCALE);
+    expect(cameraFromLocation(fallback, '?scale=1e8&x=1&y=2').scale).toBe(1e8);
+    expect(cameraFromLocation(fallback, '?scale=1e13&x=1&y=2').scale).toBe(MAX_SCALE);
     expect(cameraFromLocation(fallback, '?scale=1e-8&x=1&y=2').scale).toBe(MIN_SCALE);
   });
 });

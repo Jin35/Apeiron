@@ -21,10 +21,21 @@ describe('placement', () => {
       deriveCameraLimits(store.contentBoxes(), view.width, view.height).fitScale;
     const batteryFit = (view: { width: number; height: number }) =>
       boxFitScale(boundsOf(battery), view.width, view.height);
+    const onBattery = { x: battery.x, y: battery.y };
     assertFixed(store, 'display', openingFit, [1.05, 1.2, 1.3, 1.45, 1.6]);
     assertFixed(store, 'display-label', openingFit, [1.05, 1.2, 1.3, 1.45, 1.6]);
-    assertFixed(store, 'cell', batteryFit, [1.05, 1.3, 1.6, 2, 2.5]);
-    assertFixed(store, 'cell-label', batteryFit, [1.05, 1.3, 1.6, 2, 2.5]);
+    assertFixed(store, 'cell', batteryFit, [1.05, 1.3, 1.6, 2, 2.5], onBattery);
+    assertFixed(store, 'cell-label', batteryFit, [1.05, 1.3, 1.6, 2, 2.5], onBattery);
+
+    // One deep node, across the crossfade that reveals it. The camera is on
+    // that node, and the rect still does not depend on zoom or viewport.
+    const crystal = resolveWorldRect(smartphoneObjects, 'graphite-crystal');
+    if (!crystal) throw new Error('expected the graphite crystal');
+    const crystalFit = (view: { width: number; height: number }) =>
+      boxFitScale(boundsOf(crystal), view.width, view.height);
+    const onCrystal = { x: crystal.x, y: crystal.y };
+    assertFixed(store, 'graphite-carbon-atom', crystalFit, [1.05, 1.2, 1.3, 1.45, 1.6], onCrystal);
+    assertFixed(store, 'graphite-carbon-atom-label', crystalFit, [1.05, 1.2, 1.3, 1.45, 1.6], onCrystal);
   });
 });
 
@@ -33,13 +44,14 @@ function assertFixed(
   id: string,
   referenceOf: (view: { width: number; height: number }) => number,
   ratios: readonly number[],
+  focus?: { x: number; y: number },
 ): void {
   const geometric = resolveWorldRect(smartphoneObjects, id);
   if (!geometric) throw new Error(`expected a world rect for ${id}`);
   for (const view of [desktop, phone]) {
     const reference = referenceOf(view);
     for (const ratio of ratios) {
-      expect(shownRect(store, id, reference * ratio, view), `${id} at ${ratio} on ${view.width}×${view.height}`).toEqual(geometric);
+      expect(shownRect(store, id, reference * ratio, view, focus), `${id} at ${ratio} on ${view.width}×${view.height}`).toEqual(geometric);
     }
   }
 }
@@ -49,11 +61,15 @@ function shownRect(
   id: string,
   scale: number,
   view: { width: number; height: number },
+  focus?: { x: number; y: number },
 ): AxisRect {
   const fit = deriveCameraLimits(store.contentBoxes(), view.width, view.height).fitScale;
+  const bounds = focus
+    ? { left: focus.x - 1e6, right: focus.x + 1e6, top: focus.y - 1e6, bottom: focus.y + 1e6 }
+    : span;
   const found = store
     .query({
-      bounds: span,
+      bounds,
       scale,
       fitScale: fit,
       viewWidth: view.width,

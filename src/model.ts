@@ -44,6 +44,18 @@ export type ImagePayload = {
   frame?: boolean;
 };
 
+/**
+ * A drawn stand-in where there is no artwork yet.
+ * `part` is a filled rounded square, `view` the same square with a dashed
+ * outline, `process` a pill. Sizes are world units, centered like an image.
+ */
+export type ShapePayload = {
+  type: 'shape';
+  kind: 'part' | 'view' | 'process';
+  width: number;
+  height: number;
+};
+
 /** A transform only. Not drawn, not hit, and not counted. */
 export type GroupPayload = {
   type: 'group';
@@ -122,5 +134,5 @@ export type CanvasObject = {
    * transparent object is not hit-tested and is left out of `query`.
    */
   fade?: ZoomFade;
-  payload: TextPayload | ImagePayload | GroupPayload | LinkPayload;
+  payload: TextPayload | ImagePayload | ShapePayload | GroupPayload | LinkPayload;
 };

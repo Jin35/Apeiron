@@ -40,6 +40,7 @@ type RecordedContext = CanvasRenderingContext2D & {
   drawImages: number[];
   gradients: number;
   strokes: StrokeCall[];
+  lineDashes: number[][];
 };
 
 type StrokeCall = { x1: number; y1: number; x2: number; y2: number; alpha: number };
@@ -75,6 +76,7 @@ function recordingContext(options?: {
   const drawImages: number[] = [];
   const gradients = { n: 0 };
   const strokes: StrokeCall[] = [];
+  const lineDashes: number[][] = [];
   let pathStart: Xy | null = null;
   let pathEnd: Xy | null = null;
   const ctx = new Proxy({} as RecordedContext, {
@@ -91,6 +93,7 @@ function recordingContext(options?: {
       if (prop === 'drawImages') return drawImages;
       if (prop === 'gradients') return gradients.n;
       if (prop === 'strokes') return strokes;
+      if (prop === 'lineDashes') return lineDashes;
       if (prop === 'beginPath') {
         return () => {
           pathStart = null;
@@ -155,6 +158,11 @@ function recordingContext(options?: {
       if (prop === 'drawImage') {
         return () => {
           drawImages.push(state.globalAlpha);
+        };
+      }
+      if (prop === 'setLineDash') {
+        return (segments: number[]) => {
+          lineDashes.push([...segments]);
         };
       }
       return () => {};
@@ -1002,6 +1010,42 @@ describe('createRenderer', () => {
     expect(back.textAlpha('Speaker')).toBeCloseTo(1);
     expect(back.textAlpha('Chip')).toBeUndefined();
     expect(back.strokes[0]?.alpha).toBeCloseTo(1);
+  });
+
+  it('draws part, view, and process placeholders in grey', () => {
+    const ctx = recordingContext();
+    const band = { minScale: 0.01, maxScale: 100 };
+    const part = {
+      id: 'part',
+      x: -30,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'part' as const, width: 20, height: 20 },
+    };
+    const view = {
+      id: 'view',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'view' as const, width: 16, height: 16 },
+    };
+    const process = {
+      id: 'process',
+      x: 30,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'process' as const, width: 24, height: 12 },
+    };
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 4 },
+      width: 400,
+      height: 300,
+      visible: [part, view, process].map((object) => visible(object, 1)),
+    });
+    expect(fillStylesOf(ctx)).toContain('#8d8d8d');
+    expect(strokeStylesOf(ctx)).toContain('#e7e7e7');
+    expect((ctx as RecordedContext).lineDashes).toEqual(expect.arrayContaining([[7, 5]]));
+    expect((ctx as RecordedContext).lineDashes).toContainEqual([]);
   });
 });
 
