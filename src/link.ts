@@ -1,5 +1,5 @@
 import type { CanvasObject } from './model';
-import { createPlacement, type PlacementView } from './placement';
+import { createPlacement } from './placement';
 
 /** Default leader gap, in CSS pixels. Keeps the stroke off the endpoint boxes. */
 export const LEADER_GAP_PX = 4;
@@ -62,20 +62,16 @@ export function clipLeaderLine(from: AxisRect, to: AxisRect, gap = 0): LeaderSeg
 
 /**
  * World-space centre and size of `id`. Uses the same placement as the memory
- * store, including a parent group's explode rule: a parent's scale multiplies
- * this object's position and size, and this object's own scale multiplies
- * its size and its descendants but not its own `x` / `y`.
+ * store: a parent's scale multiplies this object's position and size, and
+ * this object's own scale multiplies its size and its descendants but not
+ * its own `x` / `y`.
  * A group, a link, a missing id, a broken parent, or a cycle is null.
  * The first object with `id` wins.
  */
-export function resolveWorldRect(
-  objects: readonly CanvasObject[],
-  id: string,
-  view?: PlacementView,
-): AxisRect | null {
+export function resolveWorldRect(objects: readonly CanvasObject[], id: string): AxisRect | null {
   const object = objects.find((candidate) => candidate.id === id);
   if (!object || object.payload.type === 'group' || object.payload.type === 'link') return null;
-  const placed = createPlacement(objects, view)(object);
+  const placed = createPlacement(objects)(object);
   if (!placed) return null;
   const width = object.payload.width * placed.scale;
   const height = object.payload.height * placed.scale;
