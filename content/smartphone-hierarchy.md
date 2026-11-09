@@ -24,7 +24,7 @@ This extends the original content tree. Original labels and all built ids, paren
       - Spring contact — planned
       - Buttons detail 1 mm (view) — planned
         - Button flex — planned
-  - Display — planned
+  - Display — built
     - Cover glass — planned
       - Cover glass detail 14 mm (view) — planned
         - Cover glass detail 1.4 mm (view) — planned
@@ -184,7 +184,7 @@ This extends the original content tree. Original labels and all built ids, paren
       - Lorentz force (process) — planned
     - Moving mass — planned
     - Suspension spring — planned
-  - Back glass — planned
+  - Back glass — built
     - Wireless charging coil — planned
       - Wireless charging coil detail 4.5 mm (view) — planned
         - Copper turns — planned
@@ -664,7 +664,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 
 ### Display (`display`)
 - Parent: `phone`
-- Status: planned
+- Status: built
 - Kind: part
 - Size: ~130–160 mm tall (rough)
 - Characteristic size: 140 mm; largest dimension: display height.
@@ -2584,7 +2584,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 
 ### Back glass (`back-glass`)
 - Parent: `phone`
-- Status: planned
+- Status: built
 - Kind: part
 - Size: ~0.4–1 mm thick (rough)
 - Characteristic size: 140 mm; largest dimension: rear-cover height.

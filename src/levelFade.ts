@@ -43,11 +43,14 @@ const SHOWN: LevelPlan = { opacity: () => 1 };
  * leave with that sibling; the active part's own children do not. No pack is
  * named here.
  *
- * The active portal keeps its own fade curve, so a larger sibling that
- * finished earlier cannot blank the part under the camera. Every other
+ * The active portal is the entered one nearest `focus`. An equal distance
+ * goes to the smaller id. It keeps its own fade curve, so a larger sibling
+ * that finished earlier cannot blank the part under the camera. Every other
  * sibling still takes the furthest-along curve: panning onto a less-faded
- * neighbour does not bring the rest of the level back. Descendants of a
- * faded sibling leave with it. The active part's children do not.
+ * neighbour does not bring the rest of the level back. Ancestor portals stay
+ * applied. Children of any other entered portal stay at 0, including ones in
+ * the viewport and ones whose own fade has already opened. Zooming out leaves
+ * the range and the multiplier returns to 1.
  */
 export function buildLevelPlan(
   objects: readonly CanvasObject[],
@@ -69,14 +72,21 @@ export function buildLevelPlan(
   const entered = portals.filter((portal) => scale / portal.fit >= portal.range[0]);
   if (entered.length === 0) return SHOWN;
 
-  const fading = fadingPortals(nearestPortal(entered, focus), entered, parentOf);
-  return { opacity: factorsFor(objects, fading, scale, parentOf) };
+  const active = nearestPortal(entered, focus);
+  const fading = fadingPortals(active, entered, parentOf);
+  const open = openPortalIds(active, entered, parentOf);
+  const blocked = new Set<string>();
+  for (const portal of entered) {
+    if (!open.has(portal.id)) blocked.add(portal.id);
+  }
+  return { opacity: factorsFor(objects, fading, scale, blocked, parentOf) };
 }
 
 function factorsFor(
   objects: readonly CanvasObject[],
   fading: readonly Portal[],
   scale: number,
+  blocked: ReadonlySet<string>,
   parentOf: ReadonlyMap<string, string | undefined>,
 ): (id: string) => number {
   const active = fading[0];
@@ -86,6 +96,10 @@ function factorsFor(
     if (seen.has(object.id)) continue;
     seen.add(object.id);
     if (object.payload.type === 'group' || object.payload.type === 'link') continue;
+    if (belongsToBlocked(object, blocked, parentOf)) {
+      factors.set(object.id, 0);
+      continue;
+    }
     // The part under the camera keeps its own curve, and so does its label.
     // A larger sibling that already finished must not blank the part you
     // zoomed to; it still holds the rest of the level down.
@@ -165,6 +179,51 @@ function collectPortals(
     });
   }
   return portals;
+}
+
+/**
+ * The active portal and the entered portals you passed through to reach it.
+ * A sibling portal that is also entered is not open: its children stay hidden.
+ */
+function openPortalIds(
+  active: Portal,
+  entered: readonly Portal[],
+  parentOf: ReadonlyMap<string, string | undefined>,
+): Set<string> {
+  const enteredIds = new Set(entered.map((portal) => portal.id));
+  const open = new Set<string>();
+  const seen = new Set<string>();
+  let id: string | undefined = active.id;
+  while (id && !seen.has(id)) {
+    seen.add(id);
+    if (enteredIds.has(id)) open.add(id);
+    id = parentOf.get(id);
+  }
+  return open;
+}
+
+/**
+ * True when `object` is a child of an entered portal that is not the active
+ * one and not an ancestor of it. `fadeInOf` names the portal directly.
+ * A descendant parented under that portal is included even without a fade,
+ * so a nearby child cannot draw just because its box meets the viewport.
+ */
+function belongsToBlocked(
+  object: CanvasObject,
+  blocked: ReadonlySet<string>,
+  parentOf: ReadonlyMap<string, string | undefined>,
+): boolean {
+  if (blocked.size === 0) return false;
+  const anchor = object.fade?.fadeInOf;
+  if (anchor && blocked.has(anchor)) return true;
+  const seen = new Set<string>();
+  let id = object.parentId;
+  while (id && !seen.has(id)) {
+    seen.add(id);
+    if (blocked.has(id)) return true;
+    id = parentOf.get(id);
+  }
+  return false;
 }
 
 function nearestPortal(portals: readonly Portal[], focus: LevelFocus): Portal {

@@ -116,6 +116,8 @@ export type CanvasObject = {
    */
   x: number;
   y: number;
+  /** Stack order. Higher is closer to the front. Omit for 0. */
+  z?: number;
   /** When set, `x` and `y` are parent-local. */
   parentId?: string;
   /**

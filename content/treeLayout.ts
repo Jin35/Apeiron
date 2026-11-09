@@ -40,9 +40,9 @@ export type LayoutReport = {
 export function layoutTree(nodes: readonly HierarchyNode[], built: readonly CanvasObject[]): LayoutReport {
   const byId = new Map<string, CanvasObject>();
   for (const object of built) byId.set(object.id, object);
-  const internals = byId.get('internals');
-  const internalsScale = positiveScale(internals?.scale);
-  const reveal: readonly [number, number] = [1, 1 / internalsScale];
+  // The hand-authored parts crossfade from 1× to 1.6× of the anchor fit.
+  // Group scale only sizes that row; it is not the fade.
+  const reveal: readonly [number, number] = [1, 1.6];
 
   const childrenOf = new Map<string, HierarchyNode[]>();
   for (const node of nodes) {
@@ -59,7 +59,7 @@ export function layoutTree(nodes: readonly HierarchyNode[], built: readonly Canv
   for (const node of nodes) {
     const children = childrenOf.get(node.id);
     if (!children || children.length === 0) continue;
-    const space = spaceFor(node.id, byId, internalsScale);
+    const space = spaceFor(node.id, byId);
     if (!space) {
       for (const child of children) unplaced.push({ id: child.id, reason: `no footprint for ${node.id}` });
       continue;
@@ -89,7 +89,7 @@ type Space = {
   occupied: Box[];
 };
 
-function spaceFor(parentId: string, byId: Map<string, CanvasObject>, internalsScale: number): Space | null {
+function spaceFor(parentId: string, byId: Map<string, CanvasObject>): Space | null {
   if (parentId === 'phone' || parentId === 'battery') {
     const hostId = parentId === 'phone' ? 'internals' : 'battery-internals';
     const host = byId.get(hostId);
@@ -108,8 +108,6 @@ function spaceFor(parentId: string, byId: Map<string, CanvasObject>, internalsSc
   const parent = byId.get(parentId);
   const size = boxOf(parent);
   if (!parent || !size) return null;
-  // `internalsScale` is only needed for the phone and the battery groups.
-  void internalsScale;
   return {
     id: parentId,
     placedScale: placedScaleOf(parentId, byId),
@@ -164,7 +162,7 @@ function placeChildren(
   const fade: ZoomFade =
     parent.id === 'phone' ? { fadeIn: reveal } : { fadeIn: reveal, fadeInOf: parent.id };
   const placed: PlacedChild[] = [];
-  const blocked = [...space.occupied];
+  const blocked = [...space.occupied, ...best.boxes];
   for (let index = 0; index < children.length; index += 1) {
     const child = children[index];
     const box = best.boxes[index];
@@ -207,7 +205,7 @@ function placeChildren(
       visibility,
       payload: { type: 'link', from: label.id, to: child.id },
     };
-    blocked.push(box, { x: spot.x, y: spot.y, width: labelBox.width * spot.scale, height: labelBox.height * spot.scale });
+    blocked.push({ x: spot.x, y: spot.y, width: labelBox.width * spot.scale, height: labelBox.height * spot.scale });
     placed.push({
       node,
       label,
@@ -250,8 +248,19 @@ function layoutBoxes(dims: readonly { width: number; height: number }[], space: 
   if (n === 1) {
     const dim = dims[0];
     if (!dim) return null;
-    const box = { x: 0, y: 0, width: dim.width, height: dim.height };
-    if (fits(box, space, frame, pad)) return [box];
+    // Off the parent centre. A child parked on that centre ties the parent's
+    // portal, and the smaller id then hides this node's own children.
+    const angle = (32 * Math.PI) / 180;
+    for (const fraction of [0.16, 0.1, 0.05, 0.02]) {
+      const reach = Math.min(frame.width, frame.height) * fraction;
+      const box = {
+        x: Math.cos(angle) * reach,
+        y: Math.sin(angle) * reach,
+        width: dim.width,
+        height: dim.height,
+      };
+      if (fits(box, space, frame, pad)) return [box];
+    }
     return greedySlots(dims, space, frame, pad);
   }
 
@@ -322,9 +331,9 @@ function greedySlots(
   pad: number,
 ): Box[] | null {
   const anchors: { x: number; y: number }[] = [];
-  for (const gx of [-0.42, -0.28, 0, 0.28, 0.42]) {
-    for (const gy of [-0.42, -0.28, 0, 0.28, 0.42]) {
-      anchors.push({ x: gx * frame.width, y: gy * frame.height });
+  for (const gx of [-0.42, -0.28, 0.06, 0.28, 0.42]) {
+    for (const gy of [-0.42, -0.28, 0.08, 0.28, 0.42]) {
+      anchors.push(clearPoint(gx * frame.width, gy * frame.height, frame));
     }
   }
   anchors.sort((a, b) => b.x * b.x + b.y * b.y - (a.x * a.x + a.y * a.y));
@@ -361,16 +370,46 @@ function contentFrame(space: Space, role: 'nodes' | 'labels'): { width: number; 
 }
 
 function ring(count: number, radius: number): { x: number; y: number }[] {
-  // Two siblings sit on a diagonal. Larger rings start a little off the axes
-  // so an outward label is not forced onto a horizontal or vertical leader.
-  const start = count === 2 ? (32 * Math.PI) / 180 : -Math.PI / 2 + Math.PI / (2 * count);
-  const step = (2 * Math.PI) / count;
-  const centers: { x: number; y: number }[] = [];
+  return clearAngles(count).map((angle) => ({
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
+  }));
+}
+
+/**
+ * Angles at least 20° off both axes, spread around the parent.
+ * An outward label then stays on the same ray, so leaders do not cross
+ * and none of them lie on an axis.
+ */
+function clearPoint(
+  x: number,
+  y: number,
+  frame: { width: number; height: number },
+): { x: number; y: number } {
+  const radius = Math.hypot(x, y);
+  const min = Math.min(frame.width, frame.height) * 0.04;
+  const angle = radius < 1e-9 ? (32 * Math.PI) / 180 : nudgeOffAxes(Math.atan2(y, x));
+  const reach = Math.max(radius, min);
+  return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
+}
+
+function clearAngles(count: number): number[] {
+  const wedges: Array<[number, number]> = [
+    [20, 70],
+    [110, 160],
+    [200, 250],
+    [290, 340],
+  ];
+  const slots = Math.ceil(count / wedges.length);
+  const angles: number[] = [];
   for (let index = 0; index < count; index += 1) {
-    const angle = start + step * index;
-    centers.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+    const wedge = wedges[index % wedges.length];
+    if (!wedge) continue;
+    const slot = Math.floor(index / wedges.length);
+    const t = (slot + 0.5) / slots;
+    angles.push(((wedge[0] + t * (wedge[1] - wedge[0])) * Math.PI) / 180);
   }
-  return centers;
+  return angles;
 }
 
 function fits(
@@ -445,26 +484,38 @@ function placeLabel(
   blocked: readonly Box[],
   space: Space,
 ): { x: number; y: number; scale: number } {
-  const frame = contentFrame(space, 'labels');
+  const preferred = contentFrame(space, 'labels');
+  const parent = { width: space.width, height: space.height };
+  // Out along the node's own ray, so sibling leaders do not cross.
   const angle = nudgeOffAxes(Math.hypot(node.x, node.y) < 1e-9 ? (32 * Math.PI) / 180 : Math.atan2(node.y, node.x));
-  for (let scale = 1; scale >= 0.4; scale *= 0.82) {
-    const sized = { width: label.width * scale, height: label.height * scale };
-    const gap = Math.min(node.width, node.height) * 0.12;
-    for (const stretch of [1, 1.2, 1.5, 2]) {
-      const reach =
-        (halfExtent(node.width, node.height, angle) + halfExtent(sized.width, sized.height, angle) + gap) * stretch;
-      const spot = { x: node.x + Math.cos(angle) * reach, y: node.y + Math.sin(angle) * reach };
-      const candidate = { ...spot, width: sized.width, height: sized.height };
-      if (!inside(candidate, frame.width, frame.height, 0)) continue;
-      if (blocked.some((other) => overlaps(candidate, other, gap * 0.15))) continue;
-      return { ...spot, scale };
+  // 18px down to 16px. Below that the face is no longer readable at the level.
+  const scales = [1, 16 / 18];
+  for (const frame of [preferred, parent]) {
+    for (const scale of scales) {
+      const sized = { width: label.width * scale, height: label.height * scale };
+      const gap = Math.max(
+        Math.min(node.width, node.height) * 0.12,
+        Math.min(sized.width, sized.height) * 0.35,
+        Math.min(frame.width, frame.height) * 0.01,
+      );
+      for (const stretch of [1, 1.15, 1.35, 1.6, 2, 2.6]) {
+        const reach =
+          (halfExtent(node.width, node.height, angle) + halfExtent(sized.width, sized.height, angle) + gap) * stretch;
+        const spot = { x: node.x + Math.cos(angle) * reach, y: node.y + Math.sin(angle) * reach };
+        const candidate = { ...spot, width: sized.width, height: sized.height };
+        if (!inside(candidate, frame.width, frame.height, 0)) continue;
+        if (overlaps(candidate, node, gap * 0.15)) continue;
+        if (blocked.some((other) => overlaps(candidate, other, gap * 0.15))) continue;
+        return { ...spot, scale };
+      }
     }
   }
-  const reach = halfExtent(node.width, node.height, angle) + label.height * 0.4;
+  const gap = Math.min(node.width, node.height) * 0.12;
+  const reach = halfExtent(node.width, node.height, angle) + halfExtent(label.width, label.height, angle) + gap;
   return {
     x: node.x + Math.cos(angle) * reach,
     y: node.y + Math.sin(angle) * reach,
-    scale: 0.4,
+    scale: 1,
   };
 }
 

@@ -115,7 +115,38 @@ describe('smartphone deep zoom', () => {
     // The atom is on the order of 0.15 nm against a ~150 mm phone.
     expect(phone.height / atom.height).toBeGreaterThan(1e8);
   });
+
+  it('gives every node one diagonal label, about 18px at its level', () => {
+    for (const node of hierarchyNodes) {
+      if (node.id === 'phone') continue;
+      const label = smartphoneObjects.find((object) => object.id === `${node.id}-label`);
+      const link = smartphoneObjects.find((object) => object.id === `${node.id}-link`);
+      expect(label?.payload.type, node.id).toBe('text');
+      expect(link?.payload, node.id).toEqual({ type: 'link', from: `${node.id}-label`, to: node.id });
+      if (!label || label.payload.type !== 'text') continue;
+      const from = resolveWorldRect(smartphoneObjects, label.id);
+      const to = resolveWorldRect(smartphoneObjects, node.id);
+      if (!from || !to) throw new Error(`expected boxes for ${node.id}`);
+      expect(axisClearance(from, to), node.id).toBeGreaterThanOrEqual(20);
+      if (label.parentId === 'internals' || label.parentId === 'battery-internals') continue;
+      const anchorId = label.fade?.fadeInOf;
+      const anchor = anchorId ? resolveWorldRect(smartphoneObjects, anchorId) : null;
+      if (!anchor) throw new Error(`expected an anchor for ${node.id}`);
+      const level = fitOf(anchor) * (label.fade?.fadeIn?.[1] ?? 1.6);
+      // Generated labels set fontSize so this product is the on-screen face.
+      // The renderer multiplies fontSize by the camera scale and does not
+      // apply the parent scale again.
+      const screenFont = label.payload.style.fontSize * level;
+      expect(screenFont, node.id).toBeGreaterThan(15.99);
+      expect(screenFont, node.id).toBeLessThan(20.01);
+    }
+  });
 });
+
+function axisClearance(from: { x: number; y: number }, to: { x: number; y: number }): number {
+  const degrees = Math.abs(Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI));
+  return Math.min(Math.min(degrees, 180 - degrees), Math.abs(degrees - 90));
+}
 
 function expectVisibleAtFit(id: string, fitScale: number) {
   const rect = resolveWorldRect(smartphoneObjects, id);
