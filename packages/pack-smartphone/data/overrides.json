@@ -1,0 +1,167 @@
+{
+  "band": { "minScale": 0.02, "maxScale": 10000 },
+  "phoneWidthMm": 71.5,
+  "groups": [
+    {
+      "id": "internals",
+      "parent": "phone",
+      "x": 0,
+      "y": 0,
+      "scale": 0.562631,
+      "packChildrenOf": "phone",
+      "fullFrame": true,
+      "labelFontSize": 4.2,
+      "fadeAgainstOpening": true
+    },
+    {
+      "id": "battery-internals",
+      "parent": "battery",
+      "x": 0,
+      "y": 0,
+      "scale": 0.643568,
+      "packChildrenOf": "battery",
+      "fullFrame": true,
+      "labelFontSize": 4.2
+    }
+  ],
+  "sprites": {
+    "phone": { "src": "images/smartphone.webp", "width": 465, "height": 951, "opaqueWidth": 461, "opaqueHeight": 947 },
+    "back-glass": { "src": "images/smartphone/back-glass.webp", "width": 464, "height": 950, "opaqueWidth": 460, "opaqueHeight": 946 },
+    "midframe": { "src": "images/smartphone/midframe.webp", "width": 450, "height": 943, "opaqueWidth": 446, "opaqueHeight": 939 },
+    "battery": { "src": "images/smartphone/battery.webp", "width": 487, "height": 899, "opaqueWidth": 483, "opaqueHeight": 895 },
+    "logic-board": { "src": "images/smartphone/logic-board.webp", "width": 414, "height": 863, "opaqueWidth": 410, "opaqueHeight": 859 },
+    "camera-module": { "src": "images/smartphone/camera-module.webp", "width": 161, "height": 230, "opaqueWidth": 155, "opaqueHeight": 224 },
+    "loudspeaker": { "src": "images/smartphone/loudspeaker.webp", "width": 383, "height": 227, "opaqueWidth": 379, "opaqueHeight": 223 },
+    "haptic-motor": { "src": "images/smartphone/haptic-motor.webp", "width": 426, "height": 161, "opaqueWidth": 418, "opaqueHeight": 153 },
+    "display": { "src": "images/smartphone/display.webp", "width": 464, "height": 950, "opaqueWidth": 460, "opaqueHeight": 946 },
+    "cell": { "src": "images/smartphone/battery-cell.webp", "width": 552, "height": 890, "opaqueWidth": 548, "opaqueHeight": 886 },
+    "protection-board": { "src": "images/smartphone/battery-controller.webp", "width": 948, "height": 233, "opaqueWidth": 944, "opaqueHeight": 229 },
+    "pouch": { "src": "images/smartphone/pouch.webp", "width": 554, "height": 868 },
+    "electrode-stack": { "src": "images/smartphone/electrode-stack.webp", "width": 506, "height": 865 },
+    "anode": { "src": "images/smartphone/anode.webp", "width": 656, "height": 1159 },
+    "graphite-particle": { "src": "images/smartphone/graphite-particle.webp", "width": 821, "height": 820 },
+    "graphite-carbon-sheet": { "src": "images/smartphone/graphite-carbon-sheet.webp", "width": 792, "height": 889 },
+    "graphite-carbon-atom": { "src": "images/smartphone/graphite-carbon-atom.webp", "width": 981, "height": 982 }
+  },
+  "authored": [
+    {
+      "id": "back-glass",
+      "parent": "internals",
+      "opaqueWidthMm": 71.34,
+      "x": -111.205,
+      "y": 0,
+      "z": 0,
+      "fade": "in",
+      "label": { "text": "Back glass", "x": -143.264, "y": -79.348, "scale": 1.159545 }
+    },
+    {
+      "id": "midframe",
+      "parent": "internals",
+      "opaqueWidthMm": 71.5,
+      "x": 0,
+      "y": 0,
+      "z": 1,
+      "fade": "in",
+      "label": { "text": "Midframe", "x": 32.835, "y": -81.27, "scale": 1.159545 }
+    },
+    {
+      "id": "cell",
+      "parent": "battery-internals",
+      "opaqueWidthMm": 39,
+      "x": 0,
+      "y": 7.936,
+      "fade": "in",
+      "fadeInOf": "battery",
+      "label": { "text": "Cell", "x": -23.337, "y": 17.365, "scale": 0.499237 }
+    },
+    {
+      "id": "protection-board",
+      "parent": "battery-internals",
+      "opaqueWidthMm": 40,
+      "x": 0,
+      "y": -34.67,
+      "fade": "in",
+      "fadeInOf": "battery",
+      "label": { "text": "Protection board", "x": -30.718, "y": -22.259, "scale": 0.499237 }
+    },
+    {
+      "id": "battery",
+      "parent": "internals",
+      "opaqueWidthMm": 40,
+      "x": -12.6,
+      "y": 10.2,
+      "z": 2,
+      "fade": "in",
+      "label": { "text": "Battery", "x": -49.788, "y": -4.825, "scale": 1.159545 }
+    },
+    {
+      "id": "logic-board",
+      "parent": "internals",
+      "opaqueWidthMm": 21,
+      "x": 19.8,
+      "y": -44,
+      "z": 3,
+      "fade": "in",
+      "label": { "text": "Logic board", "x": 54.22, "y": -57.906, "scale": 1.159545 }
+    },
+    {
+      "id": "camera-module",
+      "parent": "internals",
+      "opaqueWidthMm": 24.03,
+      "x": -18.8,
+      "y": -47.5,
+      "z": 4,
+      "fade": "in",
+      "label": { "text": "Camera", "x": -48.43, "y": -59.471, "scale": 1.159545 }
+    },
+    {
+      "id": "loudspeaker",
+      "parent": "internals",
+      "opaqueWidthMm": 18,
+      "x": -11,
+      "y": 66,
+      "z": 5,
+      "fade": "in",
+      "label": { "text": "Speaker", "x": -47.344, "y": 80.684, "scale": 1.159545 }
+    },
+    {
+      "id": "haptic-motor",
+      "parent": "internals",
+      "opaqueWidthMm": 22,
+      "x": 13,
+      "y": 66.5,
+      "z": 6,
+      "fade": "in",
+      "label": { "text": "Haptic motor", "x": 50.822, "y": 81.781, "scale": 1.159545 }
+    },
+    {
+      "id": "display",
+      "parent": "internals",
+      "opaqueWidthMm": 71.34,
+      "x": 111.205,
+      "y": 0,
+      "z": 7,
+      "fade": "in",
+      "label": { "text": "Display", "x": 79.146, "y": -79.348, "scale": 1.159545 }
+    },
+    {
+      "id": "phone",
+      "opaqueWidthMm": 71.5,
+      "x": 0,
+      "y": 0,
+      "fade": "out"
+    }
+  ],
+  "labelOrder": [
+    "back-glass",
+    "camera-module",
+    "battery",
+    "loudspeaker",
+    "display",
+    "logic-board",
+    "midframe",
+    "haptic-motor",
+    "cell",
+    "protection-board"
+  ]
+}

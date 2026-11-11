@@ -11,6 +11,9 @@ describe('paper theme', () => {
     expect(paperTheme.paper?.grain).toBeTruthy();
     expect(paperTheme.grid).toBeUndefined();
     expect(paperTheme.background).toBe('#F3EAD3');
+    expect(paperTheme.plate).toBe('#171b22');
+    expect(paperTheme.placeholder).toBe('#8d8d8d');
+    expect(paperTheme.placeholderLine).toBe('#e7e7e7');
     expect(themeProperties(paperTheme)['color-scheme']).toBe('light');
     expect(themeProperties(paperTheme)['--muted']).toBe(paperTheme.ui);
     expect(themeProperties(paperTheme)['--button-hover']).toBe(

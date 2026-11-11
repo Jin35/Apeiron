@@ -15,7 +15,7 @@ import {
   type SceneStore,
   type Theme,
 } from '@apeiron/core';
-import { darkTheme, demoObjects, demoPack, titleFitWidth } from '@apeiron/pack-archipelago';
+import { darkTheme, demoObjects, demoPack, titleFitPose, titleFitWidth } from '@apeiron/pack-archipelago';
 import { paperTheme } from '@apeiron/pack-smartphone';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import page from '../index.html?raw';
@@ -196,7 +196,7 @@ function harness(options?: {
     labels as unknown as HTMLElement,
     options?.theme ?? demoPack.theme,
     options?.limits,
-    options?.opening ?? initialCameraFor(viewWidth, titleFitWidth),
+    options?.opening ?? initialCameraFor(viewWidth, titleFitWidth, titleFitPose),
   );
 
   return {
@@ -474,7 +474,7 @@ describe('frame loop', () => {
 
   it('opens on the fitted camera, and a scale query replaces it', () => {
     const phone = harness({ innerWidth: 390 });
-    const fitted = initialCameraFor(390, titleFitWidth);
+    const fitted = initialCameraFor(390, titleFitWidth, titleFitPose);
     expect(Number(phone.status.dataset.scale)).toBeCloseTo(fitted.scale);
     expect(phone.status.dataset).toMatchObject({ x: '0', y: '-80' });
     expect(fitted.scale).toBeLessThan(0.06);

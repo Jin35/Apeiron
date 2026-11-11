@@ -15,6 +15,9 @@ export const paperTheme: Theme = {
   ink: '#3B2F22',
   accent: '#7A3E1D',
   ui: '#3B2F22',
+  plate: '#171b22',
+  placeholder: '#8d8d8d',
+  placeholderLine: '#e7e7e7',
   displayFont: DISPLAY,
   bodyFont: 'Georgia, Palatino, "Iowan Old Style", serif',
 };

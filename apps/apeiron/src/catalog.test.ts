@@ -1,5 +1,5 @@
 import { frameOn, initialCameraFor, openingCameraFor } from '@apeiron/core';
-import { darkTheme, demoPack, titleFitWidth } from '@apeiron/pack-archipelago';
+import { darkTheme, demoPack, titleFitPose, titleFitWidth } from '@apeiron/pack-archipelago';
 import { paperTheme, REVEAL_END, smartphonePack } from '@apeiron/pack-smartphone';
 import { describe, expect, it } from 'vitest';
 import { bootPage, resolvePack } from './catalog';
@@ -14,7 +14,7 @@ describe('pack query', () => {
     expect(resolvePack('').pack.theme).toBe(paperTheme);
 
     const desktop = openingCameraFor(demoPack, 1440, 900);
-    expect(desktop).toEqual(initialCameraFor(1440, titleFitWidth));
+    expect(desktop).toEqual(initialCameraFor(1440, titleFitWidth, titleFitPose));
     const narrow = openingCameraFor(demoPack, 390, 844);
     expect(narrow.scale).toBeLessThan(0.06);
     expect(narrow).toMatchObject({ x: 0, y: -80 });
@@ -23,7 +23,7 @@ describe('pack query', () => {
     expect(prod.id).toBe('archipelago');
     expect(prod.pack).toBe(demoPack);
     expect(prod.theme).toBe(darkTheme);
-    expect(prod.opening).toEqual(initialCameraFor(1280, titleFitWidth));
+    expect(prod.opening).toEqual(initialCameraFor(1280, titleFitWidth, titleFitPose));
 
     const dev = bootPage('?pack=archipelago&theme=paper', 1280, 800, true);
     expect(dev.pack).toBe(demoPack);

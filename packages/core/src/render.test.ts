@@ -1057,6 +1057,36 @@ describe('createRenderer', () => {
     expect((ctx as RecordedContext).lineDashes).toEqual(expect.arrayContaining([[7, 5]]));
     expect((ctx as RecordedContext).lineDashes).toContainEqual([]);
   });
+
+  it('reads plate and placeholder colors from the theme', () => {
+    const ctx = recordingContext();
+    const band = { minScale: 0.01, maxScale: 100 };
+    const framed = imageObject('framed', 'images/mark.svg', band);
+    const part = {
+      id: 'part',
+      x: 40,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'part' as const, width: 20, height: 20 },
+    };
+    const theme = {
+      ...fallbackTheme,
+      plate: '#112233',
+      placeholder: '#445566',
+      placeholderLine: '#778899',
+    };
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 4 },
+      width: 400,
+      height: 300,
+      theme,
+      visible: [visible(framed, 1), visible(part, 1)],
+    });
+    expect(fillStylesOf(ctx)).toContain('#112233');
+    expect(fillStylesOf(ctx)).toContain('#445566');
+    expect(strokeStylesOf(ctx)).toContain('#778899');
+    expect(fillStylesOf(ctx)).not.toContain('#171b22');
+  });
 });
 
 function fontPx(font: string | undefined): number {

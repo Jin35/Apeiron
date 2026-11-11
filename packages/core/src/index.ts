@@ -39,7 +39,7 @@ export type {
 } from './camera';
 
 export { applyTheme, fallbackTheme, themeFromSearch, themeProperties, withAlpha } from './theme';
-export type { ContentPack, GridStyle, PaperTreatment, Theme } from './theme';
+export type { ContentPack, GridStyle, PaperTreatment, Theme, TitleFitPose } from './theme';
 
 export { createMemoryStore } from './store';
 export type { MemoryStore, SceneQuery, SceneStore, ViewportSize, VisibleObject } from './store';

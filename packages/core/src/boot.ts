@@ -13,11 +13,12 @@ export type BootSelection = {
 };
 
 /**
- * A pack with `titleFitWidth` opens on that title fit. Any other pack opens
- * on the derived fit of its objects, centered. That fit is also the minimum zoom.
+ * A pack with `titleFitWidth` opens on that title fit, using `titleFitPose`
+ * when the pack sets one. Any other pack opens on the derived fit of its
+ * objects, centered. That fit is also the minimum zoom.
  */
 export function openingCameraFor(pack: ContentPack, viewW: number, viewH: number): Camera {
-  if (pack.titleFitWidth !== undefined) return initialCameraFor(viewW, pack.titleFitWidth);
+  if (pack.titleFitWidth !== undefined) return initialCameraFor(viewW, pack.titleFitWidth, pack.titleFitPose);
   const width = viewW > 0 ? viewW : 1280;
   const height = viewH > 0 ? viewH : 800;
   const limits = deriveCameraLimits(
