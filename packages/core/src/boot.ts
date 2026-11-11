@@ -1,27 +1,23 @@
-import { cameraFromLocation, initialCameraFor } from '../src/bootstrap';
-import { boxFitScale, clampScale, deriveCameraLimits, type Camera, type ViewBounds } from '../src/camera';
-import { demoPack, titleFitWidth } from '../src/demo';
-import { resolveWorldRect } from '../src/link';
-import { createMemoryStore } from '../src/store';
-import { themeFromSearch, type ContentPack, type Theme } from '../src/theme';
-import { smartphonePack } from './smartphone';
+import { cameraFromLocation, initialCameraFor } from './bootstrap';
+import { boxFitScale, clampScale, deriveCameraLimits, type Camera, type ViewBounds } from './camera';
+import { resolveWorldRect } from './link';
+import { createMemoryStore } from './store';
+import { themeFromSearch, type ContentPack, type Theme } from './theme';
 
-export type PackId = 'smartphone' | 'archipelago';
-
-/** Default is Smartphone. `?pack=archipelago` selects the atlas in dev and production. */
-export function resolvePack(search: string): { id: PackId; pack: ContentPack } {
-  if (new URLSearchParams(search).get('pack') === 'archipelago') {
-    return { id: 'archipelago', pack: demoPack };
-  }
-  return { id: 'smartphone', pack: smartphonePack };
-}
+export type BootSelection = {
+  id: string;
+  pack: ContentPack;
+  theme: Theme;
+  opening: Camera;
+  limits: ContentPack['limits'];
+};
 
 /**
- * Archipelago keeps the title fit. Any other pack opens on the derived fit
- * of its objects, centered. That fit is also the minimum zoom.
+ * A pack with `titleFitWidth` opens on that title fit. Any other pack opens
+ * on the derived fit of its objects, centered. That fit is also the minimum zoom.
  */
-export function openingCameraFor(id: PackId, pack: ContentPack, viewW: number, viewH: number): Camera {
-  if (id === 'archipelago') return initialCameraFor(viewW, titleFitWidth);
+export function openingCameraFor(pack: ContentPack, viewW: number, viewH: number): Camera {
+  if (pack.titleFitWidth !== undefined) return initialCameraFor(viewW, pack.titleFitWidth);
   const width = viewW > 0 ? viewW : 1280;
   const height = viewH > 0 ? viewH : 800;
   const limits = deriveCameraLimits(
@@ -38,40 +34,44 @@ export function openingCameraFor(id: PackId, pack: ContentPack, viewW: number, v
   };
 }
 
-export type BootSelection = {
-  id: PackId;
-  pack: ContentPack;
-  theme: Theme;
-  opening: Camera;
-  limits: ContentPack['limits'];
-};
-
-/** What the page mounts. A `?scale=` query still replaces the fitted camera. `?focus=<id>` frames that node; `?into=1` opens its children. */
-export function bootFromLocation(search: string, viewW: number, viewH: number, dev?: boolean): BootSelection {
-  const { id, pack } = resolvePack(search);
+/**
+ * What the page mounts. A `?scale=` query still replaces the fitted camera.
+ * `?focus=<id>` frames that node. `?into=1` multiplies by the pack's `intoFactor`.
+ */
+export function bootFromLocation(
+  search: string,
+  viewW: number,
+  viewH: number,
+  options: {
+    dev?: boolean;
+    resolvePack: (search: string) => { id: string; pack: ContentPack };
+    themes?: Readonly<Record<string, Theme>>;
+  },
+): BootSelection {
+  const { id, pack } = options.resolvePack(search);
   const width = viewW > 0 ? viewW : 1280;
   const height = viewH > 0 ? viewH : 800;
   return {
     id,
     pack,
-    theme: themeFromSearch(search, { dev, fallback: pack.theme }),
-    opening: openingFromSearch(pack, search, width, height, id),
+    theme: themeFromSearch(search, { dev: options.dev, fallback: pack.theme, themes: options.themes }),
+    opening: openingFromSearch(pack, search, width, height),
     limits: pack.limits,
   };
 }
 
-function openingFromSearch(pack: ContentPack, search: string, viewW: number, viewH: number, id: PackId): Camera {
+function openingFromSearch(pack: ContentPack, search: string, viewW: number, viewH: number): Camera {
   const params = new URLSearchParams(search);
   const focus = params.get('focus');
   const scaleParam = Number(params.get('scale'));
   if (focus && !(scaleParam > 0)) {
     const framed = frameOn(pack.objects, focus, viewW, viewH);
     if (framed) {
-      const into = params.get('into') === '1' ? 1.6 : 1;
+      const into = params.get('into') === '1' ? (pack.intoFactor ?? 1) : 1;
       return { ...framed, scale: clampScale(framed.scale * into) };
     }
   }
-  return cameraFromLocation(openingCameraFor(id, pack, viewW, viewH), search);
+  return cameraFromLocation(openingCameraFor(pack, viewW, viewH), search);
 }
 
 /** Camera that fits `id` in the viewport, centred on it. */

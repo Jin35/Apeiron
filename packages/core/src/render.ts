@@ -5,7 +5,7 @@ import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
 import type { CanvasObject, LinkStyle, ShapePayload, TextPayload } from './model';
 import { coordinateIsCoarse, projectCss, type CssBox } from './project';
-import { darkTheme, withAlpha, type Theme } from './theme';
+import { fallbackTheme, withAlpha, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
 
 /** One object to paint, with the alpha to use. */
@@ -22,12 +22,12 @@ const PLATE_LINE_PX = 1.25;
 
 /** Selection outline. Screen pixels, so it stays a hairline at any zoom. */
 const SELECT_LINE_PX = 2;
-/** Selection stroke is the accent at this alpha. Gold on the dark pack. */
+/** Selection stroke is the accent at this alpha. */
 const SELECT_ALPHA = 0.9;
 /** Plate frame is the accent, fainter than the selection. */
 const FRAME_ALPHA = 0.45;
 
-/** Neutral mid-grey stand-in, with a light outline so it reads on the paper. */
+/** Neutral mid-grey stand-in, with a light outline so it reads on a light page. */
 const PLACEHOLDER_FILL = '#8d8d8d';
 const PLACEHOLDER_LINE = '#e7e7e7';
 
@@ -61,7 +61,7 @@ export type RenderFrame = {
   visible: readonly VisibleObject[];
   /** Set when the shell has a selection. Stroked if that object is in `visible`. */
   selectedId?: string;
-  /** Pack look. Omitted frames use the demo dark theme. */
+  /** Pack look. Omitted frames use `fallbackTheme`. */
   theme?: Theme;
   /**
    * Opening fit scale (s0) for this viewport. Zoom fade on an object is
@@ -151,7 +151,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
 
   function draw(frame: RenderFrame) {
     const { camera, width: viewW, height: viewH, visible } = frame;
-    const theme = frame.theme ?? darkTheme;
+    const theme = frame.theme ?? fallbackTheme;
     if (viewW < 1 || viewH < 1) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 3);

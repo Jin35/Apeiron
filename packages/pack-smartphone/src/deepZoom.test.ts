@@ -1,11 +1,16 @@
+import {
+  boxFitScale,
+  createMemoryStore,
+  frameOn,
+  MAX_SCALE,
+  projectCss,
+  resolveWorldRect,
+  viewBounds,
+  type ViewBounds,
+} from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
-import { hierarchyNodes } from '../content/hierarchy.generated';
-import { frameOn } from '../content/packs';
-import { smartphoneLayoutReport, smartphoneObjects } from '../content/smartphone';
-import { boxFitScale, MAX_SCALE, viewBounds, type ViewBounds } from './camera';
-import { resolveWorldRect } from './link';
-import { projectCss } from './project';
-import { createMemoryStore } from './store';
+import { hierarchyNodes } from './hierarchy.generated';
+import { smartphoneLayoutReport, smartphoneObjects } from './smartphone';
 
 const view = { width: 1280, height: 800 };
 

@@ -1,7 +1,7 @@
+import { createMemoryStore, deriveCameraLimits, MAX_SCALE, MIN_SCALE, viewBounds, visibilityAlpha } from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
 import { demoObjects, demoPack, titleFitWidth } from './demo';
 import { darkTheme } from './theme';
-import { visibilityAlpha } from './visibility';
 
 function visibleAt(scale: number) {
   return demoObjects.filter((object) => visibilityAlpha(object.visibility, scale) > 0);
@@ -37,6 +37,30 @@ describe('demo atlas', () => {
         .map((object) => object.visibility.minScale),
     );
     expect(scales.size).toBeGreaterThan(1);
+  });
+
+  it('keeps the opening scale inside the fit and the readable depth', () => {
+    const limits = deriveCameraLimits(createMemoryStore(demoObjects).contentBoxes(), 800, 600);
+    expect(limits.minScale).toBeLessThanOrEqual(0.1);
+    expect(limits.minScale).toBeGreaterThan(MIN_SCALE);
+    expect(limits.maxScale).toBeGreaterThanOrEqual(0.1);
+    expect(limits.maxScale).toBeLessThan(MAX_SCALE);
+    expect(limits.bounds).toBeDefined();
+  });
+
+  it('sends fewer atlas objects to the renderer than the band contains', () => {
+    const store = createMemoryStore(demoObjects);
+    const scale = 1;
+    const bounds = viewBounds({ x: 0, y: -80, scale }, 1280, 720);
+    const visible = store.query({ bounds, scale });
+    const band = store.countInBand(scale);
+    const idsInView = visible.map((entry) => entry.object.id);
+
+    expect(visible.length).toBeGreaterThan(0);
+    expect(visible.length).toBeLessThan(band);
+    expect(idsInView).toContain('region-compass');
+    expect(idsInView).not.toContain('region-dune');
+    expect(idsInView).not.toContain('detail-bollard');
   });
 
   it('shows the title at the desktop opening scale and a different set when zoomed in', () => {

@@ -12,9 +12,10 @@ export type ScreenPoint = {
 };
 
 /**
- * Global camera limits, not a world edge.
- * `1e-4` is one decade past the overview. `1e12` reaches a 0.15 nm atom
- * from a 150 mm phone (about 1e9×) with room to frame it.
+ * Library scale clamp, not a world edge.
+ * A pack tightens this through derived content or `limits`. It cannot widen it.
+ * `1e-4` is one decade past a typical overview. `1e12` leaves headroom past
+ * the deepest scale a current pack authors.
  */
 export const MIN_SCALE = 1e-4;
 export const MAX_SCALE = 1e12;

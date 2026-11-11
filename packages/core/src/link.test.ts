@@ -68,27 +68,27 @@ describe('clipLeaderLine', () => {
 
 describe('resolveWorldRect', () => {
   it('resolves a child through parentId and a group scale', () => {
-    const phone = image('phone', 0, 0, 70, 140);
+    const plate = image('plate', 0, 0, 70, 140);
     const internals: CanvasObject = {
       id: 'internals',
-      parentId: 'phone',
+      parentId: 'plate',
       x: 0,
       y: 0,
       scale: 0.625,
       visibility: band,
       payload: { type: 'group' },
     };
-    const battery = withParent(image('battery', -9.8, 16.6, 40, 80), 'internals');
-    const label = withParent(text('battery-label', -69, 16.6, 14, 4.2), 'internals');
-    const objects = [internals, battery, label, phone];
+    const cell = withParent(image('cell', -9.8, 16.6, 40, 80), 'internals');
+    const label = withParent(text('cell-label', -69, 16.6, 14, 4.2), 'internals');
+    const objects = [internals, cell, label, plate];
 
-    expect(resolveWorldRect(objects, 'battery')).toEqual({
+    expect(resolveWorldRect(objects, 'cell')).toEqual({
       x: -9.8 * 0.625,
       y: 16.6 * 0.625,
       width: 40 * 0.625,
       height: 80 * 0.625,
     });
-    expect(resolveWorldRect(objects, 'battery-label')).toEqual({
+    expect(resolveWorldRect(objects, 'cell-label')).toEqual({
       x: -69 * 0.625,
       y: 16.6 * 0.625,
       width: 14 * 0.625,
@@ -102,7 +102,7 @@ describe('resolveWorldRect', () => {
       bounds: { left: -1e6, right: 1e6, top: -1e6, bottom: 1e6 },
       scale: 4,
     });
-    for (const id of ['battery', 'battery-label']) {
+    for (const id of ['cell', 'cell-label']) {
       const placed = visible.find((entry) => entry.object.id === id);
       const resolved = resolveWorldRect(objects, id);
       expect(placed).toBeDefined();
@@ -126,12 +126,12 @@ describe('resolveWorldRect', () => {
       visibility: band,
       payload: { type: 'group' },
     };
-    const battery = withParent(image('battery', 8, -6, 10, 20), 'internals');
-    const chip = withParent(image('chip', 4, 2, 6, 6), 'battery');
+    const cell = withParent(image('cell', 8, -6, 10, 20), 'internals');
+    const chip = withParent(image('chip', 4, 2, 6, 6), 'cell');
     chip.scale = 0;
-    const objects = [chip, battery, group];
+    const objects = [chip, cell, group];
 
-    expect(resolveWorldRect(objects, 'battery')).toEqual({ x: 14, y: -7, width: 5, height: 10 });
+    expect(resolveWorldRect(objects, 'cell')).toEqual({ x: 14, y: -7, width: 5, height: 10 });
     expect(resolveWorldRect(objects, 'chip')).toEqual({ x: 16, y: -6, width: 3, height: 3 });
 
     const visible = createMemoryStore(objects).query({

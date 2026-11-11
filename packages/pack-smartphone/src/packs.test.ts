@@ -1,5 +1,20 @@
+import {
+  applyCameraCommand,
+  boxFitScale,
+  buildLevelPlan,
+  createMemoryStore,
+  deriveCameraLimits,
+  openingCameraFor,
+  relativeZoomAlpha,
+  resolveWorldRect,
+  viewBounds,
+  visibilityAlpha,
+  type AxisRect,
+  type ImagePayload,
+  type ViewBounds,
+} from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
-import { bootFromLocation, openingCameraFor, resolvePack } from '../content/packs';
+import { paperTheme } from './theme';
 import {
   batterySprites,
   INTERNALS_SCALE,
@@ -8,17 +23,7 @@ import {
   smartphoneObjects,
   smartphonePack,
   smartphoneSprite,
-} from '../content/smartphone';
-import { initialCameraFor } from './bootstrap';
-import { applyCameraCommand, boxFitScale, deriveCameraLimits, viewBounds, type ViewBounds } from './camera';
-import { demoPack, titleFitWidth } from './demo';
-import { resolveWorldRect, type AxisRect } from './link';
-import type { ImagePayload } from './model';
-import { relativeZoomAlpha } from './fade';
-import { buildLevelPlan } from './levelFade';
-import { createMemoryStore } from './store';
-import { darkTheme, paperTheme } from './theme';
-import { visibilityAlpha } from './visibility';
+} from './smartphone';
 
 function phoneObject() {
   const phone = smartphoneObjects.find((object) => object.id === 'phone');
@@ -34,9 +39,7 @@ function phonePayload(): ImagePayload {
 
 describe('smartphone pack', () => {
   it('is the default, on paper, with a centered phone and parts parented to it', () => {
-    expect(resolvePack('').id).toBe('smartphone');
-    expect(resolvePack('').pack).toBe(smartphonePack);
-    expect(resolvePack('?scale=2').pack.theme).toBe(paperTheme);
+    expect(smartphonePack.theme).toBe(paperTheme);
     expect(paperTheme.background).toBe('#F3EAD3');
     expect(paperTheme.grid).toBeUndefined();
     expect(smartphonePack.theme).toBe(paperTheme);
@@ -171,7 +174,7 @@ describe('smartphone pack', () => {
       [1280, 800],
       [390, 844],
     ] as const) {
-      const opening = openingCameraFor('smartphone', smartphonePack, viewW, viewH);
+      const opening = openingCameraFor(smartphonePack, viewW, viewH);
       const limits = deriveCameraLimits(createMemoryStore(smartphoneObjects).contentBoxes(), viewW, viewH);
       const payload = phonePayload();
       expect(opening.scale).toBeCloseTo(limits.minScale);
@@ -320,7 +323,7 @@ describe('smartphone pack', () => {
     expect(narrowMid.x).toBeLessThan(narrowDisplay.x);
     expect(narrowBack.y).toBeCloseTo(narrowMid.y);
     expect(narrowDisplay.y).toBeCloseTo(narrowMid.y);
-    const opening = openingCameraFor('smartphone', smartphonePack, narrow.width, narrow.height);
+    const opening = openingCameraFor(smartphonePack, narrow.width, narrow.height);
     expect(opening.scale).toBeCloseTo(narrowFit);
     for (const object of smartphoneObjects) {
       if (object.payload.type !== 'image' && object.payload.type !== 'text') continue;
@@ -711,37 +714,3 @@ function segmentsCross(
 ): boolean {
   return orient(a, b, c) * orient(a, b, d) < 0 && orient(c, d, a) * orient(c, d, b) < 0;
 }
-
-describe('pack query', () => {
-  it('loads the archipelago pack from ?pack=archipelago in dev and production', () => {
-    expect(resolvePack('?pack=archipelago').id).toBe('archipelago');
-    expect(resolvePack('?pack=archipelago').pack).toBe(demoPack);
-    expect(resolvePack('?pack=archipelago&scale=2&x=-3012&y=-1112').pack.theme).toBe(darkTheme);
-    expect(resolvePack('?pack=other').id).toBe('smartphone');
-
-    const desktop = openingCameraFor('archipelago', demoPack, 1440, 900);
-    expect(desktop).toEqual(initialCameraFor(1440, titleFitWidth));
-    const narrow = openingCameraFor('archipelago', demoPack, 390, 844);
-    expect(narrow.scale).toBeLessThan(0.06);
-    expect(narrow).toMatchObject({ x: 0, y: -80 });
-
-    const prod = bootFromLocation('?pack=archipelago&theme=paper', 1280, 800, false);
-    expect(prod.id).toBe('archipelago');
-    expect(prod.pack).toBe(demoPack);
-    expect(prod.theme).toBe(darkTheme);
-    expect(prod.opening).toEqual(initialCameraFor(1280, titleFitWidth));
-
-    const dev = bootFromLocation('?pack=archipelago&theme=paper', 1280, 800, true);
-    expect(dev.pack).toBe(demoPack);
-    expect(dev.theme).toBe(paperTheme);
-
-    const page = bootFromLocation('', 1280, 800, false);
-    expect(page.id).toBe('smartphone');
-    expect(page.theme).toBe(paperTheme);
-    expect(page.opening.scale).toBeGreaterThan(1);
-
-    const wharf = bootFromLocation('?pack=archipelago&scale=2&x=-3012&y=-1112', 1280, 800, false);
-    expect(wharf.opening).toEqual({ x: -3012, y: -1112, scale: 2 });
-    expect(wharf.theme).toBe(darkTheme);
-  });
-});

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewBounds, type ViewBounds } from './camera';
-import { demoObjects } from './demo';
+import { type ViewBounds } from './camera';
 import type { CanvasObject, TextStyle, VisibilityRange } from './model';
 import { createMemoryStore } from './store';
 import { visibilityAlpha } from './visibility';
@@ -197,21 +196,6 @@ describe('createMemoryStore', () => {
     expect(store.countInBand(scale)).toBe(3);
   });
 
-  it('sends fewer atlas objects to the renderer than the band contains', () => {
-    const store = createMemoryStore(demoObjects);
-    const scale = 1;
-    const bounds = viewBounds({ x: 0, y: -80, scale }, 1280, 720);
-    const visible = store.query({ bounds, scale });
-    const band = store.countInBand(scale);
-    const idsInView = visible.map((entry) => entry.object.id);
-
-    expect(visible.length).toBeGreaterThan(0);
-    expect(visible.length).toBeLessThan(band);
-    expect(idsInView).toContain('region-compass');
-    expect(idsInView).not.toContain('region-dune');
-    expect(idsInView).not.toContain('detail-bollard');
-  });
-
   it('returns an empty result for an empty list', () => {
     const store = createMemoryStore([]);
     expect(store.countInBand(4)).toBe(0);
@@ -263,8 +247,8 @@ describe('createMemoryStore', () => {
   });
 
   it('keeps a child offset of 1e-6 under a parent at x = 132', () => {
-    const parent = textObject('phone', wide, 132, -60);
-    const child = withParent(textObject('mark', wide, 1e-6, 0), 'phone');
+    const parent = textObject('plate', wide, 132, -60);
+    const child = withParent(textObject('mark', wide, 1e-6, 0), 'plate');
     const store = createMemoryStore([child, parent]);
     const aroundPhone: ViewBounds = { left: 131, right: 133, top: -61, bottom: -59 };
 
@@ -275,7 +259,7 @@ describe('createMemoryStore', () => {
     expect(mark?.object.y).toBe(-60);
     expect(mark?.object.parentId).toBeUndefined();
     expect(child.x).toBe(1e-6);
-    expect(child.parentId).toBe('phone');
+    expect(child.parentId).toBe('plate');
     expect(store.countInBand(4)).toBe(2);
   });
 
@@ -299,22 +283,22 @@ describe('createMemoryStore', () => {
   });
 
   it('omits an object whose parent is missing until that parent is resident', () => {
-    const orphan = withParent(imageObject('chip', 'images/chip.svg', 4, -2), 'phone');
+    const orphan = withParent(imageObject('chip', 'images/chip.svg', 4, -2), 'plate');
     const store = createMemoryStore([orphan]);
 
     expect(store.query({ bounds: span, scale: 4 })).toEqual([]);
     expect(store.countInBand(4)).toBe(0);
     expect(store.imageSources()).toEqual(['images/chip.svg']);
 
-    const phone = textObject('phone', wide, 132, -60);
-    store.replaceObjects([orphan, phone]);
+    const plate = textObject('plate', wide, 132, -60);
+    store.replaceObjects([orphan, plate]);
 
     const visible = store.query({ bounds: span, scale: 4 });
-    expect(ids(visible)).toEqual(['chip', 'phone']);
+    expect(ids(visible)).toEqual(['chip', 'plate']);
     expect(visible[0]?.object).toMatchObject({ x: 136, y: -62 });
     expect(store.countInBand(4)).toBe(2);
     expect(orphan.x).toBe(4);
-    expect(orphan.parentId).toBe('phone');
+    expect(orphan.parentId).toBe('plate');
   });
 
   it('omits a parent cycle and anything that hangs off it', () => {
@@ -381,8 +365,8 @@ describe('createMemoryStore', () => {
   });
 
   it('hits a parent-local child at its world position', () => {
-    const parent = textObject('phone', wide, 132, -60, 'phone', 12, undefined, 40, 20);
-    const child = withParent(textObject('mark', wide, 100, 0, 'mark', 12, undefined, 2, 2), 'phone');
+    const parent = textObject('plate', wide, 132, -60, 'plate', 12, undefined, 40, 20);
+    const child = withParent(textObject('mark', wide, 100, 0, 'mark', 12, undefined, 2, 2), 'plate');
     const store = createMemoryStore([parent, child]);
     const camera = { x: 132, y: -60, scale: 4 };
 
@@ -391,7 +375,7 @@ describe('createMemoryStore', () => {
     expect(hit?.parentId).toBeUndefined();
     expect(store.hitTest({ x: 100, y: 0 }, camera)).toBeNull();
     expect(child.x).toBe(100);
-    expect(child.parentId).toBe('phone');
+    expect(child.parentId).toBe('plate');
   });
 
   it('scales a child about its parent, and does not place a group', () => {
@@ -403,47 +387,47 @@ describe('createMemoryStore', () => {
       visibility: wide,
       payload: { type: 'group' },
     };
-    const part = withParent(imageObject('battery', 'images/battery.webp', 8, -6, 10, 20), 'internals');
-    const nested = withParent(imageObject('chip', 'images/chip.svg', 4, 2, 6, 6), 'battery');
+    const part = withParent(imageObject('cell', 'images/cell.webp', 8, -6, 10, 20), 'internals');
+    const nested = withParent(imageObject('chip', 'images/chip.svg', 4, 2, 6, 6), 'cell');
     nested.scale = 0;
     const store = createMemoryStore([nested, part, group]);
     const visible = store.query({ bounds: span, scale: 4 });
 
-    expect(ids(visible)).toEqual(['chip', 'battery']);
+    expect(ids(visible)).toEqual(['chip', 'cell']);
     expect(store.countInBand(4)).toBe(2);
-    expect(store.imageSources()).toEqual(['images/chip.svg', 'images/battery.webp']);
-    const battery = visible.find((entry) => entry.object.id === 'battery');
+    expect(store.imageSources()).toEqual(['images/chip.svg', 'images/cell.webp']);
+    const cell = visible.find((entry) => entry.object.id === 'cell');
     const chip = visible.find((entry) => entry.object.id === 'chip');
-    expect(battery?.object).toMatchObject({ x: 14, y: -7 });
-    expect(battery?.object.payload).toMatchObject({ width: 5, height: 10 });
-    // The chip's own scale is ignored, so it keeps the battery's 0.5.
+    expect(cell?.object).toMatchObject({ x: 14, y: -7 });
+    expect(cell?.object.payload).toMatchObject({ width: 5, height: 10 });
+    // The chip's own scale is ignored, so it keeps the cell's 0.5.
     expect(chip?.object).toMatchObject({ x: 16, y: -6 });
     expect(chip?.object.payload).toMatchObject({ width: 3, height: 3 });
     expect(part.x).toBe(8);
     expect(part.payload).toMatchObject({ width: 10, height: 20 });
-    expect(store.hitTest({ x: 14, y: -7 }, { x: 0, y: 0, scale: 4 })?.id).toBe('battery');
+    expect(store.hitTest({ x: 14, y: -7 }, { x: 0, y: 0, scale: 4 })?.id).toBe('cell');
     expect(store.hitTest({ x: 10, y: -4 }, { x: 0, y: 0, scale: 4 })).toBeNull();
   });
 
   it('does not place, count, or hit a link', () => {
-    const label = textObject('battery-label', wide, -20, 0, 'Battery', 4, undefined, 8, 3);
-    const battery = imageObject('battery', 'images/battery.webp', 20, 0, 10, 16);
+    const label = textObject('cell-label', wide, -20, 0, 'Label', 4, undefined, 8, 3);
+    const cell = imageObject('cell', 'images/cell.webp', 20, 0, 10, 16);
     const link: CanvasObject = {
-      id: 'battery-link',
+      id: 'cell-link',
       x: 0,
       y: 0,
       visibility: wide,
-      payload: { type: 'link', from: 'battery-label', to: 'battery' },
+      payload: { type: 'link', from: 'cell-label', to: 'cell' },
     };
-    const store = createMemoryStore([link, label, battery]);
+    const store = createMemoryStore([link, label, cell]);
 
-    expect(ids(store.query({ bounds: span, scale: 4 }))).toEqual(['battery-label', 'battery']);
+    expect(ids(store.query({ bounds: span, scale: 4 }))).toEqual(['cell-label', 'cell']);
     expect(store.countInBand(4)).toBe(2);
     expect(store.contentBoxes()).toHaveLength(2);
-    expect(store.resident()).toEqual([link, label, battery]);
+    expect(store.resident()).toEqual([link, label, cell]);
     expect(store.hitTest({ x: 0, y: 0 }, { x: 0, y: 0, scale: 4 })).toBeNull();
-    expect(store.hitTest({ x: -20, y: 0 }, { x: 0, y: 0, scale: 4 })?.id).toBe('battery-label');
-    expect(store.imageSources()).toEqual(['images/battery.webp']);
+    expect(store.hitTest({ x: -20, y: 0 }, { x: 0, y: 0, scale: 4 })?.id).toBe('cell-label');
+    expect(store.imageSources()).toEqual(['images/cell.webp']);
   });
 
   it('skips an object whose zoom fade has reached alpha 0', () => {

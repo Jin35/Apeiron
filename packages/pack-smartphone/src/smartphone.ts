@@ -1,6 +1,7 @@
-import type { CanvasObject, ZoomFade } from '../src/model';
-import { paperTheme, type ContentPack } from '../src/theme';
+import type { CanvasObject, ContentPack, ZoomFade } from '@apeiron/core';
 import { hierarchyNodes } from './hierarchy.generated';
+import { INTERNALS_SCALE, REVEAL, REVEAL_END } from './reveal';
+import { paperTheme } from './theme';
 import { layoutTree } from './treeLayout';
 
 /**
@@ -52,7 +53,7 @@ export const PHONE_WIDTH_MM = 71.5;
  * The front finishes fading at `r = 1 / INTERNALS_SCALE` (1.6× the opening fit).
  * The parts group uses its own scale: the exploded row is authored at its final size.
  */
-export const INTERNALS_SCALE = 0.625;
+export { INTERNALS_SCALE, REVEAL_END };
 
 /**
  * Scale of the parts group. On a 1280×800 window, at 1.6× the opening fit,
@@ -71,12 +72,12 @@ const PARTS_LABEL_SCALE = 1.159545;
 const BATTERY_LABEL_SCALE = 0.499237;
 
 /**
- * `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`.
+ * `REVEAL` is `[start, end]` in relative zoom. The end is `1 / INTERNALS_SCALE`.
  * The phone uses the opening fit as `r = 1`. A nested level names the part
  * it belongs to (`fadeInOf`); that part's own opening fit is `r = 1`.
  * The platform fades the part's siblings out over the same range.
+ * `?into=1` uses that same end.
  */
-const REVEAL = [1, 1 / INTERNALS_SCALE] as const;
 
 /** Pouch cell, 39 mm across the 40 mm pack. `CELL_Y_MM` is its exploded centre. */
 const CELL_WIDTH_MM = 39;
@@ -122,6 +123,7 @@ function cutout(
     ...(parentId ? { parentId } : {}),
     visibility: band,
     fade,
+    labelId: `${id}-label`,
     payload: {
       type: 'image',
       src,
@@ -325,4 +327,5 @@ export const smartphoneObjects: readonly CanvasObject[] = [
 export const smartphonePack: ContentPack = {
   theme: paperTheme,
   objects: smartphoneObjects,
+  intoFactor: REVEAL_END,
 };

@@ -91,7 +91,7 @@ export function attachGestures(target: HTMLElement, host: GestureHost): () => vo
   let pinch: PinchState | null = null;
   let safariPinch = 1;
   let safariGesturing = false;
-  const selectTimers: number[] = [];
+  const selectTimers: ReturnType<typeof setTimeout>[] = [];
 
   function armSelect(x: number, y: number) {
     const timer = setTimeout(() => {

@@ -1,11 +1,9 @@
-import { bootFromLocation } from '../content/packs';
-import { cameraFromLocation, initialCameraFor } from './bootstrap';
+import { cameraFromLocation, initialCamera } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
 import { deriveCameraLimits, viewBounds, worldPoint, type Camera, type CameraLimits } from './camera';
-import { demoPack, titleFitWidth } from './demo';
 import { attachInteraction, type SceneCommand } from './interaction';
 import { createRenderer } from './render';
-import { createMemoryStore, type SceneStore, type VisibleObject } from './store';
+import type { SceneStore, VisibleObject } from './store';
 import { applyTheme, type Theme } from './theme';
 
 export function mountShell(
@@ -13,18 +11,13 @@ export function mountShell(
   status: HTMLElement,
   zoomInButton: HTMLButtonElement,
   zoomOutButton: HTMLButtonElement,
-  store: SceneStore = createMemoryStore(demoPack.objects),
-  labelList?: HTMLElement,
-  theme: Theme = demoPack.theme,
+  store: SceneStore,
+  labelList: HTMLElement | undefined,
+  theme: Theme,
   limits?: CameraLimits,
   opening?: Camera,
 ): void {
-  let zoomAnim = createButtonZoom(
-    cameraFromLocation(
-      opening ?? initialCameraFor(window.innerWidth, titleFitWidth),
-      window.location.search,
-    ),
-  );
+  let zoomAnim = createButtonZoom(cameraFromLocation(opening ?? initialCamera, window.location.search));
   let selectedId: string | null = null;
   let labelKey = '';
   let rafId = 0;
@@ -179,34 +172,4 @@ function formatWideScale(scale: number): string {
     if (mantissa[end - 1] === '.') end -= 1;
   }
   return `${mantissa.slice(0, end)}e${Number(exponent)}`;
-}
-
-if (typeof document !== 'undefined') {
-  const canvas = document.querySelector<HTMLCanvasElement>('#canvas');
-  const statusEl = document.querySelector<HTMLElement>('#status');
-  const zoomIn = document.querySelector<HTMLButtonElement>('#zoom-in');
-  const zoomOut = document.querySelector<HTMLButtonElement>('#zoom-out');
-  const labels = document.querySelector<HTMLElement>('#labels');
-  if (!canvas || !statusEl || !zoomIn || !zoomOut || !labels) {
-    throw new Error('Apeiron markup is missing');
-  }
-  // Smartphone is the page default. `?pack=archipelago` loads the atlas in dev and production.
-  const rect = canvas.getBoundingClientRect();
-  const boot = bootFromLocation(
-    window.location.search,
-    rect.width > 0 ? rect.width : window.innerWidth,
-    rect.height > 0 ? rect.height : window.innerHeight,
-    import.meta.env.DEV,
-  );
-  mountShell(
-    canvas,
-    statusEl,
-    zoomIn,
-    zoomOut,
-    createMemoryStore(boot.pack.objects),
-    labels,
-    boot.theme,
-    boot.limits,
-    boot.opening,
-  );
 }

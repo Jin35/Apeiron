@@ -54,8 +54,8 @@ describe('relativeZoomAlpha', () => {
   });
 
   it('uses an anchor fit for the named range and leaves the other on s0', () => {
-    const anchor = (id: string) => (id === 'battery' ? 10 : undefined);
-    const out: ZoomFade = { fadeOut: [1, 1.6], fadeOutOf: 'battery' };
+    const anchor = (id: string) => (id === 'host' ? 10 : undefined);
+    const out: ZoomFade = { fadeOut: [1, 1.6], fadeOutOf: 'host' };
     expect(displayOpacity(1, out, 10, 4, anchor)).toBe(1);
     expect(displayOpacity(1, out, 13, 4, anchor)).toBeCloseTo(0.5);
     expect(displayOpacity(1, out, 16, 4, anchor)).toBe(0);
@@ -64,7 +64,7 @@ describe('relativeZoomAlpha', () => {
     // No resolver: the named range is not applied.
     expect(displayOpacity(1, out, 16, 4)).toBe(1);
 
-    const both: ZoomFade = { fadeIn: [1, 1.6], fadeOut: [1, 1.6], fadeOutOf: 'battery' };
+    const both: ZoomFade = { fadeIn: [1, 1.6], fadeOut: [1, 1.6], fadeOutOf: 'host' };
     expect(displayOpacity(1, both, 4, 4, anchor)).toBe(0);
     expect(displayOpacity(1, both, 6.4, 4, anchor)).toBeCloseTo(1);
     expect(displayOpacity(0.4, both, 6.4, 4, anchor)).toBeCloseTo(0.4);

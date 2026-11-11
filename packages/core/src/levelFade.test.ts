@@ -267,7 +267,7 @@ function chassis(): Scene {
   const deeper: ZoomFade = { fadeIn: [1, 2], fadeInOf: 'chip' };
   const objects: CanvasObject[] = [
     group('level'),
-    image('board', 0, 0, 40, 30, 'level'),
+    image('board', 0, 0, 40, 30, 'level', undefined, 'board-label'),
     text('speaker', 70, 0, 'Speaker', 'level'),
     text('board-label', -70, 10, 'Board', 'level'),
     group('nest', 'board'),
@@ -448,6 +448,7 @@ function image(
   height: number,
   parentId?: string,
   fade?: ZoomFade,
+  labelId?: string,
 ): CanvasObject {
   return {
     id,
@@ -455,6 +456,7 @@ function image(
     y,
     ...(parentId ? { parentId } : {}),
     ...(fade ? { fade } : {}),
+    ...(labelId ? { labelId } : {}),
     visibility: band,
     payload: { type: 'image', src: `images/${id}.webp`, width, height, frame: false },
   };

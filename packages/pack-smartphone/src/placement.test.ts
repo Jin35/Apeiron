@@ -1,8 +1,13 @@
+import {
+  boxFitScale,
+  createMemoryStore,
+  deriveCameraLimits,
+  resolveWorldRect,
+  type AxisRect,
+  type ViewBounds,
+} from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
-import { smartphoneObjects } from '../content/smartphone';
-import { boxFitScale, deriveCameraLimits, type ViewBounds } from './camera';
-import { resolveWorldRect, type AxisRect } from './link';
-import { createMemoryStore } from './store';
+import { smartphoneObjects } from './smartphone';
 
 const desktop = { width: 1280, height: 800 };
 const phone = { width: 390, height: 844 };

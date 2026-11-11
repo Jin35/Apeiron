@@ -1,5 +1,5 @@
-import type { CanvasObject, TextStyle, VisibilityRange } from './model';
-import { darkTheme, type ContentPack } from './theme';
+import type { CanvasObject, ContentPack, TextStyle, VisibilityRange } from '@apeiron/core';
+import { darkTheme } from './theme';
 
 /**
  * Four zoom bands. Ranges overlap on purpose so the handoff fades
@@ -141,4 +141,7 @@ export const demoObjects: CanvasObject[] = [
 export const demoPack: ContentPack = {
   theme: darkTheme,
   objects: demoObjects,
+  titleFitWidth,
+  // `?focus=&into=1` still opens at 1.6× the framed fit, as the page always has.
+  intoFactor: 1.6,
 };

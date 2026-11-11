@@ -4,7 +4,20 @@ import { clipLeaderLine, resolveWorldRect } from './link';
 import type { CanvasObject, VisibilityRange } from './model';
 import { createRenderer } from './render';
 import type { VisibleObject } from './store';
-import { darkTheme, paperTheme, type Theme } from './theme';
+import { fallbackTheme, type Theme } from './theme';
+
+const sampleTheme: Theme = {
+  background: '#204060',
+  ink: '#d0e8ff',
+  accent: '#88aacc',
+  ui: '#c0d0e0',
+  displayFont: 'Fixture Display, serif',
+  bodyFont: 'Fixture Body, sans-serif',
+  paper: {
+    vignette: 'rgba(1, 2, 3, 0.25)',
+    grain: 'rgba(4, 5, 6, 0.2)',
+  },
+};
 import { visibilityAlpha } from './visibility';
 
 const camera: Camera = { x: 0, y: 0, scale: 4 };
@@ -322,20 +335,20 @@ describe('createRenderer', () => {
       width: 800,
       height: 600,
       visible: [
-        visible(imageObject('phone', 'images/phone.svg', visibility), 1),
-        visible(imageObject('secure', 'https://example.com/phone.svg', visibility), 1),
+        visible(imageObject('plate', 'images/mark.svg', visibility), 1),
+        visible(imageObject('secure', 'https://example.com/mark.svg', visibility), 1),
         visible(imageObject('plain', 'http://example.com/plate.svg', visibility), 1),
       ],
     });
 
     const base = import.meta.env.BASE_URL;
-    const phone = base.endsWith('/') ? `${base}images/phone.svg` : `${base}/images/phone.svg`;
+    const site = base.endsWith('/') ? `${base}images/mark.svg` : `${base}/images/mark.svg`;
     expect(images.map((image) => image.src)).toEqual([
-      phone,
-      'https://example.com/phone.svg',
+      site,
+      'https://example.com/mark.svg',
       'http://example.com/plate.svg',
     ]);
-    expect(phone).not.toBe('images/phone.svg');
+    expect(site).not.toBe('images/mark.svg');
   });
 
   it('fetches an image only when this frame draws it', () => {
@@ -428,7 +441,7 @@ describe('createRenderer', () => {
     expect(images[0]?.src).toEqual(expect.stringContaining('images/buoy.svg'));
     expect(paintsOf(ctx)).toEqual([{ kind: 'image', alpha: 0.4 }]);
     expect(strokeRectsOf(ctx)).toEqual([{ x: 380, y: 280, w: 40, h: 40 }]);
-    expect(lineWidthsOf(ctx)).toEqual([1, 1.25]);
+    expect(lineWidthsOf(ctx)).toEqual([1.25]);
 
     images[0]?.onload?.();
     expect(onReady).toHaveBeenCalledOnce();
@@ -445,14 +458,14 @@ describe('createRenderer', () => {
     const ctx = recordingContext();
     const renderer = createRenderer(canvasFor(ctx), () => {});
     const visibility: VisibilityRange = { minScale: 1, maxScale: 8 };
-    const cutout = imageObject('phone', 'images/smartphone.webp', visibility);
+    const cutout = imageObject('plate', 'images/cutout.webp', visibility);
     if (cutout.payload.type === 'image') cutout.payload.frame = false;
 
     renderer.draw({
       camera,
       width: 800,
       height: 600,
-      theme: paperTheme,
+      theme: sampleTheme,
       visible: [visible(cutout, 1)],
     });
 
@@ -469,7 +482,7 @@ describe('createRenderer', () => {
       camera,
       width: 800,
       height: 600,
-      theme: paperTheme,
+      theme: sampleTheme,
       visible: [visible(cutout, 1)],
     });
 
@@ -483,10 +496,10 @@ describe('createRenderer', () => {
     const renderer = createRenderer(canvasFor(ctx), () => {});
     const visibility: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
     const fitScale = 4;
-    const front = imageObject('phone', 'images/smartphone.webp', visibility);
+    const front = imageObject('plate', 'images/cutout.webp', visibility);
     front.fade = { fadeOut: [1, 2] };
     if (front.payload.type === 'image') front.payload.frame = false;
-    const part = imageObject('battery', 'images/smartphone/battery.webp', visibility);
+    const part = imageObject('part', 'images/part.webp', visibility);
     part.fade = { fadeIn: [1, 2] };
     if (part.payload.type === 'image') part.payload.frame = false;
 
@@ -495,7 +508,7 @@ describe('createRenderer', () => {
       width: 800,
       height: 600,
       fitScale,
-      selectedId: 'phone',
+      selectedId: 'plate',
       visible: [visible(front, 1)],
     });
     expect(images).toHaveLength(0);
@@ -507,7 +520,7 @@ describe('createRenderer', () => {
       width: 800,
       height: 600,
       fitScale,
-      selectedId: 'phone',
+      selectedId: 'plate',
       visible: [visible(part, 1), visible(front, 1)],
     });
     for (const image of images) {
@@ -520,7 +533,7 @@ describe('createRenderer', () => {
       width: 800,
       height: 600,
       fitScale,
-      selectedId: 'phone',
+      selectedId: 'plate',
       visible: [visible(part, 1), visible(front, 1)],
     });
     // Image draws record alpha on drawImage. 10 world units at r = 1.2 (scale 4.8) is 48px.
@@ -535,7 +548,7 @@ describe('createRenderer', () => {
       width: 800,
       height: 600,
       fitScale,
-      selectedId: 'phone',
+      selectedId: 'plate',
       visible: [visible(part, 1), visible(front, 1)],
     });
     expect(drawn.slice(drawnBefore)).toEqual([1]);
@@ -588,7 +601,7 @@ describe('createRenderer', () => {
     expect(12 * deep.scale).toBeGreaterThan(512);
     expect(transformsOf(ctx)).toEqual([[2, 0, 0, 2, 0, 0]]);
     expect(fontsOf(ctx)).toEqual([expect.stringContaining(`${painted}px`)]);
-    expect(lineWidthsOf(ctx)).toEqual([1, painted * 0.055]);
+    expect(lineWidthsOf(ctx)).toEqual([painted * 0.055]);
 
     const texts = fillTextsOf(ctx);
     expect(texts.map((entry) => entry.text)).toEqual(['pin']);
@@ -666,7 +679,7 @@ describe('createRenderer', () => {
 
     expect(strokeRectsOf(ctx)).toEqual([{ x: 380, y: 284, w: 40, h: 32 }]);
     expect(lineWidthsOf(ctx).at(-1)).toBe(2);
-    expect(strokeStylesOf(ctx).at(-1)).toBe('rgba(240, 215, 140, 0.9)');
+    expect(strokeStylesOf(ctx).at(-1)).toBe('rgba(17, 17, 17, 0.9)');
 
     const zoomed = recordingContext();
     createRenderer(canvasFor(zoomed), () => {}).draw({
@@ -690,7 +703,7 @@ describe('createRenderer', () => {
     expect(strokeRectsOf(missing)).toEqual([]);
   });
 
-  it('uses the demo dark background and grid when the frame has no theme', () => {
+  it('uses the fallback theme when the frame has no theme', () => {
     const ctx = recordingContext();
     createRenderer(canvasFor(ctx), () => {}).draw({
       camera,
@@ -699,11 +712,8 @@ describe('createRenderer', () => {
       visible: [],
     });
 
-    expect(darkTheme.background).toBe('#101318');
-    expect(darkTheme.grid?.color).toBe('rgba(232, 228, 217, 0.08)');
-    expect(darkTheme.ink).toBe('#f0d78c');
-    expect(fillStylesOf(ctx)[0]).toBe('#101318');
-    expect(strokeStylesOf(ctx)[0]).toBe('rgba(232, 228, 217, 0.08)');
+    expect(fillStylesOf(ctx)[0]).toBe(fallbackTheme.background);
+    expect(strokeStylesOf(ctx)).toEqual([]);
     expect(gradientsOf(ctx)).toBe(0);
   });
 
@@ -713,14 +723,14 @@ describe('createRenderer', () => {
       camera,
       width: 800,
       height: 600,
-      theme: paperTheme,
+      theme: sampleTheme,
       visible: [],
     });
-    expect(paperTheme.grid).toBeUndefined();
+    expect(sampleTheme.grid).toBeUndefined();
     expect(strokeStylesOf(bare)).toEqual([]);
 
     const ruled = recordingContext();
-    const theme: Theme = { ...paperTheme, grid: { color: 'rgba(1, 2, 3, 0.4)' } };
+    const theme: Theme = { ...sampleTheme, grid: { color: 'rgba(1, 2, 3, 0.4)' } };
     createRenderer(canvasFor(ruled), () => {}).draw({
       camera,
       width: 800,
@@ -733,7 +743,7 @@ describe('createRenderer', () => {
 
   it('fills the theme background and ink, and keeps a text color override', () => {
     const ctx = recordingContext();
-    const theme: Theme = { ...paperTheme, grid: undefined };
+    const theme: Theme = { ...sampleTheme, grid: undefined };
     const plain: CanvasObject = {
       id: 'plain',
       x: 0,
@@ -763,18 +773,18 @@ describe('createRenderer', () => {
       visible: [visible(plain, 1), visible(override, 1)],
     });
 
-    expect(fillStylesOf(ctx)[0]).toBe(paperTheme.background);
-    expect(fillStylesOf(ctx)).toContain(paperTheme.ink);
+    expect(fillStylesOf(ctx)[0]).toBe(sampleTheme.background);
+    expect(fillStylesOf(ctx)).toContain(sampleTheme.ink);
     expect(fillStylesOf(ctx)).toContain('#f0d78c');
-    expect(fillStylesOf(ctx)).toContain(paperTheme.paper?.grain);
+    expect(fillStylesOf(ctx)).toContain(sampleTheme.paper?.grain);
     expect(strokeStylesOf(ctx)[0]).toBe('rgba(10, 12, 16, 0.75)');
-    expect(fontsOf(ctx).some((font) => font.includes(paperTheme.displayFont))).toBe(true);
+    expect(fontsOf(ctx).some((font) => font.includes(sampleTheme.displayFont))).toBe(true);
     expect(fontsOf(ctx).some((font) => font.includes('monospace'))).toBe(true);
     expect(gradientsOf(ctx)).toBe(1);
   });
 
   it('draws a hairline between resolved endpoints and keeps the gap in screen pixels', () => {
-    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
     const group: CanvasObject = {
       id: 'internals',
       x: 0,
@@ -784,30 +794,30 @@ describe('createRenderer', () => {
       payload: { type: 'group' },
     };
     const label: CanvasObject = {
-      id: 'battery-label',
+      id: 'tag-label',
       parentId: 'internals',
       x: -40,
       y: 0,
       visibility: { minScale: 0.01, maxScale: 10000 },
       fade: { fadeIn: [1, 2] },
-      payload: { type: 'text', text: 'Battery', style: { fontSize: 4 }, width: 16, height: 8 },
+      payload: { type: 'text', text: 'Tag', style: { fontSize: 4 }, width: 16, height: 8 },
     };
-    const battery: CanvasObject = {
-      id: 'battery',
+    const cell: CanvasObject = {
+      id: 'cell',
       parentId: 'internals',
       x: 40,
       y: 0,
       visibility: { minScale: 0.01, maxScale: 10000 },
-      payload: { type: 'image', src: 'images/battery.webp', width: 20, height: 20, frame: false },
+      payload: { type: 'image', src: 'images/cell.webp', width: 20, height: 20, frame: false },
     };
     const link: CanvasObject = {
-      id: 'battery-link',
+      id: 'cell-link',
       x: 0,
       y: 0,
       visibility: { minScale: 0.01, maxScale: 10000 },
-      payload: { type: 'link', from: 'battery-label', to: 'battery' },
+      payload: { type: 'link', from: 'tag-label', to: 'cell' },
     };
-    const objects = [group, label, battery, link];
+    const objects = [group, label, cell, link];
     const fitScale = 4;
 
     const hidden = recordingContext();
@@ -836,8 +846,8 @@ describe('createRenderer', () => {
         objects,
         fitScale,
       });
-      const from = resolveWorldRect(objects, 'battery-label');
-      const to = resolveWorldRect(objects, 'battery');
+      const from = resolveWorldRect(objects, 'tag-label');
+      const to = resolveWorldRect(objects, 'cell');
       if (!from || !to) throw new Error('expected endpoints');
       const expected = clipLeaderLine(
         { x: 200 + from.x * scale, y: 150 + from.y * scale, width: from.width * scale, height: from.height * scale },
@@ -855,7 +865,7 @@ describe('createRenderer', () => {
         },
       ]);
       expect(lineWidthsOf(ctx)).toEqual([1.25]);
-      expect(strokeStylesOf(ctx)).toEqual([paperTheme.ink]);
+      expect(strokeStylesOf(ctx)).toEqual([sampleTheme.ink]);
       const drawn = strokesOf(ctx)[0];
       if (!drawn || !expected) throw new Error('expected a segment');
       // The stroke stays outside both boxes: 4px of paper, then the edge.
@@ -865,7 +875,7 @@ describe('createRenderer', () => {
   });
 
   it('skips a link whose endpoints overlap or are missing', () => {
-    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
     const band = { minScale: 0.01, maxScale: 10000 };
     const left: CanvasObject = {
       id: 'left',
@@ -879,7 +889,7 @@ describe('createRenderer', () => {
       x: 4,
       y: 0,
       visibility: band,
-      payload: { type: 'image', src: 'images/battery.webp', width: 20, height: 10, frame: false },
+      payload: { type: 'image', src: 'images/cell.webp', width: 20, height: 10, frame: false },
     };
     const overlap: CanvasObject = {
       id: 'overlap',
@@ -908,7 +918,7 @@ describe('createRenderer', () => {
   });
 
   it('fades sibling parts with the entered part and keeps the link at the lower endpoint', () => {
-    const theme: Theme = { ...paperTheme, grid: undefined, paper: undefined };
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
     const band = { minScale: 0.01, maxScale: 10000 };
     const reveal = [1, 2] as const;
     const level: CanvasObject = {
@@ -1080,6 +1090,6 @@ function plateAt(x: number, y: number, width: number, height: number): CanvasObj
     x,
     y,
     visibility: { minScale: 1, maxScale: 1 },
-    payload: { type: 'image', src: 'images/phone.svg', width, height },
+    payload: { type: 'image', src: 'images/mark.svg', width, height },
   };
 }

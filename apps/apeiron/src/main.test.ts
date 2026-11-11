@@ -1,15 +1,25 @@
+import {
+  applyCameraCommand,
+  BUTTON_ZOOM_MS,
+  createMemoryStore,
+  deriveCameraLimits,
+  DOUBLE_TAP_MS,
+  initialCameraFor,
+  mountShell,
+  themeProperties,
+  viewBounds,
+  wheelZoomFactor,
+  type Camera,
+  type CameraLimits,
+  type CanvasObject,
+  type SceneStore,
+  type Theme,
+} from '@apeiron/core';
+import { darkTheme, demoObjects, demoPack, titleFitWidth } from '@apeiron/pack-archipelago';
+import { paperTheme } from '@apeiron/pack-smartphone';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bootFromLocation } from '../content/packs';
 import page from '../index.html?raw';
-import { initialCameraFor } from './bootstrap';
-import { BUTTON_ZOOM_MS } from './buttonZoom';
-import { applyCameraCommand, deriveCameraLimits, viewBounds, type Camera, type CameraLimits } from './camera';
-import { demoObjects, titleFitWidth } from './demo';
-import { DOUBLE_TAP_MS, wheelZoomFactor } from './gestures';
-import { mountShell } from './main';
-import type { CanvasObject } from './model';
-import { createMemoryStore, type SceneStore } from './store';
-import { darkTheme, paperTheme, themeProperties, type Theme } from './theme';
+import { bootPage } from './catalog';
 
 type Listener = (event: Event) => void;
 
@@ -176,16 +186,17 @@ function harness(options?: {
   });
   vi.spyOn(performance, 'now').mockImplementation(() => now);
 
+  const viewWidth = options?.innerWidth ?? 1280;
   mountShell(
     canvas as unknown as HTMLCanvasElement,
     status as unknown as HTMLElement,
     zoomIn as unknown as HTMLButtonElement,
     zoomOut as unknown as HTMLButtonElement,
-    options?.store,
+    options?.store ?? createMemoryStore(demoPack.objects),
     labels as unknown as HTMLElement,
-    options?.theme,
+    options?.theme ?? demoPack.theme,
     options?.limits,
-    options?.opening,
+    options?.opening ?? initialCameraFor(viewWidth, titleFitWidth),
   );
 
   return {
@@ -835,7 +846,7 @@ describe('frame loop', () => {
 });
 
 describe('theme chrome', () => {
-  it('applies the demo dark theme when none is passed', () => {
+  it('applies the atlas theme the shell is given', () => {
     const doc = themeDocument();
     harness({ document: doc as unknown as Document });
 
@@ -854,7 +865,7 @@ describe('theme chrome', () => {
 
   it('opens the smartphone pack on paper, fitted to the phone', () => {
     const doc = themeDocument();
-    const boot = bootFromLocation('', 800, 600, false);
+    const boot = bootPage('', 800, 600, false);
     const shell = harness({
       document: doc as unknown as Document,
       store: createMemoryStore(boot.pack.objects),

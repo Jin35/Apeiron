@@ -1,6 +1,6 @@
-import { boxFitScale, MAX_SCALE } from '../src/camera';
-import type { CanvasObject, ShapePayload, ZoomFade } from '../src/model';
+import { boxFitScale, MAX_SCALE, type CanvasObject, type ShapePayload, type ZoomFade } from '@apeiron/core';
 import type { HierarchyNode } from './hierarchy.generated';
+import { REVEAL } from './reveal';
 
 /**
  * Cut-outs for the cell → anode → carbon path. Pixel sizes are the files
@@ -40,9 +40,8 @@ export type LayoutReport = {
 export function layoutTree(nodes: readonly HierarchyNode[], built: readonly CanvasObject[]): LayoutReport {
   const byId = new Map<string, CanvasObject>();
   for (const object of built) byId.set(object.id, object);
-  // The hand-authored parts crossfade from 1× to 1.6× of the anchor fit.
-  // Group scale only sizes that row; it is not the fade.
-  const reveal: readonly [number, number] = [1, 1.6];
+  // The hand-authored parts crossfade across `REVEAL`. Group scale only sizes that row.
+  const reveal: readonly [number, number] = REVEAL;
 
   const childrenOf = new Map<string, HierarchyNode[]>();
   for (const node of nodes) {
@@ -178,6 +177,7 @@ function placeChildren(
       y: box.y,
       visibility,
       fade,
+      labelId: `${child.id}-label`,
       payload: payloadFor(child, box.width, box.height),
     };
     const labelText = child.countMark ? `${child.name} ${child.countMark}` : child.name;

@@ -33,7 +33,7 @@ export type TextPayload = {
 
 export type ImagePayload = {
   type: 'image';
-  /** Site path such as `images/phone.svg`, or an absolute `http:` / `https:` URL. */
+  /** Site path such as `images/mark.svg`, or an absolute `http:` / `https:` URL. */
   src: string;
   width: number;
   height: number;
@@ -134,5 +134,10 @@ export type CanvasObject = {
    * transparent object is not hit-tested and is left out of `query`.
    */
   fade?: ZoomFade;
+  /**
+   * Id of the label that shares this object's own handover curve.
+   * A pack sets it. The level fade does not infer a label from the id.
+   */
+  labelId?: string;
   payload: TextPayload | ImagePayload | ShapePayload | GroupPayload | LinkPayload;
 };

@@ -23,6 +23,8 @@ export type LevelPlan = {
 type Portal = {
   id: string;
   parentId: string | undefined;
+  /** Label that keeps this portal's own curve. Omitted when the pack sets none. */
+  labelId?: string;
   range: readonly [number, number];
   fit: number;
   x: number;
@@ -38,8 +40,8 @@ const SHOWN: LevelPlan = { opacity: () => 1 };
  * over that range of its own opening fit. While the camera is in that part's
  * fit-scale range — every scale at or above `fit * start`, so the level stays
  * entered after the blend finishes — the part and every sibling that shares
- * its `parentId` fade out over the same range. Labels sit on the parent group with
- * the part, so they leave with it. Descendants of a sibling that has faded
+ * its `parentId` fade out over the same range. A label whose id the part names
+ * in `labelId` leaves with that part. Descendants of a sibling that has faded
  * leave with that sibling; the active part's own children do not. No pack is
  * named here.
  *
@@ -100,10 +102,12 @@ function factorsFor(
       factors.set(object.id, 0);
       continue;
     }
-    // The part under the camera keeps its own curve, and so does its label.
-    // A larger sibling that already finished must not blank the part you
-    // zoomed to; it still holds the rest of the level down.
-    const own = active !== undefined && (object.id === active.id || object.id === `${active.id}-label`);
+    // The part under the camera keeps its own curve, and so does the label
+    // it names. A larger sibling that already finished must not blank the
+    // part you zoomed to; it still holds the rest of the level down.
+    const own =
+      active !== undefined &&
+      (object.id === active.id || (active.labelId !== undefined && object.id === active.labelId));
     let factor = 1;
     let touched = false;
     for (const portal of fading) {
@@ -163,15 +167,22 @@ function collectPortals(
     rangeOf.set(anchor, range);
   }
 
+  const labelOf = new Map<string, string | undefined>();
+  for (const object of objects) {
+    if (!labelOf.has(object.id)) labelOf.set(object.id, object.labelId);
+  }
+
   const portals: Portal[] = [];
   for (const [id, range] of rangeOf) {
     const box = boxOf(id);
     if (!box) continue;
     const fit = boxFitScale(box, view.width, view.height);
     if (!(fit > 0) || !Number.isFinite(fit)) continue;
+    const labelId = labelOf.get(id);
     portals.push({
       id,
       parentId: parentOf.get(id),
+      ...(labelId ? { labelId } : {}),
       range,
       fit,
       x: (box.left + box.right) / 2,

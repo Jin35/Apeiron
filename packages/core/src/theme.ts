@@ -25,6 +25,15 @@ export type Theme = {
   displayFont: string;
   /** HUD, hint, and buttons. */
   bodyFont: string;
+  /**
+   * Secondary HUD color. Omit to use `ui`.
+   * A pack sets this when its chrome uses a quieter ink than the title.
+   */
+  muted?: string;
+  /**
+   * Resting zoom-button color. Omit to mix `ui` into the page background.
+   */
+  buttonHover?: string;
 };
 
 /** Hairline grid. Absent on a theme means the renderer draws none. */
@@ -49,46 +58,30 @@ export type ContentPack = {
   theme: Theme;
   objects: readonly CanvasObject[];
   limits?: CameraLimits;
-};
-
-const DISPLAY = '"Iowan Old Style", Palatino, Georgia, serif';
-const BODY = 'ui-sans-serif, system-ui, sans-serif';
-
-/**
- * The archipelago atlas as it looks today: near-black field, hairline grid,
- * gold ink and accent, cream UI text.
- */
-export const darkTheme: Theme = {
-  background: '#101318',
-  grid: { color: 'rgba(232, 228, 217, 0.08)' },
-  ink: '#f0d78c',
-  accent: '#f0d78c',
-  ui: '#f3efe6',
-  displayFont: DISPLAY,
-  bodyFont: BODY,
+  /**
+   * When set, the opening camera fits a title of this world width
+   * instead of the content bounds.
+   */
+  titleFitWidth?: number;
+  /**
+   * Scale multiplier for `?focus=&into=1`. Omit to keep the framed fit.
+   * A pack sets this to the same ratio its fades already use.
+   */
+  intoFactor?: number;
 };
 
 /**
- * Aged paper for the smartphone pack. Ink and accent clear WCAG AA on the
- * page color; the vignette only darkens the edges. No grid.
+ * Used when a frame does not name a theme. The page always passes the
+ * pack theme, so this is only the library default.
  */
-export const paperTheme: Theme = {
-  background: '#F3EAD3',
-  paper: {
-    vignette: 'rgba(62, 42, 22, 0.28)',
-    grain: 'rgba(59, 47, 34, 0.14)',
-  },
-  ink: '#3B2F22',
-  accent: '#7A3E1D',
-  ui: '#3B2F22',
-  displayFont: DISPLAY,
-  bodyFont: 'Georgia, Palatino, "Iowan Old Style", serif',
+export const fallbackTheme: Theme = {
+  background: '#ffffff',
+  ink: '#111111',
+  accent: '#111111',
+  ui: '#111111',
+  displayFont: 'sans-serif',
+  bodyFont: 'sans-serif',
 };
-
-/** Secondary HUD color on the demo's near-black page. Other packs use `ui`. */
-const DARK_MUTED = '#8b95a3';
-/** Resting lift of the dark zoom buttons. Other packs mix UI ink into the page. */
-const DARK_BUTTON_HOVER = 'rgba(36, 40, 48, 0.94)';
 
 /** `#rgb` / `#rrggbb` as `rgba(r, g, b, a)`. */
 export function withAlpha(color: string, alpha: number): string {
@@ -98,21 +91,18 @@ export function withAlpha(color: string, alpha: number): string {
 
 /**
  * CSS custom properties for the HUD, buttons, page background, and fonts.
- * The dark pack's muted text and button hover stay the historical colors;
- * those two are not fields on `Theme`.
+ * `muted` and `buttonHover` come from the theme when the pack sets them.
  */
 export function themeProperties(theme: Theme): Record<string, string> {
-  const darkPage = theme.background === darkTheme.background;
   return {
     '--bg': theme.background,
     '--ui': theme.ui,
     '--accent': theme.accent,
     '--line': withAlpha(theme.accent, 0.45),
     '--button-bg': withAlpha(theme.background, 0.86),
-    '--button-hover': darkPage
-      ? DARK_BUTTON_HOVER
-      : `color-mix(in srgb, ${theme.ui} 14%, ${theme.background})`,
-    '--muted': darkPage ? DARK_MUTED : theme.ui,
+    '--button-hover':
+      theme.buttonHover ?? `color-mix(in srgb, ${theme.ui} 14%, ${theme.background})`,
+    '--muted': theme.muted ?? theme.ui,
     '--body-font': theme.bodyFont,
     '--display-font': theme.displayFont,
     'color-scheme': isLight(theme.background) ? 'light' : 'dark',
@@ -129,14 +119,20 @@ export function applyTheme(doc: Document, theme: Theme): void {
 }
 
 /**
- * Dev preview: `?theme=paper` selects `paperTheme`. A production build
- * (`dev` false) always returns `fallback`.
+ * Dev preview: `?theme=<name>` selects that entry from `themes`.
+ * A production build (`dev` false) always returns `fallback`.
  */
-export function themeFromSearch(search: string, options?: { dev?: boolean; fallback?: Theme }): Theme {
-  const fallback = options?.fallback ?? darkTheme;
-  const dev = options?.dev ?? import.meta.env.DEV;
-  if (dev && new URLSearchParams(search).get('theme') === 'paper') return paperTheme;
-  return fallback;
+export function themeFromSearch(
+  search: string,
+  options: { dev?: boolean; fallback: Theme; themes?: Readonly<Record<string, Theme>> },
+): Theme {
+  const dev = options.dev ?? false;
+  const name = new URLSearchParams(search).get('theme');
+  if (dev && name && options.themes && Object.prototype.hasOwnProperty.call(options.themes, name)) {
+    const theme = options.themes[name];
+    if (theme) return theme;
+  }
+  return options.fallback;
 }
 
 function parseHex(color: string): { r: number; g: number; b: number } {

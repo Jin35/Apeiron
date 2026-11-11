@@ -20,7 +20,6 @@ import {
   type ContentBox,
   type ViewBounds,
 } from './camera';
-import { demoObjects } from './demo';
 import type { CanvasObject } from './model';
 import { createMemoryStore } from './store';
 
@@ -28,15 +27,6 @@ const viewW = 800;
 const viewH = 600;
 
 describe('derived camera limits', () => {
-  it('keeps the demo opening scale inside the fit and the readable depth', () => {
-    const limits = deriveCameraLimits(createMemoryStore(demoObjects).contentBoxes(), viewW, viewH);
-    expect(limits.minScale).toBeLessThanOrEqual(0.1);
-    expect(limits.minScale).toBeGreaterThan(MIN_SCALE);
-    expect(limits.maxScale).toBeGreaterThanOrEqual(0.1);
-    expect(limits.maxScale).toBeLessThan(MAX_SCALE);
-    expect(limits.bounds).toBeDefined();
-  });
-
   it('unions parent-local children, including a grandchild, and skips a missing parent', () => {
     const parent = text('parent', 100, 50, 40, 20, 4);
     const child = text('child', 30, -10, 16, 12, 20, 'parent');

@@ -7,17 +7,17 @@ describe('opening camera', () => {
     const title = 6300;
     expect(initialCameraFor(1440, title)).toEqual(initialCamera);
     expect(initialCameraFor(0, title)).toEqual(initialCamera);
-    const phone = initialCameraFor(390, title);
-    expect(phone).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
-    expect(phone.scale).toBeLessThan(0.06);
-    expect(phone.scale * title).toBeLessThan(360);
+    const narrow = initialCameraFor(390, title);
+    expect(narrow).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
+    expect(narrow.scale).toBeLessThan(0.06);
+    expect(narrow.scale * title).toBeLessThan(360);
     expect(initialCameraFor(200, title).scale).toBe(0.04);
   });
 
   it('fits the scale to the title width it is given', () => {
-    const phone = initialCameraFor(390, 6300);
+    const narrow = initialCameraFor(390, 6300);
     const wider = initialCameraFor(390, 7000);
-    expect(wider.scale).toBeLessThan(phone.scale);
+    expect(wider.scale).toBeLessThan(narrow.scale);
     expect(wider.scale).toBeCloseTo((390 * 0.86) / 7000);
     expect(wider).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
 
