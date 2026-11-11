@@ -9,5 +9,5 @@ export {
   smartphonePack,
   smartphoneSprite,
 } from './smartphone';
-export { hierarchyNodes } from './hierarchy.generated';
-export type { HierarchyKind, HierarchyNode, HierarchyStatus } from './hierarchy.generated';
+export { hierarchyNodes } from './smartphone';
+export type { HierarchyKind, HierarchyNode, HierarchyStatus } from './hierarchy';

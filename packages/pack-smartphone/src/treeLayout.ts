@@ -1,20 +1,5 @@
 import { boxFitScale, MAX_SCALE, type CanvasObject, type ShapePayload, type ZoomFade } from '@apeiron/core';
-import type { HierarchyNode } from './hierarchy.generated';
-import { REVEAL } from './reveal';
-
-/**
- * Cut-outs for the cell → anode → carbon path. Pixel sizes are the files
- * in `public/images/smartphone`. The layout picks the position; the file
- * only contributes its aspect.
- */
-const ART: Record<string, { src: string; width: number; height: number }> = {
-  pouch: { src: 'images/smartphone/pouch.webp', width: 554, height: 868 },
-  'electrode-stack': { src: 'images/smartphone/electrode-stack.webp', width: 506, height: 865 },
-  anode: { src: 'images/smartphone/anode.webp', width: 656, height: 1159 },
-  'graphite-particle': { src: 'images/smartphone/graphite-particle.webp', width: 821, height: 820 },
-  'graphite-carbon-sheet': { src: 'images/smartphone/graphite-carbon-sheet.webp', width: 792, height: 889 },
-  'graphite-carbon-atom': { src: 'images/smartphone/graphite-carbon-atom.webp', width: 981, height: 982 },
-};
+import type { HierarchyNode } from './hierarchy';
 
 /** Largest child/parent ratio that still fits an exploded view without an extra shrink. */
 const EXPLODED_FIT = 0.625;
@@ -25,6 +10,45 @@ const LABEL_VIEW = { width: 1280, height: 800 };
 
 type Box = { x: number; y: number; width: number; height: number };
 
+/**
+ * Children of `parentId` are packed into `spaceId` instead of into the parent.
+ * `spaceId` is a canvas object already in `built`. Its scale divides the parent's box.
+ */
+export type LayoutHost = {
+  parentId: string;
+  spaceId: string;
+  /** Fade against the pack opening fit. Otherwise children fade in of `parentId`. */
+  fadeAgainstOpening?: boolean;
+};
+
+/** How a packing space places nodes and labels. Absent fields use the inset defaults. */
+export type SpacePolicy = {
+  /** Use the full footprint. The default keeps nodes and labels in the middle. */
+  fullFrame?: boolean;
+  /** Label face in world units. The default sizes an 18px face on a 1280×800 window. */
+  labelFontSize?: number;
+};
+
+/** Pixel size of a cut-out. The layout uses the aspect; the file contributes nothing else. */
+export type LayoutArt = {
+  src: string;
+  width: number;
+  height: number;
+};
+
+export type LayoutOptions = {
+  reveal: readonly [number, number];
+  hosts?: readonly LayoutHost[];
+  /** Keyed by the id of the space children are packed into. */
+  policies?: Readonly<Record<string, SpacePolicy>>;
+  art?: Readonly<Record<string, LayoutArt>>;
+  /**
+   * Visibility band for a placed node.
+   * `minScale` is copied. `maxScale` is at least this, and wide enough to fill a desktop.
+   */
+  band: { minScale: number; maxScale: number };
+};
+
 export type LayoutReport = {
   objects: CanvasObject[];
   /** Placed smaller than child size ÷ parent size so the exploded view fits. */
@@ -32,16 +56,35 @@ export type LayoutReport = {
   unplaced: readonly { id: string; reason: string }[];
 };
 
+type LayoutCtx = {
+  reveal: readonly [number, number];
+  hosts: ReadonlyMap<string, LayoutHost>;
+  policies: Readonly<Record<string, SpacePolicy>>;
+  art: Readonly<Record<string, LayoutArt>>;
+  band: { minScale: number; maxScale: number };
+};
+
 /**
  * One node, label, and leader for every hierarchy node that is not already
- * in `built`. Hand-authored parts keep their coordinates. New siblings are
- * packed into the parent's footprint, pulled apart, at child/parent size.
+ * in `built`. Nodes already in `built` keep their coordinates. The rest are
+ * packed into the parent's footprint, or into the host named for that parent.
  */
-export function layoutTree(nodes: readonly HierarchyNode[], built: readonly CanvasObject[]): LayoutReport {
+export function layoutTree(
+  nodes: readonly HierarchyNode[],
+  built: readonly CanvasObject[],
+  options: LayoutOptions,
+): LayoutReport {
   const byId = new Map<string, CanvasObject>();
   for (const object of built) byId.set(object.id, object);
-  // The hand-authored parts crossfade across `REVEAL`. Group scale only sizes that row.
-  const reveal: readonly [number, number] = REVEAL;
+  const hosts = new Map<string, LayoutHost>();
+  for (const host of options.hosts ?? []) hosts.set(host.parentId, host);
+  const ctx: LayoutCtx = {
+    reveal: options.reveal,
+    hosts,
+    policies: options.policies ?? {},
+    art: options.art ?? {},
+    band: options.band,
+  };
 
   const childrenOf = new Map<string, HierarchyNode[]>();
   for (const node of nodes) {
@@ -58,12 +101,12 @@ export function layoutTree(nodes: readonly HierarchyNode[], built: readonly Canv
   for (const node of nodes) {
     const children = childrenOf.get(node.id);
     if (!children || children.length === 0) continue;
-    const space = spaceFor(node.id, byId);
+    const space = spaceFor(node.id, byId, ctx);
     if (!space) {
       for (const child of children) unplaced.push({ id: child.id, reason: `no footprint for ${node.id}` });
       continue;
     }
-    const placed = placeChildren(children, node, space, reveal);
+    const placed = placeChildren(children, node, space, ctx);
     if (!placed) {
       for (const child of children) unplaced.push({ id: child.id, reason: `no free spot inside ${node.id}` });
       continue;
@@ -88,20 +131,20 @@ type Space = {
   occupied: Box[];
 };
 
-function spaceFor(parentId: string, byId: Map<string, CanvasObject>): Space | null {
-  if (parentId === 'phone' || parentId === 'battery') {
-    const hostId = parentId === 'phone' ? 'internals' : 'battery-internals';
-    const host = byId.get(hostId);
+function spaceFor(parentId: string, byId: Map<string, CanvasObject>, ctx: LayoutCtx): Space | null {
+  const host = ctx.hosts.get(parentId);
+  if (host) {
+    const hostObject = byId.get(host.spaceId);
     const parent = byId.get(parentId);
     const size = boxOf(parent);
-    if (!host || !size) return null;
-    const scale = positiveScale(host.scale);
+    if (!hostObject || !size) return null;
+    const scale = positiveScale(hostObject.scale);
     return {
-      id: hostId,
-      placedScale: placedScaleOf(hostId, byId),
+      id: host.spaceId,
+      placedScale: placedScaleOf(host.spaceId, byId),
       width: size.width / scale,
       height: size.height / scale,
-      occupied: occupiedIn(hostId, byId),
+      occupied: occupiedIn(host.spaceId, byId),
     };
   }
   const parent = byId.get(parentId);
@@ -127,7 +170,7 @@ function placeChildren(
   children: readonly HierarchyNode[],
   parent: HierarchyNode,
   space: Space,
-  reveal: readonly [number, number],
+  ctx: LayoutCtx,
 ): PlacedChild[] | null {
   const footprint = Math.max(space.width, space.height);
   const ratios = children.map((child) => child.sizeMm / parent.sizeMm);
@@ -143,9 +186,10 @@ function placeChildren(
     const boxes = layoutBoxes(
       children.map((child, index) => {
         const ratio = ratios[index] ?? 0;
-        return artSize(child, footprint * ratio * exploded * factor);
+        return artSize(child, footprint * ratio * exploded * factor, ctx.art);
       }),
       space,
+      ctx.policies,
     );
     if (boxes) {
       best = { factor, boxes };
@@ -158,8 +202,10 @@ function placeChildren(
   }
   if (!best) return null;
 
-  const fade: ZoomFade =
-    parent.id === 'phone' ? { fadeIn: reveal } : { fadeIn: reveal, fadeInOf: parent.id };
+  const host = ctx.hosts.get(parent.id);
+  const fade: ZoomFade = host?.fadeAgainstOpening
+    ? { fadeIn: ctx.reveal }
+    : { fadeIn: ctx.reveal, fadeInOf: parent.id };
   const placed: PlacedChild[] = [];
   const blocked = [...space.occupied, ...best.boxes];
   for (let index = 0; index < children.length; index += 1) {
@@ -169,7 +215,10 @@ function placeChildren(
     const worldMax = Math.max(box.width, box.height) * space.placedScale;
     // Wide enough to fill a desktop on this node, and never below the parts band.
     const cover = worldMax > 0 ? (1280 / worldMax) * 2 : MAX_SCALE;
-    const visibility = { minScale: 0.02, maxScale: Math.min(MAX_SCALE, Math.max(10000, cover)) };
+    const visibility = {
+      minScale: ctx.band.minScale,
+      maxScale: Math.min(MAX_SCALE, Math.max(ctx.band.maxScale, cover)),
+    };
     const node: CanvasObject = {
       id: child.id,
       parentId: space.id,
@@ -178,11 +227,11 @@ function placeChildren(
       visibility,
       fade,
       labelId: `${child.id}-label`,
-      payload: payloadFor(child, box.width, box.height),
+      payload: payloadFor(child, box.width, box.height, ctx.art),
     };
     const labelText = child.countMark ? `${child.name} ${child.countMark}` : child.name;
-    const labelBox = labelBounds(labelText, space);
-    const spot = placeLabel(box, labelBox, blocked, space);
+    const labelBox = labelBounds(labelText, space, ctx.policies);
+    const spot = placeLabel(box, labelBox, blocked, space, ctx.policies);
     const label: CanvasObject = {
       id: `${child.id}-label`,
       parentId: space.id,
@@ -216,20 +265,29 @@ function placeChildren(
   return placed;
 }
 
-function artSize(node: HierarchyNode, maxSide: number): { width: number; height: number } {
+function artSize(
+  node: HierarchyNode,
+  maxSide: number,
+  art: Readonly<Record<string, LayoutArt>>,
+): { width: number; height: number } {
   const side = Math.max(maxSide, 0);
   if (node.kind === 'process') return { width: side, height: side * 0.56 };
-  const art = ART[node.id];
-  if (!art) return { width: side, height: side };
-  const aspect = art.height / art.width;
+  const image = art[node.id];
+  if (!image) return { width: side, height: side };
+  const aspect = image.height / image.width;
   if (aspect >= 1) return { width: side / aspect, height: side };
   return { width: side, height: side * aspect };
 }
 
-function payloadFor(node: HierarchyNode, width: number, height: number): CanvasObject['payload'] {
-  const art = ART[node.id];
-  if (art) {
-    return { type: 'image', src: art.src, width, height, frame: false };
+function payloadFor(
+  node: HierarchyNode,
+  width: number,
+  height: number,
+  art: Readonly<Record<string, LayoutArt>>,
+): CanvasObject['payload'] {
+  const image = art[node.id];
+  if (image) {
+    return { type: 'image', src: image.src, width, height, frame: false };
   }
   const kind: ShapePayload['kind'] = node.kind;
   return { type: 'shape', kind, width, height };
@@ -240,10 +298,14 @@ function payloadFor(node: HierarchyNode, width: number, height: number): CanvasO
  * and clear of siblings already living there. Returns null when `dims`
  * cannot fit at this size.
  */
-function layoutBoxes(dims: readonly { width: number; height: number }[], space: Space): Box[] | null {
+function layoutBoxes(
+  dims: readonly { width: number; height: number }[],
+  space: Space,
+  policies: Readonly<Record<string, SpacePolicy>>,
+): Box[] | null {
   const n = dims.length;
   if (n === 0) return null;
-  const frame = contentFrame(space, 'nodes');
+  const frame = contentFrame(space, 'nodes', policies);
   const pad = Math.min(frame.width, frame.height) * 0.04;
   if (n === 1) {
     const dim = dims[0];
@@ -322,7 +384,7 @@ function smallestSeparatedRadius(dims: readonly { width: number; height: number 
 
 /**
  * Edge and corner anchors for a parent that is already full in the middle.
- * The built phone parts sit there; later siblings take whatever margin remains.
+ * Later siblings take whatever margin remains.
  */
 function greedySlots(
   dims: readonly { width: number; height: number }[],
@@ -356,13 +418,16 @@ function greedySlots(
 }
 
 /**
- * Deep levels keep nodes and labels in the middle of the parent. At 1.6× the
- * parent's fit the view shows about the central 60%, so a label on the edge
- * would sit off screen. The hand-placed phone parts use the whole footprint.
+ * A full-frame space uses its whole footprint. Every other space keeps nodes
+ * and labels in the middle: at 1.6× the parent's fit the view shows about the
+ * central 60%, so a label on the edge would sit off screen.
  */
-function contentFrame(space: Space, role: 'nodes' | 'labels'): { width: number; height: number } {
-  const hand = space.id === 'internals' || space.id === 'battery-internals';
-  if (hand) return { width: space.width, height: space.height };
+function contentFrame(
+  space: Space,
+  role: 'nodes' | 'labels',
+  policies: Readonly<Record<string, SpacePolicy>>,
+): { width: number; height: number } {
+  if (policies[space.id]?.fullFrame) return { width: space.width, height: space.height };
   // Nodes sit in the middle. Labels use the band just outside them, still
   // inside the region that stays on screen at 1.6× the parent's fit.
   const fraction = role === 'nodes' ? 0.42 : 0.58;
@@ -448,11 +513,14 @@ function overlaps(a: Box, b: Box, gap: number): boolean {
   );
 }
 
-function labelBounds(text: string, space: Space): { width: number; height: number; fontSize: number } {
-  const levelOne = space.id === 'internals' || space.id === 'battery-internals';
-  if (levelOne) {
-    const fontSize = 4.2;
-    return { fontSize, width: Math.max(fontSize * 3, text.length * fontSize * 0.62), height: fontSize };
+function labelBounds(
+  text: string,
+  space: Space,
+  policies: Readonly<Record<string, SpacePolicy>>,
+): { width: number; height: number; fontSize: number } {
+  const fixed = policies[space.id]?.labelFontSize;
+  if (fixed !== undefined) {
+    return { fontSize: fixed, width: Math.max(fixed * 3, text.length * fixed * 0.62), height: fixed };
   }
   const parentWorldW = space.width * space.placedScale;
   const parentWorldH = space.height * space.placedScale;
@@ -483,8 +551,9 @@ function placeLabel(
   label: { width: number; height: number },
   blocked: readonly Box[],
   space: Space,
+  policies: Readonly<Record<string, SpacePolicy>>,
 ): { x: number; y: number; scale: number } {
-  const preferred = contentFrame(space, 'labels');
+  const preferred = contentFrame(space, 'labels', policies);
   const parent = { width: space.width, height: space.height };
   // Out along the node's own ray, so sibling leaders do not cross.
   const angle = nudgeOffAxes(Math.hypot(node.x, node.y) < 1e-9 ? (32 * Math.PI) / 180 : Math.atan2(node.y, node.x));

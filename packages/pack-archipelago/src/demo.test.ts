@@ -1,6 +1,6 @@
 import { createMemoryStore, deriveCameraLimits, MAX_SCALE, MIN_SCALE, viewBounds, visibilityAlpha } from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
-import { demoObjects, demoPack, titleFitWidth } from './demo';
+import { demoObjects, demoPack, titleFitPose, titleFitWidth } from './demo';
 import { darkTheme } from './theme';
 
 function visibleAt(scale: number) {
@@ -14,6 +14,8 @@ describe('demo atlas', () => {
     expect(demoObjects.some((object) => object.payload.type === 'text')).toBe(true);
     expect(demoObjects.some((object) => object.payload.type === 'image')).toBe(true);
     expect(titleFitWidth).toBe(6300);
+    expect(titleFitPose).toEqual({ x: 0, y: -80, scale: 0.1 });
+    expect(demoPack.titleFitPose).toBe(titleFitPose);
     expect(demoPack.theme).toBe(darkTheme);
     expect(demoPack.objects).toBe(demoObjects);
     const title = demoObjects.find((object) => object.id === 'overview-title');

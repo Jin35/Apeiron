@@ -1,25 +1,29 @@
 import { clampScale, type Camera } from './camera';
+import type { TitleFitPose } from './theme';
 
 /**
- * Session opening camera. The atlas does not choose this; the shell does.
- * Desktop keeps `initialCamera`. A narrow viewport zooms out so the title fits.
- * `?scale=&x=&y=` overrides the fitted camera.
+ * Neutral opening camera. A pack that fits a title passes its own pose.
+ * `?scale=&x=&y=` overrides whatever the caller fitted.
  */
-export const initialCamera: Camera = { x: 0, y: -80, scale: 0.1 };
+export const initialCamera: Camera = { x: 0, y: 0, scale: 1 };
 
 /**
- * Desktop keeps `initialCamera`. A narrow viewport zooms out so a title
- * `titleWorldWidth` world units wide fits in about 86% of the view.
- * The caller passes that width. Scale does not drop below 0.04.
+ * Fit a title `titleWorldWidth` world units wide into about 86% of the view.
+ * Scale does not rise above the pose's desktop scale, and does not drop below 0.04.
+ * The default pose is `initialCamera`.
  */
-export function initialCameraFor(viewWidth: number, titleWorldWidth: number): Camera {
+export function initialCameraFor(
+  viewWidth: number,
+  titleWorldWidth: number,
+  pose: TitleFitPose = initialCamera,
+): Camera {
   const width = viewWidth > 0 ? viewWidth : 1280;
   const fitted =
     titleWorldWidth > 0 && Number.isFinite(titleWorldWidth)
       ? (width * 0.86) / titleWorldWidth
-      : initialCamera.scale;
-  const scale = Math.min(initialCamera.scale, Math.max(0.04, fitted));
-  return { x: initialCamera.x, y: initialCamera.y, scale };
+      : pose.scale;
+  const scale = Math.min(pose.scale, Math.max(0.04, fitted));
+  return { x: pose.x, y: pose.y, scale };
 }
 
 /**

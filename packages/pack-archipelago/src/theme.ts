@@ -15,6 +15,9 @@ export const darkTheme: Theme = {
   ui: '#f3efe6',
   muted: '#8b95a3',
   buttonHover: 'rgba(36, 40, 48, 0.94)',
+  plate: '#171b22',
+  placeholder: '#8d8d8d',
+  placeholderLine: '#e7e7e7',
   displayFont: DISPLAY,
   bodyFont: BODY,
 };

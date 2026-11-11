@@ -5,7 +5,7 @@ import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
 import type { CanvasObject, LinkStyle, ShapePayload, TextPayload } from './model';
 import { coordinateIsCoarse, projectCss, type CssBox } from './project';
-import { fallbackTheme, withAlpha, type Theme } from './theme';
+import { fallbackTheme, paintColors, withAlpha, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
 
 /** One object to paint, with the alpha to use. */
@@ -13,8 +13,6 @@ type VisibleObject = {
   object: CanvasObject;
   alpha: number;
 };
-
-const PLATE = '#171b22';
 
 /** Grid hairline and plate frame, in CSS pixels. */
 const GRID_LINE_PX = 1;
@@ -26,10 +24,6 @@ const SELECT_LINE_PX = 2;
 const SELECT_ALPHA = 0.9;
 /** Plate frame is the accent, fainter than the selection. */
 const FRAME_ALPHA = 0.45;
-
-/** Neutral mid-grey stand-in, with a light outline so it reads on a light page. */
-const PLACEHOLDER_FILL = '#8d8d8d';
-const PLACEHOLDER_LINE = '#e7e7e7';
 
 /**
  * A screen font above this is not submitted. Atlas labels peak near 185px,
@@ -191,7 +185,7 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       } else if (object.payload.type === 'text') {
         drawTextObject(ctx, theme, camera, box, object.payload);
       } else if (object.payload.type === 'shape') {
-        drawShapeObject(ctx, box, object.payload);
+        drawShapeObject(ctx, theme, box, object.payload);
       }
     }
     // After the objects, so the stroke stays visible across other parts.
@@ -446,9 +440,10 @@ function drawImageObject(
   const { left, top, width: cssW, height: cssH } = box;
   if (!(cssW > 0) || !(cssH > 0)) return;
 
+  const plate = paintColors(theme).plate;
   if (coordsArePrecise(left, top, cssW, cssH)) {
     if (framed) {
-      ctx.fillStyle = PLATE;
+      ctx.fillStyle = plate;
       ctx.fillRect(left, top, cssW, cssH);
     }
     if (image.complete && image.naturalWidth > 0) {
@@ -465,7 +460,7 @@ function drawImageObject(
   const fill = clipToView(left, top, cssW, cssH, viewW, viewH);
   if (fill) {
     if (framed) {
-      ctx.fillStyle = PLATE;
+      ctx.fillStyle = plate;
       ctx.fillRect(fill.x, fill.y, fill.w, fill.h);
     }
     if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
@@ -480,16 +475,17 @@ function drawImageObject(
 }
 
 /** Grey stand-in. Views are dashed; processes are pills; parts are rounded squares. */
-function drawShapeObject(ctx: CanvasRenderingContext2D, box: CssBox, payload: ShapePayload) {
+function drawShapeObject(ctx: CanvasRenderingContext2D, theme: Theme, box: CssBox, payload: ShapePayload) {
   const { left, top, width, height } = box;
   if (!(width > 0) || !(height > 0)) return;
   const radius =
     payload.kind === 'process' ? Math.min(width, height) / 2 : Math.min(width, height) * 0.18;
+  const paint = paintColors(theme);
   ctx.beginPath();
   roundedRect(ctx, left, top, width, height, radius);
-  ctx.fillStyle = PLACEHOLDER_FILL;
+  ctx.fillStyle = paint.placeholder;
   ctx.fill();
-  ctx.strokeStyle = PLACEHOLDER_LINE;
+  ctx.strokeStyle = paint.placeholderLine;
   ctx.lineWidth = 1.5;
   ctx.setLineDash(payload.kind === 'view' ? [7, 5] : []);
   ctx.stroke();

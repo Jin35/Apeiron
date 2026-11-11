@@ -1,28 +1,39 @@
 import { describe, expect, it } from 'vitest';
 import { cameraFromLocation, initialCamera, initialCameraFor } from './bootstrap';
 import { MAX_SCALE, MIN_SCALE } from './camera';
+import type { TitleFitPose } from './theme';
+
+const atlasPose: TitleFitPose = { x: 0, y: -80, scale: 0.1 };
 
 describe('opening camera', () => {
-  it('keeps the desktop view and zooms out so the title fits on a narrow viewport', () => {
+  it('opens at the origin and scale 1 unless a pose says otherwise', () => {
+    expect(initialCamera).toEqual({ x: 0, y: 0, scale: 1 });
+    expect(initialCameraFor(1440, 100)).toEqual(initialCamera);
+    const wide = initialCameraFor(1440, 20000);
+    expect(wide).toEqual({ x: 0, y: 0, scale: (1440 * 0.86) / 20000 });
+    expect(initialCameraFor(200, 20000).scale).toBe(0.04);
+  });
+
+  it('keeps a caller pose on desktop and zooms out so the title fits on a narrow viewport', () => {
     const title = 6300;
-    expect(initialCameraFor(1440, title)).toEqual(initialCamera);
-    expect(initialCameraFor(0, title)).toEqual(initialCamera);
-    const narrow = initialCameraFor(390, title);
-    expect(narrow).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
+    expect(initialCameraFor(1440, title, atlasPose)).toEqual(atlasPose);
+    expect(initialCameraFor(0, title, atlasPose)).toEqual(atlasPose);
+    const narrow = initialCameraFor(390, title, atlasPose);
+    expect(narrow).toMatchObject({ x: atlasPose.x, y: atlasPose.y });
     expect(narrow.scale).toBeLessThan(0.06);
     expect(narrow.scale * title).toBeLessThan(360);
-    expect(initialCameraFor(200, title).scale).toBe(0.04);
+    expect(initialCameraFor(200, title, atlasPose).scale).toBe(0.04);
   });
 
   it('fits the scale to the title width it is given', () => {
-    const narrow = initialCameraFor(390, 6300);
-    const wider = initialCameraFor(390, 7000);
+    const narrow = initialCameraFor(390, 6300, atlasPose);
+    const wider = initialCameraFor(390, 7000, atlasPose);
     expect(wider.scale).toBeLessThan(narrow.scale);
     expect(wider.scale).toBeCloseTo((390 * 0.86) / 7000);
-    expect(wider).toMatchObject({ x: initialCamera.x, y: initialCamera.y });
+    expect(wider).toMatchObject({ x: atlasPose.x, y: atlasPose.y });
 
-    const desktop = initialCameraFor(1440, 20000);
-    expect(desktop.scale).toBeLessThan(initialCamera.scale);
+    const desktop = initialCameraFor(1440, 20000, atlasPose);
+    expect(desktop.scale).toBeLessThan(atlasPose.scale);
     expect(desktop.scale).toBeCloseTo((1440 * 0.86) / 20000);
   });
 

@@ -9,8 +9,7 @@ import {
   type ViewBounds,
 } from '@apeiron/core';
 import { describe, expect, it } from 'vitest';
-import { hierarchyNodes } from './hierarchy.generated';
-import { smartphoneLayoutReport, smartphoneObjects } from './smartphone';
+import { hierarchyNodes, smartphoneLayoutReport, smartphoneObjects } from './smartphone';
 
 const view = { width: 1280, height: 800 };
 

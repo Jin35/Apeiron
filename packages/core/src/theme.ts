@@ -1,6 +1,11 @@
 import type { CameraLimits } from './camera';
 import type { CanvasObject } from './model';
 
+/** Neutral plate and placeholder colors. A pack overrides them on its theme. */
+const NEUTRAL_PLATE = '#171b22';
+const NEUTRAL_PLACEHOLDER = '#8d8d8d';
+const NEUTRAL_PLACEHOLDER_LINE = '#e7e7e7';
+
 /**
  * Look for one content pack. Plain data: the renderer and the shell read it.
  *
@@ -34,6 +39,18 @@ export type Theme = {
    * Resting zoom-button color. Omit to mix `ui` into the page background.
    */
   buttonHover?: string;
+  /**
+   * Fill behind a framed image. Omit for the neutral plate.
+   */
+  plate?: string;
+  /**
+   * Placeholder shape fill. Omit for the neutral grey.
+   */
+  placeholder?: string;
+  /**
+   * Placeholder outline. Omit for the neutral light line.
+   */
+  placeholderLine?: string;
 };
 
 /** Hairline grid. Absent on a theme means the renderer draws none. */
@@ -64,10 +81,25 @@ export type ContentPack = {
    */
   titleFitWidth?: number;
   /**
+   * Camera centre and desktop scale used with `titleFitWidth`.
+   * Omit for the neutral pose: the origin at scale 1.
+   */
+  titleFitPose?: TitleFitPose;
+  /**
    * Scale multiplier for `?focus=&into=1`. Omit to keep the framed fit.
    * A pack sets this to the same ratio its fades already use.
    */
   intoFactor?: number;
+};
+
+/**
+ * Opening camera for a title fit. `scale` is the desktop cap; a narrower
+ * view only zooms out from it.
+ */
+export type TitleFitPose = {
+  x: number;
+  y: number;
+  scale: number;
 };
 
 /**
@@ -81,7 +113,19 @@ export const fallbackTheme: Theme = {
   ui: '#111111',
   displayFont: 'sans-serif',
   bodyFont: 'sans-serif',
+  plate: NEUTRAL_PLATE,
+  placeholder: NEUTRAL_PLACEHOLDER,
+  placeholderLine: NEUTRAL_PLACEHOLDER_LINE,
 };
+
+/** Plate and placeholder colors, using the neutral defaults when a theme omits them. */
+export function paintColors(theme: Theme): { plate: string; placeholder: string; placeholderLine: string } {
+  return {
+    plate: theme.plate ?? NEUTRAL_PLATE,
+    placeholder: theme.placeholder ?? NEUTRAL_PLACEHOLDER,
+    placeholderLine: theme.placeholderLine ?? NEUTRAL_PLACEHOLDER_LINE,
+  };
+}
 
 /** `#rgb` / `#rrggbb` as `rgba(r, g, b, a)`. */
 export function withAlpha(color: string, alpha: number): string {

@@ -1,4 +1,4 @@
-import type { CanvasObject, ContentPack, TextStyle, VisibilityRange } from '@apeiron/core';
+import type { CanvasObject, ContentPack, TextStyle, TitleFitPose, VisibilityRange } from '@apeiron/core';
 import { darkTheme } from './theme';
 
 /**
@@ -80,6 +80,9 @@ const western = { x: -2200, y: 1550 };
  */
 export const titleFitWidth = 6300;
 
+/** Desktop opens here. A narrow view only zooms out, so the title still fits. */
+export const titleFitPose: TitleFitPose = { x: 0, y: -80, scale: 0.1 };
+
 export const demoObjects: CanvasObject[] = [
   text('overview-title', 0, -420, 'THE ARCHIPELAGO', 520, GOLD, overview, 10870.6, 808.6, {
     fontWeight: '650',
@@ -142,6 +145,7 @@ export const demoPack: ContentPack = {
   theme: darkTheme,
   objects: demoObjects,
   titleFitWidth,
+  titleFitPose,
   // `?focus=&into=1` still opens at 1.6× the framed fit, as the page always has.
   intoFactor: 1.6,
 };
