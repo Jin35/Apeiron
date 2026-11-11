@@ -1,0 +1,12 @@
+{
+  "name": "@apeiron/pack-archipelago",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@apeiron/core": "*"
+  }
+}

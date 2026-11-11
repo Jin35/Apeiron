@@ -1,0 +1,1095 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { boxFitScale, type Camera } from './camera';
+import { clipLeaderLine, resolveWorldRect } from './link';
+import type { CanvasObject, VisibilityRange } from './model';
+import { createRenderer } from './render';
+import type { VisibleObject } from './store';
+import { fallbackTheme, type Theme } from './theme';
+
+const sampleTheme: Theme = {
+  background: '#204060',
+  ink: '#d0e8ff',
+  accent: '#88aacc',
+  ui: '#c0d0e0',
+  displayFont: 'Fixture Display, serif',
+  bodyFont: 'Fixture Body, sans-serif',
+  paper: {
+    vignette: 'rgba(1, 2, 3, 0.25)',
+    grain: 'rgba(4, 5, 6, 0.2)',
+  },
+};
+import { visibilityAlpha } from './visibility';
+
+const camera: Camera = { x: 0, y: 0, scale: 4 };
+
+type Paint =
+  | { kind: 'text'; text: string; alpha: number }
+  | { kind: 'image'; alpha: number };
+
+type TransformCall = [number, number, number, number, number, number];
+
+type Xy = { x: number; y: number };
+
+type TextCall = Xy & { text: string };
+
+type RectCall = { x: number; y: number; w: number; h: number };
+
+type TextMetricsLike = {
+  width: number;
+  actualBoundingBoxAscent?: number;
+  actualBoundingBoxDescent?: number;
+};
+
+type RecordedContext = CanvasRenderingContext2D & {
+  paints: Paint[];
+  transforms: TransformCall[];
+  fonts: string[];
+  lineWidths: number[];
+  strokeStyles: string[];
+  fillStyles: string[];
+  fillTexts: TextCall[];
+  strokeRects: RectCall[];
+  fillRects: RectCall[];
+  drawImages: number[];
+  gradients: number;
+  strokes: StrokeCall[];
+  lineDashes: number[][];
+};
+
+type StrokeCall = { x1: number; y1: number; x2: number; y2: number; alpha: number };
+
+class FakeImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  complete = false;
+  naturalWidth = 0;
+  naturalHeight = 0;
+  src = '';
+
+  constructor() {
+    images.push(this);
+  }
+}
+
+const images: FakeImage[] = [];
+
+function recordingContext(options?: {
+  measureText?: (text: string) => TextMetricsLike | undefined;
+}): RecordedContext {
+  const state = { globalAlpha: 1 };
+  const paints: Paint[] = [];
+  const transforms: TransformCall[] = [];
+  const fonts: string[] = [];
+  const lineWidths: number[] = [];
+  const strokeStyles: string[] = [];
+  const fillStyles: string[] = [];
+  const fillTexts: TextCall[] = [];
+  const strokeRects: RectCall[] = [];
+  const fillRects: RectCall[] = [];
+  const drawImages: number[] = [];
+  const gradients = { n: 0 };
+  const strokes: StrokeCall[] = [];
+  const lineDashes: number[][] = [];
+  let pathStart: Xy | null = null;
+  let pathEnd: Xy | null = null;
+  const ctx = new Proxy({} as RecordedContext, {
+    get(_target, prop) {
+      if (prop === 'paints') return paints;
+      if (prop === 'transforms') return transforms;
+      if (prop === 'fonts') return fonts;
+      if (prop === 'lineWidths') return lineWidths;
+      if (prop === 'strokeStyles') return strokeStyles;
+      if (prop === 'fillStyles') return fillStyles;
+      if (prop === 'fillTexts') return fillTexts;
+      if (prop === 'strokeRects') return strokeRects;
+      if (prop === 'fillRects') return fillRects;
+      if (prop === 'drawImages') return drawImages;
+      if (prop === 'gradients') return gradients.n;
+      if (prop === 'strokes') return strokes;
+      if (prop === 'lineDashes') return lineDashes;
+      if (prop === 'beginPath') {
+        return () => {
+          pathStart = null;
+          pathEnd = null;
+        };
+      }
+      if (prop === 'moveTo') {
+        return (x: number, y: number) => {
+          pathStart = { x, y };
+          pathEnd = { x, y };
+        };
+      }
+      if (prop === 'lineTo') {
+        return (x: number, y: number) => {
+          pathEnd = { x, y };
+        };
+      }
+      if (prop === 'stroke') {
+        return () => {
+          if (!pathStart || !pathEnd) return;
+          strokes.push({
+            x1: pathStart.x,
+            y1: pathStart.y,
+            x2: pathEnd.x,
+            y2: pathEnd.y,
+            alpha: state.globalAlpha,
+          });
+        };
+      }
+      if (prop === 'createRadialGradient') {
+        return () => {
+          gradients.n += 1;
+          return { addColorStop() {} };
+        };
+      }
+      if (prop === 'globalAlpha') return state.globalAlpha;
+      if (prop === 'setTransform') {
+        return (a: number, b: number, c: number, d: number, e: number, f: number) => {
+          transforms.push([a, b, c, d, e, f]);
+        };
+      }
+      if (prop === 'measureText') {
+        return options?.measureText ?? (() => undefined);
+      }
+      if (prop === 'fillText') {
+        return (text: string, x: number, y: number) => {
+          paints.push({ kind: 'text', text, alpha: state.globalAlpha });
+          fillTexts.push({ text, x, y });
+        };
+      }
+      if (prop === 'strokeRect') {
+        return (x: number, y: number, w: number, h: number) => {
+          paints.push({ kind: 'image', alpha: state.globalAlpha });
+          strokeRects.push({ x, y, w, h });
+        };
+      }
+      if (prop === 'fillRect') {
+        return (x: number, y: number, w: number, h: number) => {
+          fillRects.push({ x, y, w, h });
+        };
+      }
+      if (prop === 'drawImage') {
+        return () => {
+          drawImages.push(state.globalAlpha);
+        };
+      }
+      if (prop === 'setLineDash') {
+        return (segments: number[]) => {
+          lineDashes.push([...segments]);
+        };
+      }
+      return () => {};
+    },
+    set(_target, prop, value: unknown) {
+      if (prop === 'globalAlpha' && typeof value === 'number') state.globalAlpha = value;
+      if (prop === 'font' && typeof value === 'string') fonts.push(value);
+      if (prop === 'lineWidth' && typeof value === 'number') lineWidths.push(value);
+      if (prop === 'strokeStyle' && typeof value === 'string') strokeStyles.push(value);
+      if (prop === 'fillStyle' && typeof value === 'string') fillStyles.push(value);
+      return true;
+    },
+  });
+  return ctx;
+}
+
+function canvasFor(ctx: CanvasRenderingContext2D): HTMLCanvasElement {
+  return {
+    width: 0,
+    height: 0,
+    getContext: () => ctx,
+    getBoundingClientRect: () => ({
+      width: 800,
+      height: 600,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      x: 0,
+      y: 0,
+      toJSON() {
+        return {};
+      },
+    }),
+  } as unknown as HTMLCanvasElement;
+}
+
+function textObject(id: string, visibility: VisibilityRange): CanvasObject {
+  return {
+    id,
+    x: 0,
+    y: 0,
+    visibility,
+    payload: { type: 'text', text: id, style: { fontSize: 12, color: '#fff' }, width: 40, height: 16 },
+  };
+}
+
+function imageObject(id: string, src: string, visibility: VisibilityRange): CanvasObject {
+  return {
+    id,
+    x: 0,
+    y: 0,
+    visibility,
+    payload: { type: 'image', src, width: 10, height: 10 },
+  };
+}
+
+function visible(object: CanvasObject, alpha: number): VisibleObject {
+  return { object, alpha };
+}
+
+function paintsOf(ctx: CanvasRenderingContext2D): Paint[] {
+  return (ctx as RecordedContext).paints;
+}
+
+function transformsOf(ctx: CanvasRenderingContext2D): TransformCall[] {
+  return (ctx as RecordedContext).transforms;
+}
+
+function fontsOf(ctx: CanvasRenderingContext2D): string[] {
+  return (ctx as RecordedContext).fonts;
+}
+
+function lineWidthsOf(ctx: CanvasRenderingContext2D): number[] {
+  return (ctx as RecordedContext).lineWidths;
+}
+
+function strokeStylesOf(ctx: CanvasRenderingContext2D): string[] {
+  return (ctx as RecordedContext).strokeStyles;
+}
+
+function fillStylesOf(ctx: CanvasRenderingContext2D): string[] {
+  return (ctx as RecordedContext).fillStyles;
+}
+
+function gradientsOf(ctx: CanvasRenderingContext2D): number {
+  return (ctx as RecordedContext).gradients;
+}
+
+function fillTextsOf(ctx: CanvasRenderingContext2D): TextCall[] {
+  return (ctx as RecordedContext).fillTexts;
+}
+
+function strokeRectsOf(ctx: CanvasRenderingContext2D): RectCall[] {
+  return (ctx as RecordedContext).strokeRects;
+}
+
+function strokesOf(ctx: CanvasRenderingContext2D): StrokeCall[] {
+  return (ctx as RecordedContext).strokes;
+}
+
+function fillRectsOf(ctx: CanvasRenderingContext2D): RectCall[] {
+  return (ctx as RecordedContext).fillRects;
+}
+
+beforeEach(() => {
+  images.length = 0;
+  vi.stubGlobal('window', { devicePixelRatio: 1 });
+  vi.stubGlobal('Image', FakeImage);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('createRenderer', () => {
+  it('paints the provided alpha in ascending maxScale order', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const low: VisibilityRange = { minScale: 1, maxScale: 2 };
+    const mid: VisibilityRange = { minScale: 1, maxScale: 8 };
+    const fine: VisibilityRange = { minScale: 1, maxScale: 64 };
+
+    expect(visibilityAlpha(low, camera.scale)).toBe(0);
+    expect(visibilityAlpha(fine, camera.scale)).toBe(1);
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [
+        visible(textObject('fine', fine), 0.55),
+        visible(textObject('early', low), 0.3),
+        visible(textObject('mid', mid), 0.011),
+        visible(textObject('late', low), 0.2),
+      ],
+    });
+
+    expect(paintsOf(ctx)).toEqual([
+      { kind: 'text', text: 'early', alpha: 0.3 },
+      { kind: 'text', text: 'late', alpha: 0.2 },
+      { kind: 'text', text: 'mid', alpha: 0.011 },
+      { kind: 'text', text: 'fine', alpha: 0.55 },
+    ]);
+    expect(transformsOf(ctx)).toEqual([[1, 0, 0, 1, 0, 0]]);
+    expect(fillTextsOf(ctx).every((entry) => entry.x === 400 && entry.y === 300)).toBe(true);
+    expect(fontsOf(ctx).every((font) => font.includes('48px'))).toBe(true);
+  });
+
+  it('leaves absolute image urls unchanged and prefixes site paths', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 16 };
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [
+        visible(imageObject('plate', 'images/mark.svg', visibility), 1),
+        visible(imageObject('secure', 'https://example.com/mark.svg', visibility), 1),
+        visible(imageObject('plain', 'http://example.com/plate.svg', visibility), 1),
+      ],
+    });
+
+    const base = import.meta.env.BASE_URL;
+    const site = base.endsWith('/') ? `${base}images/mark.svg` : `${base}/images/mark.svg`;
+    expect(images.map((image) => image.src)).toEqual([
+      site,
+      'https://example.com/mark.svg',
+      'http://example.com/plate.svg',
+    ]);
+    expect(site).not.toBe('images/mark.svg');
+  });
+
+  it('fetches an image only when this frame draws it', () => {
+    const ctx = recordingContext();
+    const onReady = vi.fn();
+    const renderer = createRenderer(canvasFor(ctx), onReady);
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)],
+    });
+
+    expect(images).toEqual([]);
+    expect(paintsOf(ctx)).toEqual([{ kind: 'text', text: 'label', alpha: 1 }]);
+    expect(onReady).not.toHaveBeenCalled();
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', { minScale: 1, maxScale: 16 }), 1)],
+    });
+
+    expect(images.map((image) => image.src)).toEqual([expect.stringContaining('images/buoy.svg')]);
+    images[0]?.onerror?.();
+    expect(onReady).toHaveBeenCalledOnce();
+  });
+
+  it('keeps 32 settled images and drops the least recently drawn', () => {
+    const ctx = recordingContext();
+    const onReady = vi.fn();
+    const renderer = createRenderer(canvasFor(ctx), onReady);
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 64 };
+    const settled = Array.from({ length: 32 }, (_, index) => `images/plate-${index}.svg`);
+    const waiting = Array.from({ length: 5 }, (_, index) => `images/new-${index}.svg`);
+
+    function drawSrcs(srcs: readonly string[]) {
+      renderer.draw({
+        camera,
+        width: 800,
+        height: 600,
+        visible: srcs.map((src) => visible(imageObject(src, src, visibility), 1)),
+      });
+    }
+
+    drawSrcs(settled);
+    expect(images).toHaveLength(32);
+    for (const image of images) image.onload?.();
+    expect(onReady).toHaveBeenCalledTimes(32);
+
+    // plate-0 was drawn first. Draw it again so a later eviction skips it.
+    drawSrcs([settled[0]]);
+    expect(images).toHaveLength(32);
+
+    // In-flight loads stay even though 32 images have already settled.
+    drawSrcs(waiting);
+    expect(images).toHaveLength(37);
+    drawSrcs([settled[0], waiting[4]]);
+    expect(images).toHaveLength(37);
+
+    // Settling one of them evicts plate-1, the least recently drawn settled image.
+    images[32]?.onerror?.();
+    expect(onReady).toHaveBeenCalledTimes(33);
+    drawSrcs([settled[1]]);
+    expect(images).toHaveLength(38);
+    expect(images[37]?.src).toEqual(expect.stringContaining('images/plate-1.svg'));
+
+    // The redrawn plate, the image that just settled, and one that has not loaded yet stay cached.
+    drawSrcs([settled[0], waiting[0], waiting[1]]);
+    expect(images).toHaveLength(38);
+  });
+
+  it('paints a visible image at the provided alpha and loads it once', () => {
+    const ctx = recordingContext();
+    const onReady = vi.fn();
+    const renderer = createRenderer(canvasFor(ctx), onReady);
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 2 };
+    expect(visibilityAlpha(visibility, camera.scale)).toBe(0);
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4)],
+    });
+
+    expect(images).toHaveLength(1);
+    expect(images[0]?.src).toEqual(expect.stringContaining('images/buoy.svg'));
+    expect(paintsOf(ctx)).toEqual([{ kind: 'image', alpha: 0.4 }]);
+    expect(strokeRectsOf(ctx)).toEqual([{ x: 380, y: 280, w: 40, h: 40 }]);
+    expect(lineWidthsOf(ctx)).toEqual([1.25]);
+
+    images[0]?.onload?.();
+    expect(onReady).toHaveBeenCalledOnce();
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(imageObject('buoy', 'images/buoy.svg', visibility), 0.4)],
+    });
+    expect(images).toHaveLength(1);
+  });
+
+  it('draws a cut-out image without the plate fill or frame', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 1, maxScale: 8 };
+    const cutout = imageObject('plate', 'images/cutout.webp', visibility);
+    if (cutout.payload.type === 'image') cutout.payload.frame = false;
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: sampleTheme,
+      visible: [visible(cutout, 1)],
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([]);
+    expect(fillStylesOf(ctx)).not.toContain('#171b22');
+    expect((ctx as RecordedContext).drawImages).toEqual([]);
+
+    const image = images[0];
+    if (!image) throw new Error('expected an image load');
+    image.complete = true;
+    image.naturalWidth = 331;
+    image.naturalHeight = 649;
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: sampleTheme,
+      visible: [visible(cutout, 1)],
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([]);
+    expect(fillStylesOf(ctx)).not.toContain('#171b22');
+    expect((ctx as RecordedContext).drawImages).toEqual([1]);
+  });
+
+  it('fades by relative zoom and does not draw or fetch at alpha 0', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const visibility: VisibilityRange = { minScale: 0.01, maxScale: 10000 };
+    const fitScale = 4;
+    const front = imageObject('plate', 'images/cutout.webp', visibility);
+    front.fade = { fadeOut: [1, 2] };
+    if (front.payload.type === 'image') front.payload.frame = false;
+    const part = imageObject('part', 'images/part.webp', visibility);
+    part.fade = { fadeIn: [1, 2] };
+    if (part.payload.type === 'image') part.payload.frame = false;
+
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'plate',
+      visible: [visible(front, 1)],
+    });
+    expect(images).toHaveLength(0);
+    expect(paintsOf(ctx)).toEqual([]);
+    expect(strokeRectsOf(ctx)).toEqual([]);
+
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 1.2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'plate',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    for (const image of images) {
+      image.complete = true;
+      image.naturalWidth = 8;
+      image.naturalHeight = 8;
+    }
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 1.2 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'plate',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    // Image draws record alpha on drawImage. 10 world units at r = 1.2 (scale 4.8) is 48px.
+    const drawn = (ctx as RecordedContext).drawImages;
+    expect(drawn).toEqual([expect.closeTo(0.2), expect.closeTo(0.8)]);
+    expect(strokeRectsOf(ctx).at(-1)).toEqual({ x: 376, y: 276, w: 48, h: 48 });
+
+    const drawnBefore = drawn.length;
+    const strokesBefore = strokeRectsOf(ctx).length;
+    renderer.draw({
+      camera: { x: 0, y: 0, scale: fitScale * 3 },
+      width: 800,
+      height: 600,
+      fitScale,
+      selectedId: 'plate',
+      visible: [visible(part, 1), visible(front, 1)],
+    });
+    expect(drawn.slice(drawnBefore)).toEqual([1]);
+    expect(strokeRectsOf(ctx)).toHaveLength(strokesBefore);
+  });
+
+  it('sizes the bitmap from the frame and does not measure the canvas', () => {
+    const ctx = recordingContext();
+    const canvas = canvasFor(ctx);
+    canvas.getBoundingClientRect = () => {
+      throw new Error('draw should not measure the canvas');
+    };
+    const renderer = createRenderer(canvas, () => {});
+
+    renderer.draw({
+      camera,
+      width: 100,
+      height: 40,
+      visible: [visible(textObject('label', { minScale: 1, maxScale: 16 }), 1)],
+    });
+
+    expect(canvas.width).toBe(100);
+    expect(canvas.height).toBe(40);
+    expect(paintsOf(ctx)).toEqual([{ kind: 'text', text: 'label', alpha: 1 }]);
+  });
+
+  it('draws CSS pixels from the camera at a million-to-one scale', () => {
+    vi.stubGlobal('window', { devicePixelRatio: 2 });
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const viewW = 800;
+    const viewH = 600;
+    const deep: Camera = { x: 132, y: -60, scale: 1e6 };
+    const screenFont = 100;
+    const fontSize = screenFont / deep.scale;
+    const painted = fontSize * deep.scale;
+
+    renderer.draw({
+      camera: deep,
+      width: viewW,
+      height: viewH,
+      visible: [
+        visible(plateAt(132, -60, 36, 64), 1),
+        visible(labelAt('pin', 132, -60, fontSize), 1),
+        visible(labelAt('ordinary', 132, -60, 12), 1),
+      ],
+    });
+
+    expect(painted).toBeLessThanOrEqual(512);
+    expect(12 * deep.scale).toBeGreaterThan(512);
+    expect(transformsOf(ctx)).toEqual([[2, 0, 0, 2, 0, 0]]);
+    expect(fontsOf(ctx)).toEqual([expect.stringContaining(`${painted}px`)]);
+    expect(lineWidthsOf(ctx)).toEqual([painted * 0.055]);
+
+    const texts = fillTextsOf(ctx);
+    expect(texts.map((entry) => entry.text)).toEqual(['pin']);
+    expect(Math.abs((texts[0]?.x ?? Number.NaN) - viewW / 2)).toBeLessThan(1);
+    expect(Math.abs((texts[0]?.y ?? Number.NaN) - viewH / 2)).toBeLessThan(1);
+
+    expect(fillRectsOf(ctx)).toEqual([
+      { x: 0, y: 0, w: viewW, h: viewH },
+      { x: 0, y: 0, w: viewW, h: viewH },
+    ]);
+    expect(strokeRectsOf(ctx)).toEqual([]);
+  });
+
+  it('scales text down so the ink fits the authored box', () => {
+    const advance = 200;
+    const ascent = 30;
+    const descent = 10;
+    const ctx = recordingContext({
+      measureText: () => ({ width: advance, actualBoundingBoxAscent: ascent, actualBoundingBoxDescent: descent }),
+    });
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const natural = 12 * camera.scale;
+    const boxW = 10 * camera.scale;
+    const boxH = 8 * camera.scale;
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(sizedLabel('tight', 12, 10, 8), 1)],
+    });
+
+    const drawn = fontPx(fontsOf(ctx).at(-1));
+    expect(drawn).toBeLessThan(natural);
+    const stroke = drawn * 0.055;
+    const scale = drawn / natural;
+    const inkW = advance * scale + stroke;
+    const inkH = (ascent + descent) * scale + stroke;
+    expect(inkW).toBeLessThanOrEqual(boxW + 1e-6);
+    expect(inkH).toBeLessThanOrEqual(boxH + 1e-6);
+    expect(Math.min(boxW - inkW, boxH - inkH)).toBeCloseTo(0, 4);
+    expect(fillTextsOf(ctx)).toEqual([{ text: 'tight', x: 400, y: 300 }]);
+    expect(lineWidthsOf(ctx).at(-1)).toBeCloseTo(drawn * 0.055);
+  });
+
+  it('does not scale text up to fill a larger authored box', () => {
+    const ctx = recordingContext({
+      measureText: () => ({ width: 20, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 4 }),
+    });
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(sizedLabel('loose', 12, 400, 200), 1)],
+    });
+
+    expect(fontsOf(ctx)).toEqual([expect.stringContaining('48px')]);
+    expect(fillTextsOf(ctx)).toEqual([{ text: 'loose', x: 400, y: 300 }]);
+  });
+
+  it('strokes the selected box at a constant screen width', () => {
+    const ctx = recordingContext();
+    const renderer = createRenderer(canvasFor(ctx), () => {});
+    const label = sizedLabel('pin', 12, 10, 8);
+
+    renderer.draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(label, 0.4)],
+      selectedId: 'pin',
+    });
+
+    expect(strokeRectsOf(ctx)).toEqual([{ x: 380, y: 284, w: 40, h: 32 }]);
+    expect(lineWidthsOf(ctx).at(-1)).toBe(2);
+    expect(strokeStylesOf(ctx).at(-1)).toBe('rgba(17, 17, 17, 0.9)');
+
+    const zoomed = recordingContext();
+    createRenderer(canvasFor(zoomed), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 8 },
+      width: 800,
+      height: 600,
+      visible: [visible(label, 0.4)],
+      selectedId: 'pin',
+    });
+    expect(strokeRectsOf(zoomed)).toEqual([{ x: 360, y: 268, w: 80, h: 64 }]);
+    expect(lineWidthsOf(zoomed).at(-1)).toBe(2);
+
+    const missing = recordingContext();
+    createRenderer(canvasFor(missing), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [visible(label, 1)],
+      selectedId: 'other',
+    });
+    expect(strokeRectsOf(missing)).toEqual([]);
+  });
+
+  it('uses the fallback theme when the frame has no theme', () => {
+    const ctx = recordingContext();
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      visible: [],
+    });
+
+    expect(fillStylesOf(ctx)[0]).toBe(fallbackTheme.background);
+    expect(strokeStylesOf(ctx)).toEqual([]);
+    expect(gradientsOf(ctx)).toBe(0);
+  });
+
+  it('draws a grid only when the theme provides one', () => {
+    const bare = recordingContext();
+    createRenderer(canvasFor(bare), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme: sampleTheme,
+      visible: [],
+    });
+    expect(sampleTheme.grid).toBeUndefined();
+    expect(strokeStylesOf(bare)).toEqual([]);
+
+    const ruled = recordingContext();
+    const theme: Theme = { ...sampleTheme, grid: { color: 'rgba(1, 2, 3, 0.4)' } };
+    createRenderer(canvasFor(ruled), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme,
+      visible: [],
+    });
+    expect(strokeStylesOf(ruled)).toEqual(['rgba(1, 2, 3, 0.4)']);
+  });
+
+  it('fills the theme background and ink, and keeps a text color override', () => {
+    const ctx = recordingContext();
+    const theme: Theme = { ...sampleTheme, grid: undefined };
+    const plain: CanvasObject = {
+      id: 'plain',
+      x: 0,
+      y: 0,
+      visibility: { minScale: 1, maxScale: 16 },
+      payload: { type: 'text', text: 'plain', style: { fontSize: 12 }, width: 40, height: 16 },
+    };
+    const override: CanvasObject = {
+      id: 'override',
+      x: 10,
+      y: 0,
+      visibility: { minScale: 1, maxScale: 8 },
+      payload: {
+        type: 'text',
+        text: 'override',
+        style: { fontSize: 12, color: '#f0d78c', fontFamily: 'monospace' },
+        width: 40,
+        height: 16,
+      },
+    };
+
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera,
+      width: 800,
+      height: 600,
+      theme,
+      visible: [visible(plain, 1), visible(override, 1)],
+    });
+
+    expect(fillStylesOf(ctx)[0]).toBe(sampleTheme.background);
+    expect(fillStylesOf(ctx)).toContain(sampleTheme.ink);
+    expect(fillStylesOf(ctx)).toContain('#f0d78c');
+    expect(fillStylesOf(ctx)).toContain(sampleTheme.paper?.grain);
+    expect(strokeStylesOf(ctx)[0]).toBe('rgba(10, 12, 16, 0.75)');
+    expect(fontsOf(ctx).some((font) => font.includes(sampleTheme.displayFont))).toBe(true);
+    expect(fontsOf(ctx).some((font) => font.includes('monospace'))).toBe(true);
+    expect(gradientsOf(ctx)).toBe(1);
+  });
+
+  it('draws a hairline between resolved endpoints and keeps the gap in screen pixels', () => {
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
+    const group: CanvasObject = {
+      id: 'internals',
+      x: 0,
+      y: 0,
+      scale: 0.5,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'group' },
+    };
+    const label: CanvasObject = {
+      id: 'tag-label',
+      parentId: 'internals',
+      x: -40,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      fade: { fadeIn: [1, 2] },
+      payload: { type: 'text', text: 'Tag', style: { fontSize: 4 }, width: 16, height: 8 },
+    };
+    const cell: CanvasObject = {
+      id: 'cell',
+      parentId: 'internals',
+      x: 40,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'image', src: 'images/cell.webp', width: 20, height: 20, frame: false },
+    };
+    const link: CanvasObject = {
+      id: 'cell-link',
+      x: 0,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 10000 },
+      payload: { type: 'link', from: 'tag-label', to: 'cell' },
+    };
+    const objects = [group, label, cell, link];
+    const fitScale = 4;
+
+    const hidden = recordingContext();
+    createRenderer(canvasFor(hidden), () => {}).draw({
+      camera: { x: 0, y: 0, scale: fitScale },
+      width: 400,
+      height: 300,
+      theme,
+      visible: [],
+      objects,
+      fitScale,
+    });
+    expect(strokesOf(hidden)).toEqual([]);
+
+    for (const [scale, alpha] of [
+      [6, 0.5],
+      [8, 1],
+    ] as const) {
+      const ctx = recordingContext();
+      createRenderer(canvasFor(ctx), () => {}).draw({
+        camera: { x: 0, y: 0, scale },
+        width: 400,
+        height: 300,
+        theme,
+        visible: [],
+        objects,
+        fitScale,
+      });
+      const from = resolveWorldRect(objects, 'tag-label');
+      const to = resolveWorldRect(objects, 'cell');
+      if (!from || !to) throw new Error('expected endpoints');
+      const expected = clipLeaderLine(
+        { x: 200 + from.x * scale, y: 150 + from.y * scale, width: from.width * scale, height: from.height * scale },
+        { x: 200 + to.x * scale, y: 150 + to.y * scale, width: to.width * scale, height: to.height * scale },
+        4,
+      );
+      expect(expected).not.toBeNull();
+      expect(strokesOf(ctx)).toEqual([
+        {
+          x1: expected?.x1,
+          y1: expected?.y1,
+          x2: expected?.x2,
+          y2: expected?.y2,
+          alpha,
+        },
+      ]);
+      expect(lineWidthsOf(ctx)).toEqual([1.25]);
+      expect(strokeStylesOf(ctx)).toEqual([sampleTheme.ink]);
+      const drawn = strokesOf(ctx)[0];
+      if (!drawn || !expected) throw new Error('expected a segment');
+      // The stroke stays outside both boxes: 4px of paper, then the edge.
+      expect(drawn.x1).toBeGreaterThan(200 + (from.x + from.width / 2) * scale);
+      expect(drawn.x2).toBeLessThan(200 + (to.x - to.width / 2) * scale);
+    }
+  });
+
+  it('skips a link whose endpoints overlap or are missing', () => {
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
+    const band = { minScale: 0.01, maxScale: 10000 };
+    const left: CanvasObject = {
+      id: 'left',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'text', text: 'A', style: { fontSize: 4 }, width: 20, height: 10 },
+    };
+    const right: CanvasObject = {
+      id: 'right',
+      x: 4,
+      y: 0,
+      visibility: band,
+      payload: { type: 'image', src: 'images/cell.webp', width: 20, height: 10, frame: false },
+    };
+    const overlap: CanvasObject = {
+      id: 'overlap',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'left', to: 'right', style: { color: '#112233', width: 2, gap: 8 } },
+    };
+    const missing: CanvasObject = {
+      id: 'missing',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'left', to: 'gone' },
+    };
+    const ctx = recordingContext();
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 4 },
+      width: 200,
+      height: 200,
+      theme,
+      visible: [],
+      objects: [left, right, overlap, missing],
+    });
+    expect(strokesOf(ctx)).toEqual([]);
+  });
+
+  it('fades sibling parts with the entered part and keeps the link at the lower endpoint', () => {
+    const theme: Theme = { ...sampleTheme, grid: undefined, paper: undefined };
+    const band = { minScale: 0.01, maxScale: 10000 };
+    const reveal = [1, 2] as const;
+    const level: CanvasObject = {
+      id: 'level',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'group' },
+    };
+    const board: CanvasObject = {
+      id: 'board',
+      parentId: 'level',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'image', src: 'images/board.webp', width: 40, height: 40, frame: false },
+    };
+    const speaker: CanvasObject = {
+      id: 'speaker',
+      parentId: 'level',
+      x: 70,
+      y: 0,
+      visibility: band,
+      payload: { type: 'text', text: 'Speaker', style: { fontSize: 8 }, width: 24, height: 8 },
+    };
+    const nest: CanvasObject = {
+      id: 'nest',
+      parentId: 'board',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'group' },
+    };
+    const chip: CanvasObject = {
+      id: 'chip',
+      parentId: 'nest',
+      x: 0,
+      y: 0,
+      visibility: band,
+      fade: { fadeIn: reveal, fadeInOf: 'board' },
+      payload: { type: 'text', text: 'Chip', style: { fontSize: 8 }, width: 16, height: 8 },
+    };
+    const cover: CanvasObject = {
+      id: 'cover',
+      x: 0,
+      y: -60,
+      visibility: band,
+      payload: { type: 'text', text: 'Cover', style: { fontSize: 8 }, width: 20, height: 8 },
+    };
+    const link: CanvasObject = {
+      id: 'speaker-link',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'link', from: 'speaker', to: 'board' },
+    };
+    const objects = [level, board, speaker, nest, chip, cover, link];
+    const width = 400;
+    const height = 300;
+    const fit = boxFitScale({ left: -20, right: 20, top: -20, bottom: 20 }, width, height);
+    const shown = [speaker, chip, cover].map((object) => visible(object, 1));
+
+    const paintAt = (ratio: number) => {
+      const ctx = recordingContext();
+      createRenderer(canvasFor(ctx), () => {}).draw({
+        camera: { x: 0, y: 0, scale: fit * ratio },
+        width,
+        height,
+        theme,
+        visible: shown,
+        objects,
+        fitScale: 1,
+      });
+      const textAlpha = (label: string) => paintsOf(ctx).find((paint) => paint.kind === 'text' && paint.text === label)?.alpha;
+      return { textAlpha, strokes: strokesOf(ctx) };
+    };
+
+    const open = paintAt(1);
+    expect(open.textAlpha('Speaker')).toBeCloseTo(1);
+    expect(open.textAlpha('Chip')).toBeUndefined();
+    expect(open.textAlpha('Cover')).toBeCloseTo(1);
+    expect(open.strokes).toHaveLength(1);
+    expect(open.strokes[0]?.alpha).toBeCloseTo(1);
+
+    const mid = paintAt(1.5);
+    expect(mid.textAlpha('Speaker')).toBeCloseTo(0.5);
+    expect(mid.textAlpha('Chip')).toBeCloseTo(0.5);
+    expect(mid.textAlpha('Cover')).toBeCloseTo(1);
+    expect(mid.strokes).toHaveLength(1);
+    expect(mid.strokes[0]?.alpha).toBeCloseTo(0.5);
+
+    const shut = paintAt(2);
+    expect(shut.textAlpha('Speaker')).toBeUndefined();
+    expect(shut.textAlpha('Chip')).toBeCloseTo(1);
+    expect(shut.textAlpha('Cover')).toBeCloseTo(1);
+    expect(shut.strokes).toEqual([]);
+
+    const back = paintAt(1);
+    expect(back.textAlpha('Speaker')).toBeCloseTo(1);
+    expect(back.textAlpha('Chip')).toBeUndefined();
+    expect(back.strokes[0]?.alpha).toBeCloseTo(1);
+  });
+
+  it('draws part, view, and process placeholders in grey', () => {
+    const ctx = recordingContext();
+    const band = { minScale: 0.01, maxScale: 100 };
+    const part = {
+      id: 'part',
+      x: -30,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'part' as const, width: 20, height: 20 },
+    };
+    const view = {
+      id: 'view',
+      x: 0,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'view' as const, width: 16, height: 16 },
+    };
+    const process = {
+      id: 'process',
+      x: 30,
+      y: 0,
+      visibility: band,
+      payload: { type: 'shape' as const, kind: 'process' as const, width: 24, height: 12 },
+    };
+    createRenderer(canvasFor(ctx), () => {}).draw({
+      camera: { x: 0, y: 0, scale: 4 },
+      width: 400,
+      height: 300,
+      visible: [part, view, process].map((object) => visible(object, 1)),
+    });
+    expect(fillStylesOf(ctx)).toContain('#8d8d8d');
+    expect(strokeStylesOf(ctx)).toContain('#e7e7e7');
+    expect((ctx as RecordedContext).lineDashes).toEqual(expect.arrayContaining([[7, 5]]));
+    expect((ctx as RecordedContext).lineDashes).toContainEqual([]);
+  });
+});
+
+function fontPx(font: string | undefined): number {
+  const match = /(\d+(?:\.\d+)?)px/.exec(font ?? '');
+  return match ? Number(match[1]) : Number.NaN;
+}
+
+function sizedLabel(id: string, fontSize: number, width: number, height: number): CanvasObject {
+  return {
+    id,
+    x: 0,
+    y: 0,
+    visibility: { minScale: 1, maxScale: 16 },
+    payload: { type: 'text', text: id, style: { fontSize, color: '#fff' }, width, height },
+  };
+}
+
+function labelAt(id: string, x: number, y: number, fontSize: number): CanvasObject {
+  return {
+    id,
+    x,
+    y,
+    visibility: { minScale: 1, maxScale: 2 },
+    payload: { type: 'text', text: id, style: { fontSize, color: '#fff' }, width: 4, height: 4 },
+  };
+}
+
+function plateAt(x: number, y: number, width: number, height: number): CanvasObject {
+  return {
+    id: 'plate',
+    x,
+    y,
+    visibility: { minScale: 1, maxScale: 1 },
+    payload: { type: 'image', src: 'images/mark.svg', width, height },
+  };
+}
