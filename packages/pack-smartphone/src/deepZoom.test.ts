@@ -89,7 +89,10 @@ describe('smartphone deep zoom', () => {
       expect(ids.has(`${node.id}-link`), node.id).toBe(true);
     }
     const transistor = smartphoneObjects.find((object) => object.id === 'transistor-label');
-    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×~15 billion' });
+    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×4' });
+    const device = smartphoneObjects.find((object) => object.id === 'transistor');
+    expect(device?.repeat?.count).toBe(4);
+    expect(device?.repeat?.pattern).toMatchObject({ kind: 'grid', cols: 2, rows: 2 });
     const art = ['pouch', 'electrode-stack', 'anode', 'graphite-particle', 'graphite-carbon-sheet', 'graphite-carbon-atom'];
     for (const id of art) {
       const object = smartphoneObjects.find((entry) => entry.id === id);

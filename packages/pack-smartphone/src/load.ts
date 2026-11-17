@@ -12,6 +12,8 @@ export function hierarchyFromPresented(file: PresentedFile): readonly HierarchyN
     status: node.status,
     sizeMm: node.sizeMm,
     countMark: node.count,
+    perParentCount: node.repeat?.count ?? null,
+    repeat: null,
   }));
 }
 
@@ -45,6 +47,7 @@ export function objectsFromPresented(file: PresentedFile): CanvasObject[] {
       visibility,
       ...(fade ? { fade } : {}),
       labelId: `${node.id}-label`,
+      ...(node.repeat ? { repeat: node.repeat } : {}),
       payload: node.image
         ? { type: 'image', src: node.image, width: node.place.width, height: node.place.height, frame: false }
         : { type: 'shape', kind: node.kind, width: node.place.width, height: node.place.height },

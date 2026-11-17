@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { presentedJson } from '../scripts/generate-hierarchy';
+import { countMark, parseHierarchy, parseRepeat, perParentCount, presentedJson } from '../scripts/generate-hierarchy';
 
 const packRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -10,6 +10,44 @@ describe('smartphone data', () => {
   it('matches a fresh run of the generator', () => {
     const checked = readFileSync(join(packRoot, 'data/smartphone.json'), 'utf8');
     expect(checked).toBe(presentedJson());
+  });
+
+  it('reads a plain integer count and a Repeat line', () => {
+    expect(countMark('~15 billion transistors/chip')).toBe('×~15 billion');
+    expect(perParentCount('~15 billion transistors/chip')).toBe(1.5e10);
+    expect(countMark('4 per parent (2-input NAND)')).toBe('×4');
+    expect(perParentCount('4 per parent (2-input NAND)')).toBe(4);
+    expect(countMark('1 representative item')).toBeNull();
+    expect(parseRepeat('grid 2 × 2, pitch 51 nm')).toEqual({
+      kind: 'grid',
+      cols: 2,
+      rows: 2,
+      pitchXMm: 51e-6,
+      pitchYMm: 51e-6,
+    });
+    expect(parseRepeat('rows, pitch 0.2 mm, no stagger')).toEqual({ kind: 'rows', pitchMm: 0.2 });
+    expect(parseRepeat('rows, pitch 0.335 nm, stagger 0.1 nm')?.kind).toBe('rows');
+    expect(parseRepeat('scatter seed 3 density 4 /nm²')?.kind).toBe('scatter');
+
+    const parsed = parseHierarchy(`### Example (\`example\`)
+- Parent: none
+- Status: planned
+- Kind: part
+- Characteristic size: 50 nm
+- Count: 4 per parent
+- Repeat: grid 2 × 2, pitch 51 nm
+`);
+    expect(parsed[0]?.repeat).toMatchObject({ count: 4, pattern: { kind: 'grid', cols: 2, rows: 2 } });
+    expect(() =>
+      parseHierarchy(`### Bad (\`bad\`)
+- Parent: none
+- Status: planned
+- Kind: part
+- Characteristic size: 50 nm
+- Count: 3 per parent
+- Repeat: grid 2 × 2, pitch 51 nm
+`),
+    ).toThrow(/grid/);
   });
 
   it('keeps pack ids out of the layout code', () => {

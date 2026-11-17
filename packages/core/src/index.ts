@@ -4,12 +4,29 @@ export type {
   ImagePayload,
   LinkPayload,
   LinkStyle,
+  NodeRepeat,
+  RepeatPattern,
+  RepeatRegion,
   ShapePayload,
   TextPayload,
   TextStyle,
   VisibilityRange,
   ZoomFade,
 } from './model';
+
+export {
+  MAX_REPEAT_COPIES,
+  REPEAT_LOD_PX,
+  copyIndexAt,
+  copyLocalPosition,
+  formatRepeatCount,
+  gridMatchesCount,
+  patternBounds,
+  repeatDetail,
+  repeatTotal,
+  visibleCopies,
+} from './repeat';
+export type { RepeatFocus, VisibleCopies } from './repeat';
 
 export {
   CONTENT_MARGIN,

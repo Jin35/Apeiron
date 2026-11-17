@@ -1087,6 +1087,49 @@ describe('createRenderer', () => {
     expect(strokeStylesOf(ctx)).toContain('#778899');
     expect(fillStylesOf(ctx)).not.toContain('#171b22');
   });
+
+  it('draws each visible copy, and one fill when a copy is under 3px', () => {
+    const node: CanvasObject = {
+      id: 'cell',
+      x: 0,
+      y: 0,
+      visibility: { minScale: 0.01, maxScale: 100 },
+      repeat: {
+        count: 3,
+        pattern: { kind: 'grid', cols: 3, rows: 1, pitchX: 30, pitchY: 30 },
+      },
+      payload: { type: 'image', src: 'images/cell.svg', width: 10, height: 10 },
+    };
+    const plain: Theme = {
+      background: '#ffffff',
+      ink: '#111111',
+      accent: '#111111',
+      ui: '#111111',
+      displayFont: 'sans-serif',
+      bodyFont: 'sans-serif',
+    };
+    const close = recordingContext();
+    createRenderer(canvasFor(close), () => {}).draw({
+      camera: { x: 15, y: 0, scale: 1 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(node, 1)],
+      objects: [node],
+    });
+    expect(close.fillRects).toHaveLength(4);
+
+    const far = recordingContext();
+    createRenderer(canvasFor(far), () => {}).draw({
+      camera: { x: 15, y: 0, scale: 0.2 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(node, 1)],
+      objects: [node],
+    });
+    expect(far.fillRects).toHaveLength(2);
+  });
 });
 
 function fontPx(font: string | undefined): number {

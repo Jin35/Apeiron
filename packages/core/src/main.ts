@@ -2,6 +2,7 @@ import { cameraFromLocation, initialCamera } from './bootstrap';
 import { applyButtonZoomCommand, committedCamera, createButtonZoom, tickButtonZoom } from './buttonZoom';
 import { deriveCameraLimits, viewBounds, worldPoint, type Camera, type CameraLimits } from './camera';
 import { attachInteraction, type SceneCommand } from './interaction';
+import type { RepeatFocus } from './repeat';
 import { createRenderer } from './render';
 import type { SceneStore, VisibleObject } from './store';
 import { applyTheme, type Theme } from './theme';
@@ -19,6 +20,14 @@ export function mountShell(
 ): void {
   let zoomAnim = createButtonZoom(cameraFromLocation(opening ?? initialCamera, window.location.search));
   let selectedId: string | null = null;
+  const openingParams = new URLSearchParams(window.location.search);
+  const focusId = openingParams.get('focus');
+  const openingIndex = Number(openingParams.get('i'));
+  let pinnedCopy =
+    focusId && Number.isInteger(openingIndex) && openingIndex >= 0
+      ? { id: focusId, index: openingIndex }
+      : null;
+  let pointerFocus: { x: number; y: number } | null = null;
   let labelKey = '';
   let rafId = 0;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -33,6 +42,12 @@ export function mountShell(
 
   const renderer = createRenderer(surface, () => invalidate());
 
+  /** Pointer zoom opens the copy under the pointer. Otherwise the copy nearest the centre. */
+  function repeatFocusFor(camera: Camera): RepeatFocus {
+    const point = pointerFocus ?? { x: camera.x, y: camera.y };
+    return pinnedCopy ? { ...point, lock: pinnedCopy } : point;
+  }
+
   function frame(now: number) {
     zoomAnim = tickButtonZoom(zoomAnim, now);
     const rect = surface.getBoundingClientRect();
@@ -42,11 +57,13 @@ export function mountShell(
     const limitsNow = activeLimits(width, height);
     const fitScale = width > 0 && height > 0 ? limitsNow.fitScale : undefined;
     const view = width > 0 && height > 0 ? { width, height } : undefined;
+    const repeatFocus = repeatFocusFor(camera);
     const shown = store.query({
       bounds: viewBounds(camera, width, height),
       scale: camera.scale,
       ...(fitScale !== undefined ? { fitScale } : {}),
       ...(view ? { viewWidth: view.width, viewHeight: view.height } : {}),
+      repeatFocus,
     });
     renderer.draw({
       camera,
@@ -55,11 +72,12 @@ export function mountShell(
       visible: shown,
       objects: store.resident(),
       theme,
+      repeatFocus,
       ...(fitScale !== undefined ? { fitScale } : {}),
       ...(selectedId ? { selectedId } : {}),
     });
     if (labelList) syncLabelList(labelList, shown);
-    const visible = store.countInBand(camera.scale, fitScale, view, { x: camera.x, y: camera.y });
+    const visible = store.countInBand(camera.scale, fitScale, view, repeatFocus);
     status.textContent = `×${formatScale(camera.scale)} · ${visible} visible`;
     status.dataset.scale = String(camera.scale);
     status.dataset.x = String(camera.x);
@@ -95,13 +113,26 @@ export function mountShell(
     if (command.type === 'selectAt') {
       const camera = zoomAnim.camera;
       const world = worldPoint(camera, command.x, command.y, rect.width, rect.height);
+      pinnedCopy = null;
+      pointerFocus = world;
       const viewW = rect.width;
       const viewH = rect.height;
       const fitScale = viewW > 0 && viewH > 0 ? activeLimits(viewW, viewH).fitScale : undefined;
       const view = viewW > 0 && viewH > 0 ? { width: viewW, height: viewH } : undefined;
-      selectedId = store.hitTest(world, camera, fitScale, view)?.id ?? null;
+      selectedId = store.hitTest(world, camera, fitScale, view, repeatFocusFor(camera))?.id ?? null;
       frame(now);
       return;
+    }
+    if (command.type === 'zoomAt') {
+      const camera = zoomAnim.camera;
+      pinnedCopy = null;
+      pointerFocus = worldPoint(camera, command.x, command.y, rect.width, rect.height);
+    } else if (command.type === 'retarget') {
+      const camera = zoomAnim.camera;
+      pinnedCopy = null;
+      pointerFocus = worldPoint(camera, command.anchor.x, command.anchor.y, rect.width, rect.height);
+    } else {
+      pointerFocus = null;
     }
     zoomAnim = applyButtonZoomCommand(zoomAnim, command, rect.width, rect.height, now, {
       settleZoomStep: reduceMotion,

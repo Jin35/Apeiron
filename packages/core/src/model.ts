@@ -83,6 +83,40 @@ export type LinkStyle = {
 };
 
 /**
+ * Where copies of one node sit, in the parent's local coordinates.
+ * `count` is not on the pattern: it is copies per parent copy, and a grid's
+ * `cols * rows` is that same number. The pattern is the geometry that is drawn.
+ */
+export type RepeatPattern =
+  | { kind: 'grid'; cols: number; rows: number; pitchX: number; pitchY: number }
+  | { kind: 'rows'; pitch: number; stagger?: number }
+  | { kind: 'scatter'; seed: number; density: number };
+
+/**
+ * Axis-aligned area in the parent's local coordinates. `x` and `y` are the centre.
+ * Scatter places points inside it. A grid or row stack uses it as the cheap fill
+ * when individual copies are too small to draw.
+ */
+export type RepeatRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * One node, many copies. Copies are not stored.
+ * `count` is how many copies exist inside one copy of the parent, not a
+ * device-wide total. A label that should show the device total multiplies
+ * `count` up the ancestor chain.
+ */
+export type NodeRepeat = {
+  count: number;
+  pattern: RepeatPattern;
+  region?: RepeatRegion;
+};
+
+/**
  * Opacity from zoom relative to a fit scale.
  * `r = camera.scale / reference`. Each pair is `[start, end]` in that ratio.
  * Between the ends the blend is linear in `r`. At and below `start`, `fadeOut`
@@ -139,5 +173,10 @@ export type CanvasObject = {
    * A pack sets it. The level fade does not infer a label from the id.
    */
   labelId?: string;
+  /**
+   * Many copies of this one node. The subtree is stored once and drawn inside
+   * the focused copy. `count` is per parent copy.
+   */
+  repeat?: NodeRepeat;
   payload: TextPayload | ImagePayload | ShapePayload | GroupPayload | LinkPayload;
 };

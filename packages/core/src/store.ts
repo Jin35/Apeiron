@@ -3,6 +3,7 @@ import { displayOpacity, type AnchorScale } from './fade';
 import { buildLevelPlan, type LevelFocus } from './levelFade';
 import type { CanvasObject } from './model';
 import { createPlacement, type WorldPlacement } from './placement';
+import { createRepeatResolver, type RepeatFocus, type RepeatResolver } from './repeat';
 import { visibilityAlpha } from './visibility';
 
 /** HUD counts an object only above this opacity. */
@@ -35,6 +36,11 @@ export type SceneQuery = {
    */
   viewWidth?: number;
   viewHeight?: number;
+  /**
+   * Which copy of a repeated node its children open inside.
+   * Omit it and children stay on copy 0, the authored position.
+   */
+  repeatFocus?: RepeatFocus;
 };
 
 /** CSS pixel size of the viewport. Anchor fits need it; the opening fit does not. */
@@ -66,7 +72,7 @@ export interface SceneStore {
    * it and the handover is not applied, so a count with no camera stays
    * zoom-and-band only.
    */
-  countInBand(scale: number, fitScale?: number, view?: ViewportSize, focus?: LevelFocus): number;
+  countInBand(scale: number, fitScale?: number, view?: ViewportSize, focus?: RepeatFocus): number;
   /** Srcs of the resident image objects, in array order. */
   imageSources(): readonly string[];
   /** Run `onChange` after the resident set changes. Returns an unsubscribe. */
@@ -85,6 +91,7 @@ export interface SceneStore {
     camera: Camera,
     fitScale?: number,
     view?: ViewportSize,
+    repeatFocus?: RepeatFocus,
   ): CanvasObject | null;
   /**
    * World boxes of every placed object, parent chain already flattened.
@@ -125,6 +132,7 @@ type Entry = {
 export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore {
   let resident = objects;
   let entries = placedEntries(objects);
+  let hasRepeat = objects.some((object) => object.repeat !== undefined);
   const listeners = new Set<() => void>();
 
   function notify(): void {
@@ -134,7 +142,7 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
   return {
     countInBand(scale, fitScale, view, focus) {
       const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, scale, view, focus);
+      const level = levelMultiplier(resident, entries, scale, view, focus, hasRepeat);
       let count = 0;
       for (const { object } of entries) {
         if (shownAlpha(object, scale, fitScale, anchorScale, level) > HUD_ALPHA) count += 1;
@@ -144,14 +152,18 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
     query(query) {
       const view = { width: query.viewWidth ?? 0, height: query.viewHeight ?? 0 };
       const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, query.scale, view, boundsCenter(query.bounds));
+      const focus = query.repeatFocus ?? boundsCenter(query.bounds);
+      const level = levelMultiplier(resident, entries, query.scale, view, focus, hasRepeat);
+      const resolver = hasRepeat ? createRepeatResolver(resident, query.repeatFocus) : null;
       const visible: VisibleObject[] = [];
       for (const entry of entries) {
         const alpha = visibilityAlpha(entry.object.visibility, query.scale);
         const shown = displayOpacity(alpha, entry.object.fade, query.scale, query.fitScale, anchorScale);
         if (shown * level(entry.object.id) <= DRAW_ALPHA) continue;
-        if (!intersects(query.bounds, padBox(entry, query.scale))) continue;
-        visible.push({ object: entry.object, alpha });
+        const box = resolver ? cullBox(entry, resolver, query.scale) : padBox(entry, query.scale);
+        if (!intersects(query.bounds, box)) continue;
+        const object = resolver ? moved(entry, resolver) : entry.object;
+        visible.push({ object, alpha });
       }
       return visible;
     },
@@ -168,13 +180,15 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
         listeners.delete(onChange);
       };
     },
-    hitTest(worldPoint, camera, fitScale, view) {
+    hitTest(worldPoint, camera, fitScale, view, repeatFocus) {
       const anchorScale = anchorFits(entries, view);
-      const level = levelMultiplier(resident, entries, camera.scale, view, { x: camera.x, y: camera.y });
+      const focus = repeatFocus ?? { x: camera.x, y: camera.y };
+      const level = levelMultiplier(resident, entries, camera.scale, view, focus, hasRepeat);
+      const resolver = hasRepeat ? createRepeatResolver(resident, repeatFocus) : null;
       let best: Entry | undefined;
       for (const entry of entries) {
         if (shownAlpha(entry.object, camera.scale, fitScale, anchorScale, level) <= DRAW_ALPHA) continue;
-        if (!containsPoint(entry.box, worldPoint)) continue;
+        if (!hitEntry(entry, worldPoint, resolver)) continue;
         if (!best || entry.object.visibility.maxScale >= best.object.visibility.maxScale) {
           best = entry;
         }
@@ -184,6 +198,7 @@ export function createMemoryStore(objects: readonly CanvasObject[]): MemoryStore
     replaceObjects(next) {
       resident = next;
       entries = placedEntries(next);
+      hasRepeat = next.some((object) => object.repeat !== undefined);
       notify();
     },
     contentBoxes() {
@@ -220,11 +235,74 @@ function levelMultiplier(
   entries: readonly Entry[],
   scale: number,
   view: ViewportSize | undefined,
-  focus: LevelFocus | undefined,
+  focus: RepeatFocus | undefined,
+  hasRepeat: boolean,
 ): (id: string) => number {
+  const point: LevelFocus | undefined = focus;
+  if (!hasRepeat || !focus) {
+    const boxes = new Map<string, ViewBounds>();
+    for (const entry of entries) boxes.set(entry.object.id, entry.box);
+    return buildLevelPlan(objects, (id) => boxes.get(id), scale, point, view).opacity;
+  }
+  const resolver = createRepeatResolver(objects, focus);
   const boxes = new Map<string, ViewBounds>();
-  for (const entry of entries) boxes.set(entry.object.id, entry.box);
-  return buildLevelPlan(objects, (id) => boxes.get(id), scale, focus, view).opacity;
+  for (const entry of entries) boxes.set(entry.object.id, focusedBox(entry, resolver));
+  return buildLevelPlan(objects, (id) => boxes.get(id), scale, point, view).opacity;
+}
+
+function focusedBox(entry: Entry, resolver: RepeatResolver): ViewBounds {
+  const authored = entry.object.repeat ? 'focused' : 'copy0';
+  const center = resolver.center(entry.object.id, authored);
+  if (!center) return entry.box;
+  const width = entry.box.right - entry.box.left;
+  const height = entry.box.bottom - entry.box.top;
+  return {
+    left: center.x - width / 2,
+    right: center.x + width / 2,
+    top: center.y - height / 2,
+    bottom: center.y + height / 2,
+  };
+}
+
+/**
+ * Copy 0, plus any ancestor-copy shift. The repeated node itself stays on
+ * copy 0 here: the renderer fans that node out. Its children move.
+ */
+function moved(entry: Entry, resolver: RepeatResolver): CanvasObject {
+  const center = resolver.center(entry.object.id, 'copy0');
+  if (!center || (center.x === entry.object.x && center.y === entry.object.y)) return entry.object;
+  return { ...entry.object, x: center.x, y: center.y };
+}
+
+function cullBox(entry: Entry, resolver: RepeatResolver, scale: number): ViewBounds {
+  const pad = scale > 0 && Number.isFinite(scale) ? entry.padCssPx / scale : 0;
+  const bounds = entry.object.repeat ? resolver.worldBounds(entry.object.id) : null;
+  const box = bounds ?? shiftedCopyBox(entry, resolver);
+  return {
+    left: box.left - pad,
+    right: box.right + pad,
+    top: box.top - pad,
+    bottom: box.bottom + pad,
+  };
+}
+
+function shiftedCopyBox(entry: Entry, resolver: RepeatResolver): ViewBounds {
+  const center = resolver.center(entry.object.id, 'copy0');
+  if (!center) return entry.box;
+  const width = entry.box.right - entry.box.left;
+  const height = entry.box.bottom - entry.box.top;
+  return {
+    left: center.x - width / 2,
+    right: center.x + width / 2,
+    top: center.y - height / 2,
+    bottom: center.y + height / 2,
+  };
+}
+
+function hitEntry(entry: Entry, worldPoint: { x: number; y: number }, resolver: RepeatResolver | null): boolean {
+  if (!resolver) return containsPoint(entry.box, worldPoint);
+  if (entry.object.repeat) return resolver.indexAt(entry.object.id, worldPoint.x, worldPoint.y) !== null;
+  return containsPoint(shiftedCopyBox(entry, resolver), worldPoint);
 }
 
 function boundsCenter(bounds: ViewBounds): LevelFocus | undefined {
@@ -295,6 +373,7 @@ function atWorld(object: CanvasObject, placement: WorldPlacement): CanvasObject 
     y: placement.y,
     visibility: object.visibility,
     ...(object.fade ? { fade: object.fade } : {}),
+    ...(object.repeat ? { repeat: object.repeat } : {}),
     payload,
   };
 }
