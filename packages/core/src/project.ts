@@ -18,35 +18,77 @@ export type CssBox = {
  * local-unit at that step, so a child that is invisible in the flattened
  * world position still lands on its own pixel.
  */
+/** CSS position of parent-local `(0, 0)`, and CSS pixels per parent-local unit. */
+export type CssPlane = {
+  x: number;
+  y: number;
+  pixelsPerLocal: number;
+};
+
+/**
+ * The plane children of `parentId` are drawn in.
+ * Omit `parentId` for the world: local units are world units.
+ * `at` replaces a node's authored `(x, y)` — a repeated ancestor's focused copy.
+ */
+export function cssPlane(
+  objects: readonly CanvasObject[],
+  parentId: string | undefined,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+  at?: (node: CanvasObject) => { x: number; y: number } | undefined,
+): CssPlane | null {
+  if (!(camera.scale > 0) || !Number.isFinite(camera.scale)) return null;
+  if (parentId === undefined) {
+    return {
+      x: viewW / 2 - camera.x * camera.scale,
+      y: viewH / 2 - camera.y * camera.scale,
+      pixelsPerLocal: camera.scale,
+    };
+  }
+  const nodes = chainOf(objects, parentId);
+  if (!nodes) return null;
+  const root = nodes[0];
+  if (!root) return null;
+  let pixels = camera.scale;
+  const rootAt = at?.(root) ?? { x: root.x, y: root.y };
+  let px = (rootAt.x - camera.x) * pixels;
+  let py = (rootAt.y - camera.y) * pixels;
+  pixels *= positiveScale(root.scale);
+  for (let i = 1; i < nodes.length; i += 1) {
+    const node = nodes[i];
+    if (!node) continue;
+    const local = at?.(node) ?? { x: node.x, y: node.y };
+    px += local.x * pixels;
+    py += local.y * pixels;
+    pixels *= positiveScale(node.scale);
+  }
+  if (!Number.isFinite(px) || !Number.isFinite(py) || !(pixels > 0)) return null;
+  return { x: px + viewW / 2, y: py + viewH / 2, pixelsPerLocal: pixels };
+}
+
 export function projectCss(
   objects: readonly CanvasObject[],
   id: string,
   camera: Camera,
   viewW: number,
   viewH: number,
+  at?: (node: CanvasObject) => { x: number; y: number } | undefined,
 ): CssBox | null {
   const nodes = chainOf(objects, id);
   if (!nodes) return null;
   const leaf = nodes[nodes.length - 1];
   if (!leaf || leaf.payload.type === 'group' || leaf.payload.type === 'link') return null;
-  if (!(camera.scale > 0) || !Number.isFinite(camera.scale)) return null;
-
-  let pixelsPerLocal = camera.scale;
-  let px = (nodes[0].x - camera.x) * pixelsPerLocal;
-  let py = (nodes[0].y - camera.y) * pixelsPerLocal;
-  pixelsPerLocal *= positiveScale(nodes[0].scale);
-  for (let i = 1; i < nodes.length; i += 1) {
-    const node = nodes[i];
-    if (!node) continue;
-    px += node.x * pixelsPerLocal;
-    py += node.y * pixelsPerLocal;
-    pixelsPerLocal *= positiveScale(node.scale);
-  }
-
-  const width = leaf.payload.width * pixelsPerLocal;
-  const height = leaf.payload.height * pixelsPerLocal;
-  if (!(width > 0) || !(height > 0) || !Number.isFinite(px) || !Number.isFinite(py)) return null;
-  return { left: px - width / 2 + viewW / 2, top: py - height / 2 + viewH / 2, width, height };
+  const plane = cssPlane(objects, leaf.parentId, camera, viewW, viewH, at);
+  if (!plane) return null;
+  const local = at?.(leaf) ?? { x: leaf.x, y: leaf.y };
+  const pixels = plane.pixelsPerLocal * positiveScale(leaf.scale);
+  const width = leaf.payload.width * pixels;
+  const height = leaf.payload.height * pixels;
+  const cx = plane.x + local.x * plane.pixelsPerLocal;
+  const cy = plane.y + local.y * plane.pixelsPerLocal;
+  if (!(width > 0) || !(height > 0) || !Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+  return { left: cx - width / 2, top: cy - height / 2, width, height };
 }
 
 /**

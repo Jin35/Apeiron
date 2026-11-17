@@ -11,7 +11,8 @@ A pack is one subject for the canvas: the objects it draws, the theme, and the i
 - `id`, `name`, `parent` (the content parent, or `null` for the root)
 - `kind` and `status` (`built` or `planned`)
 - `sizeMm`, the characteristic size in millimetres
-- `count`, a magnitude such as `×~15 billion`, or `null`
+- `count`, the label suffix (`×4`, `×~15 billion`, or `null`). On a repeated node this is the product of per-parent counts when that product differs from the node's own count
+- `repeat`, when the node is drawn many times: `count` is copies per parent copy, and `pattern` is a grid, rows, or scatter in parent-local units. A grid's columns times rows equals `count`
 - `image`, a site path, or `null` when the node is a placeholder. The kind chooses the shape: a rounded square, a dashed square, or a pill
 - `place`, the fixed parent-local position and size. `place.parent` is the canvas parent, which may be a group
 - `label`, with `id`, `text`, and position

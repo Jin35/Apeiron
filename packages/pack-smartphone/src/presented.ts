@@ -1,3 +1,4 @@
+import type { NodeRepeat } from '@apeiron/core';
 import type { HierarchyKind, HierarchyStatus } from './hierarchy';
 
 /** Opacity ranges copied onto the node, its label, and its link. */
@@ -40,8 +41,13 @@ export type PresentedNode = {
   status: HierarchyStatus;
   /** Characteristic size in millimetres. */
   sizeMm: number;
-  /** Magnitude above one, already including the times sign, or null. */
+  /**
+   * Label suffix. For a repeated node this is the chain total when that
+   * differs from `repeat.count`, otherwise the per-parent count.
+   */
   count: string | null;
+  /** Copies per parent, plus the pattern in parent-local units. */
+  repeat?: NodeRepeat;
   /** Site path. Null draws a placeholder of `kind`. */
   image: string | null;
   place: {

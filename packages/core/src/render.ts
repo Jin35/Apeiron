@@ -4,7 +4,16 @@ import { gridStep } from './grid';
 import { buildLevelPlan } from './levelFade';
 import { clipLeaderLine, LEADER_GAP_PX, LEADER_WIDTH_PX, resolveWorldRect, type AxisRect } from './link';
 import type { CanvasObject, LinkStyle, ShapePayload, TextPayload } from './model';
-import { coordinateIsCoarse, projectCss, type CssBox } from './project';
+import { coordinateIsCoarse, cssPlane, projectCss, type CssBox } from './project';
+import {
+  createRepeatResolver,
+  footprint,
+  patternBounds,
+  repeatDetail,
+  visibleCopies,
+  type RepeatFocus,
+  type RepeatResolver,
+} from './repeat';
 import { fallbackTheme, paintColors, withAlpha, type Theme } from './theme';
 import { visibilityAlpha } from './visibility';
 
@@ -68,6 +77,11 @@ export type RenderFrame = {
    * this list each frame (parent chain and group scale). Omit and no link is drawn.
    */
   objects?: readonly CanvasObject[];
+  /**
+   * Copy children open inside. Omit and a repeated node's children stay on
+   * copy 0; the copies themselves still draw.
+   */
+  repeatFocus?: RepeatFocus;
 };
 
 export type Renderer = {
@@ -172,13 +186,22 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
       (a, b) => a.object.visibility.maxScale - b.object.visibility.maxScale,
     );
     const anchorScale = anchorFits(frame.objects, viewW, viewH);
-    const level = levelOpacity(frame.objects, camera, viewW, viewH);
+    const level = levelOpacity(frame.objects, camera, viewW, viewH, frame.repeatFocus);
+    const authoredById = indexById(frame.objects);
+    const resolver = frame.objects?.some((object) => object.repeat)
+      ? createRepeatResolver(frame.objects, frame.repeatFocus ?? { x: camera.x, y: camera.y })
+      : null;
     for (const entry of sorted) {
       const alpha = paintAlpha(entry, camera.scale, frame.fitScale, anchorScale, level);
       if (!(alpha > 0)) continue;
-      const box = cssFor(entry.object, camera, viewW, viewH, frame.objects);
-      if (!box) continue;
+      const authored = authoredById.get(entry.object.id);
       ctx.globalAlpha = alpha;
+      if (authored?.repeat && resolver && frame.objects) {
+        drawRepeated(ctx, theme, authored, camera, viewW, viewH, frame.objects, resolver, imageFor);
+        continue;
+      }
+      const box = cssFor(entry.object, camera, viewW, viewH, frame.objects, (node) => resolver?.localOverride(node.id));
+      if (!box) continue;
       const { object } = entry;
       if (object.payload.type === 'image') {
         drawImageObject(ctx, theme, viewW, viewH, box, object.payload.frame !== false, imageFor(object.payload.src));
@@ -195,7 +218,13 @@ export function createRenderer(canvas: HTMLCanvasElement, onReady: () => void): 
     if (frame.selectedId) {
       const selected = visible.find((entry) => entry.object.id === frame.selectedId);
       if (selected && paintAlpha(selected, camera.scale, frame.fitScale, anchorScale, level) > 0) {
-        const box = cssFor(selected.object, camera, viewW, viewH, frame.objects);
+        const authored = authoredById.get(frame.selectedId);
+        const box =
+          authored?.repeat && frame.objects
+            ? projectCss(frame.objects, frame.selectedId, camera, viewW, viewH, (node) =>
+                resolver?.localOverride(node.id),
+              )
+            : cssFor(selected.object, camera, viewW, viewH, frame.objects);
         if (box) drawSelection(ctx, theme, box);
       }
     }
@@ -280,17 +309,110 @@ function levelOpacity(
   camera: Camera,
   viewW: number,
   viewH: number,
+  focus: RepeatFocus | undefined,
 ): (id: string) => number {
+  const point = { x: focus?.x ?? camera.x, y: focus?.y ?? camera.y };
+  const repeated = objects?.some((object) => object.repeat) ?? false;
+  if (!objects || !repeated) {
+    return buildLevelPlan(
+      objects ?? [],
+      (id) => {
+        const rect = objects ? resolveWorldRect(objects, id) : null;
+        return rect ? rectToBounds(rect) : undefined;
+      },
+      camera.scale,
+      point,
+      { width: viewW, height: viewH },
+    ).opacity;
+  }
+  const resolver = createRepeatResolver(objects, focus ?? point);
   return buildLevelPlan(
-    objects ?? [],
+    objects,
     (id) => {
-      const rect = objects ? resolveWorldRect(objects, id) : null;
-      return rect ? rectToBounds(rect) : undefined;
+      const rect = resolveWorldRect(objects, id);
+      if (!rect) return undefined;
+      const node = objects.find((object) => object.id === id);
+      const center = resolver.center(id, node?.repeat ? 'focused' : 'copy0');
+      if (!center) return rectToBounds(rect);
+      return rectToBounds({ ...rect, x: center.x, y: center.y });
     },
     camera.scale,
-    { x: camera.x, y: camera.y },
+    point,
     { width: viewW, height: viewH },
   ).opacity;
+}
+
+function indexById(objects: readonly CanvasObject[] | undefined): Map<string, CanvasObject> {
+  const byId = new Map<string, CanvasObject>();
+  if (!objects) return byId;
+  for (const object of objects) {
+    if (!byId.has(object.id)) byId.set(object.id, object);
+  }
+  return byId;
+}
+
+/**
+ * One node, many copies. Only the copies inside the viewport are drawn.
+ * Under ~3px, or past the per-frame cap, one fill covers the region.
+ */
+function drawRepeated(
+  ctx: CanvasRenderingContext2D,
+  theme: Theme,
+  node: CanvasObject,
+  camera: Camera,
+  viewW: number,
+  viewH: number,
+  objects: readonly CanvasObject[],
+  resolver: RepeatResolver,
+  imageFor: (src: string) => HTMLImageElement,
+): void {
+  const repeat = node.repeat;
+  const foot = footprint(node);
+  if (!repeat || !foot) return;
+  const plane = cssPlane(objects, node.parentId, camera, viewW, viewH, (ancestor) => resolver.localOverride(ancestor.id));
+  if (!plane) return;
+  const view: { left: number; right: number; top: number; bottom: number } = {
+    left: (0 - plane.x) / plane.pixelsPerLocal,
+    right: (viewW - plane.x) / plane.pixelsPerLocal,
+    top: (0 - plane.y) / plane.pixelsPerLocal,
+    bottom: (viewH - plane.y) / plane.pixelsPerLocal,
+  };
+  const copies = visibleCopies(repeat, node.x, node.y, foot.w, foot.h, view);
+  const minor = Math.min(foot.w, foot.h) * plane.pixelsPerLocal;
+  if (repeatDetail(minor, copies) === 'fill') {
+    const bounds = node.repeat?.region
+      ? {
+          left: node.repeat.region.x - node.repeat.region.width / 2,
+          right: node.repeat.region.x + node.repeat.region.width / 2,
+          top: node.repeat.region.y - node.repeat.region.height / 2,
+          bottom: node.repeat.region.y + node.repeat.region.height / 2,
+        }
+      : patternBounds(repeat, node.x, node.y, foot.w, foot.h);
+    const left = plane.x + bounds.left * plane.pixelsPerLocal;
+    const top = plane.y + bounds.top * plane.pixelsPerLocal;
+    const width = (bounds.right - bounds.left) * plane.pixelsPerLocal;
+    const height = (bounds.bottom - bounds.top) * plane.pixelsPerLocal;
+    const fill = clipToView(left, top, width, height, viewW, viewH);
+    if (!fill) return;
+    const paint = paintColors(theme);
+    ctx.fillStyle = node.payload.type === 'image' ? paint.plate : paint.placeholder;
+    ctx.fillRect(fill.x, fill.y, fill.w, fill.h);
+    return;
+  }
+  const cssW = foot.w * plane.pixelsPerLocal;
+  const cssH = foot.h * plane.pixelsPerLocal;
+  copies.forEach((copy) => {
+    const cx = plane.x + copy.x * plane.pixelsPerLocal;
+    const cy = plane.y + copy.y * plane.pixelsPerLocal;
+    const box = { left: cx - cssW / 2, top: cy - cssH / 2, width: cssW, height: cssH };
+    if (node.payload.type === 'image') {
+      drawImageObject(ctx, theme, viewW, viewH, box, node.payload.frame !== false, imageFor(node.payload.src));
+    } else if (node.payload.type === 'text') {
+      drawTextObject(ctx, theme, camera, box, node.payload);
+    } else if (node.payload.type === 'shape') {
+      drawShapeObject(ctx, theme, box, node.payload);
+    }
+  });
 }
 
 /**
@@ -596,6 +718,7 @@ function cssFor(
   viewW: number,
   viewH: number,
   authored: readonly CanvasObject[] | undefined,
+  at?: (node: CanvasObject) => { x: number; y: number } | undefined,
 ): CssBox | null {
   if (object.payload.type === 'group' || object.payload.type === 'link') return null;
   const { width, height } = object.payload;
@@ -605,7 +728,7 @@ function cssFor(
     !(width > 0) ||
     !(height > 0);
   if (coarse && authored) {
-    const projected = projectCss(authored, object.id, camera, viewW, viewH);
+    const projected = projectCss(authored, object.id, camera, viewW, viewH, at);
     if (projected) return projected;
   }
   if (!(width > 0) || !(height > 0)) return null;

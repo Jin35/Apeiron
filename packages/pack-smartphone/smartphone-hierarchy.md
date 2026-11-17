@@ -1677,8 +1677,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~10–100 nm active-device dimensions (rough; dimension-dependent)
 - Characteristic size: 50 nm; drawn feature: active-device span, not a process-node label.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: ~15 billion transistors/chip in Apple’s A15 reference; total for the whole die, not for one standard cell.
-- Count evidence: Apple A15 announcement; no assertion that the artwork is an A15 teardown.
+- Count: 4 per parent (2-input NAND: 2 NMOS + 2 PMOS). Placeholder grid until tile repeats multiply out to the die.
+- Count evidence: A 2-input CMOS NAND is four transistors. The ~15 billion A15 figure is a whole-die total, not a per-cell count; the label shows that total only as the product of per-parent counts.
+- Repeat: grid 2 × 2, pitch 51 nm
 - Description: A tiny field-effect switch uses a gate to control a conducting channel. A chip’s advertised process-node number is not a ruler measurement of this whole switch.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
 

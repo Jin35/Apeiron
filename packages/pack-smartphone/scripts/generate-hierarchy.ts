@@ -5,8 +5,17 @@
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { CanvasObject, ZoomFade } from '@apeiron/core';
-import type { HierarchyKind, HierarchyNode, HierarchyStatus } from '../src/hierarchy';
+import {
+  formatRepeatCount,
+  gridMatchesCount,
+  patternBounds,
+  repeatTotal,
+  type CanvasObject,
+  type NodeRepeat,
+  type RepeatPattern,
+  type ZoomFade,
+} from '@apeiron/core';
+import type { HierarchyKind, HierarchyNode, HierarchyPattern, HierarchyRepeat, HierarchyStatus } from '../src/hierarchy';
 import { objectsFromPresented } from '../src/load';
 import type { PresentedFade, PresentedFile, PresentedGroup, PresentedLabel, PresentedNode } from '../src/presented';
 import { REVEAL } from '../src/reveal';
@@ -98,6 +107,17 @@ export function parseHierarchy(markdown: string): HierarchyNode[] {
     const unit = UNIT_IN_MM[sizeMatch[2]];
     if (unit === undefined) throw new Error(`${id} size ${size}`);
     const sizeMm = roundedSize(Number(sizeMatch[1]) * unit);
+    const countText = field('Count');
+    const perParent = perParentCount(countText);
+    const repeatLine = optionalField(chunk, 'Repeat');
+    const pattern = repeatLine ? parseRepeat(repeatLine) : null;
+    if (repeatLine && !pattern) throw new Error(`${id} has an unreadable Repeat line`);
+    if (pattern && perParent === null) throw new Error(`${id} has Repeat but no per-parent count`);
+    if (pattern && perParent !== null && !gridMatchesCount(asGrid(pattern), perParent)) {
+      throw new Error(`${id} grid ${pattern.kind === 'grid' ? `${pattern.cols}×${pattern.rows}` : ''} is not count ${perParent}`);
+    }
+    const repeat: HierarchyRepeat | null =
+      pattern && perParent !== null ? { count: perParent, pattern } : null;
     return {
       id,
       name,
@@ -105,9 +125,20 @@ export function parseHierarchy(markdown: string): HierarchyNode[] {
       kind,
       status,
       sizeMm,
-      countMark: countMark(field('Count')),
+      countMark: countMark(countText),
+      perParentCount: perParent,
+      repeat,
     };
   });
+}
+
+/** A grid pattern in the shape `gridMatchesCount` checks. Rows and scatter always pass. */
+function asGrid(pattern: HierarchyPattern): RepeatPattern {
+  if (pattern.kind === 'grid') {
+    return { kind: 'grid', cols: pattern.cols, rows: pattern.rows, pitchX: pattern.pitchXMm, pitchY: pattern.pitchYMm };
+  }
+  if (pattern.kind === 'rows') return { kind: 'rows', pitch: pattern.pitchMm };
+  return { kind: 'scatter', seed: pattern.seed, density: pattern.densityPerMm2 };
 }
 
 /** Twelve significant figures, matching the sizes the layout has always packed. */
@@ -116,11 +147,85 @@ function roundedSize(value: number): number {
   return Number(value.toPrecision(12));
 }
 
-function countMark(count: string): string | null {
-  if (/^(1\b|Not applicable|One representative|Typically one)/i.test(count)) return null;
-  const leading = /^(~?[0-9]+(?:\.[0-9]+)?)\s+(billion|million|thousand)\b/i.exec(count);
-  if (leading?.[1] && leading[2]) return `×${leading[1]} ${leading[2].toLowerCase()}`;
+/**
+ * Label suffix from a Count line.
+ * `~15 billion …` stays `×~15 billion`. A plain integer (`4 per parent`) is `×4`.
+ * A lone `1`, or the representative phrases, stay unmarked.
+ */
+export function countMark(count: string): string | null {
+  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(count)) return null;
+  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(count);
+  if (!leading?.[2]) return null;
+  const approx = leading[1] ?? '';
+  const num = leading[2];
+  const unit = leading[3]?.toLowerCase();
+  if (unit) return `×${approx}${num} ${unit}`;
+  if (approx) return `×${approx}${num}`;
+  return `×${num}`;
+}
+
+/** Leading number on a Count line, in copies per parent. Magnitudes scale the number. */
+export function perParentCount(count: string): number | null {
+  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(count)) return null;
+  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(count);
+  if (!leading?.[2]) return null;
+  const value = Number(leading[2]);
+  if (!Number.isFinite(value)) return null;
+  const unit = leading[3]?.toLowerCase();
+  const scale = unit === 'billion' ? 1e9 : unit === 'million' ? 1e6 : unit === 'thousand' ? 1e3 : 1;
+  return value * scale;
+}
+
+/**
+ * `Repeat:` line. Pitches come back in millimetres.
+ * `grid C×R pitch P`, `rows pitch P` with an optional stagger, or `scatter` with a density.
+ */
+export function parseRepeat(line: string): HierarchyPattern | null {
+  const grid =
+    /grid\s+([0-9]+(?:\.[0-9]+)?)\s*[×x]\s*([0-9]+(?:\.[0-9]+)?)\s*,?\s*pitch\s+([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm)(?:\s*[×x]\s*([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm))?/i.exec(
+      line,
+    );
+  if (grid?.[1] && grid[2] && grid[3] && grid[4]) {
+    const cols = Number(grid[1]);
+    const rows = Number(grid[2]);
+    if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) return null;
+    const pitchX = Number(grid[3]) * (UNIT_IN_MM[grid[4]] ?? Number.NaN);
+    const pitchY = grid[5] && grid[6] ? Number(grid[5]) * (UNIT_IN_MM[grid[6]] ?? Number.NaN) : pitchX;
+    if (!(pitchX > 0) || !(pitchY > 0)) return null;
+    return { kind: 'grid', cols, rows, pitchXMm: pitchX, pitchYMm: pitchY };
+  }
+  if (/^\s*rows\b/i.test(line)) {
+    const pitch = /pitch\s+([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm)/i.exec(line);
+    if (!pitch?.[1] || !pitch[2]) return null;
+    const pitchMm = Number(pitch[1]) * (UNIT_IN_MM[pitch[2]] ?? Number.NaN);
+    if (!(pitchMm > 0)) return null;
+    if (/\bno stagger\b/i.test(line)) return { kind: 'rows', pitchMm };
+    const stagger = /stagger\s+([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm)/i.exec(line);
+    if (stagger?.[1] && stagger[2]) {
+      const staggerMm = Number(stagger[1]) * (UNIT_IN_MM[stagger[2]] ?? Number.NaN);
+      if (!(staggerMm >= 0)) return null;
+      return { kind: 'rows', pitchMm, staggerMm };
+    }
+    if (/\bstagger\b/i.test(line)) return { kind: 'rows', pitchMm, staggerMm: pitchMm / 2 };
+    return { kind: 'rows', pitchMm };
+  }
+  if (/^\s*scatter\b/i.test(line)) {
+    const density = /density\s+([0-9]+(?:\.[0-9]+)?)(?:\s*\/\s*(mm|µm|um|nm|pm)(?:2|²))?/i.exec(line);
+    if (!density?.[1]) return null;
+    const unit = density[2] ? UNIT_IN_MM[density[2]] : 1;
+    if (unit === undefined || !(unit > 0)) return null;
+    const densityPerMm2 = Number(density[1]) / (unit * unit);
+    if (!(densityPerMm2 > 0)) return null;
+    const seedMatch = /seed\s+([0-9]+)/i.exec(line);
+    const seed = seedMatch?.[1] ? Number(seedMatch[1]) : 1;
+    return { kind: 'scatter', seed, densityPerMm2 };
+  }
   return null;
+}
+
+function optionalField(chunk: string, label: string): string | null {
+  const match = new RegExp(`^- ${label}:\\s*(.+)$`, 'm').exec(chunk);
+  return match?.[1]?.trim() ?? null;
 }
 
 export function presentedJson(): string {
@@ -198,14 +303,93 @@ function place(nodes: readonly HierarchyNode[], overrides: Overrides): { objects
   for (const [id, sprite] of Object.entries(overrides.sprites)) {
     art[id] = { src: sprite.src, width: sprite.width, height: sprite.height };
   }
-  const laidOut = layoutTree(nodes, built, {
+  const labeled = applyChainLabels(nodes);
+  const laidOut = layoutTree(labeled, built, {
     reveal: REVEAL,
     hosts,
     policies,
     art,
     band: overrides.band,
   });
-  return { objects: [...built, ...laidOut.objects], report: laidOut };
+  const objects = [...built, ...laidOut.objects];
+  stampRepeats(objects, labeled);
+  return { objects, report: laidOut };
+}
+
+/**
+ * The label shows the per-parent count. When repeated ancestors make the
+ * device-wide product differ, the label shows that product instead.
+ */
+function applyChainLabels(nodes: readonly HierarchyNode[]): HierarchyNode[] {
+  const standins: CanvasObject[] = nodes.map((node) => ({
+    id: node.id,
+    ...(node.parentId ? { parentId: node.parentId } : {}),
+    x: 0,
+    y: 0,
+    visibility: { minScale: 0, maxScale: 1 },
+    ...(node.repeat
+      ? { repeat: { count: node.repeat.count, pattern: { kind: 'rows', pitch: 1 } } }
+      : {}),
+    payload: { type: 'group' },
+  }));
+  return nodes.map((node) => {
+    if (!node.repeat) return node;
+    const total = repeatTotal(standins, node.id);
+    const shown = total !== null && total !== node.repeat.count ? total : node.repeat.count;
+    return { ...node, countMark: formatRepeatCount(shown) };
+  });
+}
+
+/** Parent-local pitches: the node's drawn size stands for its characteristic size. */
+function stampRepeats(objects: CanvasObject[], nodes: readonly HierarchyNode[]): void {
+  const byId = new Map(objects.map((object) => [object.id, object]));
+  for (const node of nodes) {
+    if (!node.repeat) continue;
+    const object = byId.get(node.id);
+    const payload = object?.payload;
+    if (!object || !payload || payload.type === 'group' || payload.type === 'link') {
+      throw new Error(`repeat ${node.id} is not a picture`);
+    }
+    if (!(node.sizeMm > 0)) throw new Error(`${node.id} has no size for its repeat pitch`);
+    const xScale = payload.width / node.sizeMm;
+    const yScale = payload.height / node.sizeMm;
+    const pattern = localPattern(node.repeat.pattern, xScale, yScale);
+    const repeat: NodeRepeat = { count: node.repeat.count, pattern };
+    const bounds = patternBounds(repeat, object.x, object.y, payload.width, payload.height);
+    object.repeat = {
+      ...repeat,
+      region: {
+        x: (bounds.left + bounds.right) / 2,
+        y: (bounds.top + bounds.bottom) / 2,
+        width: bounds.right - bounds.left,
+        height: bounds.bottom - bounds.top,
+      },
+    };
+  }
+}
+
+function localPattern(pattern: HierarchyPattern, xScale: number, yScale: number): RepeatPattern {
+  if (pattern.kind === 'grid') {
+    return {
+      kind: 'grid',
+      cols: pattern.cols,
+      rows: pattern.rows,
+      pitchX: pattern.pitchXMm * xScale,
+      pitchY: pattern.pitchYMm * yScale,
+    };
+  }
+  if (pattern.kind === 'rows') {
+    return {
+      kind: 'rows',
+      pitch: pattern.pitchMm * yScale,
+      ...(pattern.staggerMm !== undefined ? { stagger: pattern.staggerMm * xScale } : {}),
+    };
+  }
+  return {
+    kind: 'scatter',
+    seed: pattern.seed,
+    density: pattern.densityPerMm2 / (xScale * yScale),
+  };
 }
 
 function authoredObjects(nodes: readonly HierarchyNode[], overrides: Overrides): CanvasObject[] {
@@ -326,6 +510,7 @@ function nodeRecord(node: HierarchyNode, byId: Map<string, CanvasObject>): Prese
     status,
     sizeMm: node.sizeMm,
     count: node.countMark,
+    ...(object.repeat ? { repeat: object.repeat } : {}),
     image: payload.type === 'image' ? payload.src : null,
     place: {
       parent: object.parentId ?? null,

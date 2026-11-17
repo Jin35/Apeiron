@@ -1,6 +1,7 @@
 import { cameraFromLocation, initialCameraFor } from './bootstrap';
 import { boxFitScale, clampScale, deriveCameraLimits, type Camera, type ViewBounds } from './camera';
 import { resolveWorldRect } from './link';
+import { copyWorldDelta } from './repeat';
 import { createMemoryStore } from './store';
 import { themeFromSearch, type ContentPack, type Theme } from './theme';
 
@@ -38,6 +39,7 @@ export function openingCameraFor(pack: ContentPack, viewW: number, viewH: number
 /**
  * What the page mounts. A `?scale=` query still replaces the fitted camera.
  * `?focus=<id>` frames that node. `?into=1` multiplies by the pack's `intoFactor`.
+ * `&i=<copyIndex>` frames that copy of a repeated node. Copy 0 is the authored one.
  */
 export function bootFromLocation(
   search: string,
@@ -66,7 +68,7 @@ function openingFromSearch(pack: ContentPack, search: string, viewW: number, vie
   const focus = params.get('focus');
   const scaleParam = Number(params.get('scale'));
   if (focus && !(scaleParam > 0)) {
-    const framed = frameOn(pack.objects, focus, viewW, viewH);
+    const framed = frameOn(pack.objects, focus, viewW, viewH, copyIndexFrom(params));
     if (framed) {
       const into = params.get('into') === '1' ? (pack.intoFactor ?? 1) : 1;
       return { ...framed, scale: clampScale(framed.scale * into) };
@@ -75,20 +77,32 @@ function openingFromSearch(pack: ContentPack, search: string, viewW: number, vie
   return cameraFromLocation(openingCameraFor(pack, viewW, viewH), search);
 }
 
-/** Camera that fits `id` in the viewport, centred on it. */
+/** Camera that fits `id` in the viewport, centred on it. `copyIndex` centres that copy. */
 export function frameOn(
   objects: ContentPack['objects'],
   id: string,
   viewW: number,
   viewH: number,
+  copyIndex = 0,
 ): Camera | null {
   const rect = resolveWorldRect(objects, id);
   if (!rect) return null;
+  const shift = copyWorldDelta(objects, id, copyIndex);
+  const x = rect.x + shift.x;
+  const y = rect.y + shift.y;
   const bounds: ViewBounds = {
-    left: rect.x - rect.width / 2,
-    right: rect.x + rect.width / 2,
-    top: rect.y - rect.height / 2,
-    bottom: rect.y + rect.height / 2,
+    left: x - rect.width / 2,
+    right: x + rect.width / 2,
+    top: y - rect.height / 2,
+    bottom: y + rect.height / 2,
   };
-  return { x: rect.x, y: rect.y, scale: boxFitScale(bounds, viewW, viewH) };
+  return { x, y, scale: boxFitScale(bounds, viewW, viewH) };
+}
+
+function copyIndexFrom(params: URLSearchParams): number {
+  const raw = params.get('i');
+  if (raw === null) return 0;
+  const index = Number(raw);
+  if (!Number.isInteger(index) || index < 0) return 0;
+  return index;
 }
