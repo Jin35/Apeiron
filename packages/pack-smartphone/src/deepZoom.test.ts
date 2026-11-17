@@ -52,6 +52,7 @@ const siliconPath = [
   'cpu-gpu-cores',
   'cpu-gpu-cores-scale-window-1',
   'cpu-gpu-cores-scale-window-2',
+  'cpu-gpu-cores-scale-window-3',
   'standard-cell',
   'transistor',
   'gate-stack',
@@ -67,6 +68,7 @@ const hafniaPath = [
   'cpu-gpu-cores',
   'cpu-gpu-cores-scale-window-1',
   'cpu-gpu-cores-scale-window-2',
+  'cpu-gpu-cores-scale-window-3',
   'standard-cell',
   'transistor',
   'gate-stack',
@@ -79,7 +81,7 @@ describe('smartphone deep zoom', () => {
   const opening = frameOn(smartphoneObjects, 'phone', view.width, view.height);
 
   it('places every hierarchy node and keeps the hand-authored parts', () => {
-    expect(hierarchyNodes).toHaveLength(188);
+    expect(hierarchyNodes).toHaveLength(200);
     expect(smartphoneLayoutReport.unplaced).toEqual([]);
     const ids = new Set(smartphoneObjects.map((object) => object.id));
     for (const node of hierarchyNodes) {
@@ -89,11 +91,27 @@ describe('smartphone deep zoom', () => {
       expect(ids.has(`${node.id}-link`), node.id).toBe(true);
     }
     const transistor = smartphoneObjects.find((object) => object.id === 'transistor-label');
-    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×4' });
+    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×~240 million' });
     const device = smartphoneObjects.find((object) => object.id === 'transistor');
     expect(device?.repeat?.count).toBe(4);
-    expect(device?.repeat?.pattern).toMatchObject({ kind: 'grid', cols: 2, rows: 2 });
-    const art = ['pouch', 'electrode-stack', 'anode', 'graphite-particle', 'graphite-carbon-sheet', 'graphite-carbon-atom'];
+    expect(device?.repeat?.pattern).toMatchObject({ kind: 'rows' });
+    const pixel = smartphoneObjects.find((object) => object.id === 'display-pixel');
+    expect(pixel?.repeat).toMatchObject({ count: 9, pattern: { kind: 'grid', cols: 3, rows: 3 } });
+    const sensor = smartphoneObjects.find((object) => object.id === 'sensor-pixel');
+    expect(sensor?.repeat).toMatchObject({ count: 64, pattern: { kind: 'grid', cols: 8, rows: 8 } });
+    const dram = smartphoneObjects.find((object) => object.id === 'dram-cell');
+    expect(dram?.repeat).toMatchObject({ count: 100, pattern: { kind: 'grid', cols: 10, rows: 10 } });
+    expect(hierarchyNodes.some((node) => node.id === 'lco-lithium-site')).toBe(false);
+    const art = [
+      'display',
+      'pouch',
+      'electrode-stack',
+      'anode',
+      'graphite-particle',
+      'graphite-carbon-sheet',
+      'graphite-carbon-atom',
+      'back-glass',
+    ];
     for (const id of art) {
       const object = smartphoneObjects.find((entry) => entry.id === id);
       expect(object?.payload).toMatchObject({ type: 'image', frame: false });

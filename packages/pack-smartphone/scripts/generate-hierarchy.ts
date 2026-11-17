@@ -232,7 +232,7 @@ export function presentedJson(): string {
   const nodes = readNodes();
   const overrides = readOverrides();
   const scene = place(nodes, overrides);
-  const file = presentFile(scene, overrides, nodes);
+  const file = presentFile(scene, overrides, scene.nodes);
   const json = `${JSON.stringify(file, null, 2)}\n`;
   assertSame(scene.objects, objectsFromPresented(JSON.parse(json) as PresentedFile));
   return json;
@@ -263,7 +263,7 @@ function presentFile(
 function readNodes(): HierarchyNode[] {
   const markdown = readFileSync(join(root, 'smartphone-hierarchy.md'), 'utf8');
   const nodes = parseHierarchy(markdown);
-  if (nodes.length !== 188) throw new Error(`expected 188 nodes, parsed ${nodes.length}`);
+  if (nodes.length !== 200) throw new Error(`expected 200 nodes, parsed ${nodes.length}`);
   const ids = new Set<string>();
   for (const node of nodes) {
     if (ids.has(node.id)) throw new Error(`duplicate id ${node.id}`);
@@ -280,7 +280,10 @@ function readOverrides(): Overrides {
   return JSON.parse(readFileSync(join(root, 'data/overrides.json'), 'utf8')) as Overrides;
 }
 
-function place(nodes: readonly HierarchyNode[], overrides: Overrides): { objects: CanvasObject[]; report: ReturnType<typeof layoutTree> } {
+function place(
+  nodes: readonly HierarchyNode[],
+  overrides: Overrides,
+): { objects: CanvasObject[]; report: ReturnType<typeof layoutTree>; nodes: HierarchyNode[] } {
   const built = authoredObjects(nodes, overrides);
   const hosts: LayoutHost[] = [];
   const policies: Record<string, SpacePolicy> = {};
@@ -313,7 +316,7 @@ function place(nodes: readonly HierarchyNode[], overrides: Overrides): { objects
   });
   const objects = [...built, ...laidOut.objects];
   stampRepeats(objects, labeled);
-  return { objects, report: laidOut };
+  return { objects, report: laidOut, nodes: labeled };
 }
 
 /**
@@ -355,6 +358,24 @@ function stampRepeats(objects: CanvasObject[], nodes: readonly HierarchyNode[]):
     const yScale = payload.height / node.sizeMm;
     const pattern = localPattern(node.repeat.pattern, xScale, yScale);
     const repeat: NodeRepeat = { count: node.repeat.count, pattern };
+    // Scatter has no pitch. The region is the square whose area is count ÷ density,
+    // centred on the placed copy, so the drawn points match the per-parent count.
+    if (pattern.kind === 'scatter' && node.repeat.pattern.kind === 'scatter') {
+      const areaMm2 = node.repeat.count / node.repeat.pattern.densityPerMm2;
+      const sideMm = Math.sqrt(areaMm2);
+      if (sideMm > 0 && Number.isFinite(sideMm)) {
+        object.repeat = {
+          ...repeat,
+          region: {
+            x: object.x,
+            y: object.y,
+            width: sideMm * xScale,
+            height: sideMm * yScale,
+          },
+        };
+        continue;
+      }
+    }
     const bounds = patternBounds(repeat, object.x, object.y, payload.width, payload.height);
     object.repeat = {
       ...repeat,
