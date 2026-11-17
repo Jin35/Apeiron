@@ -151,8 +151,8 @@
       "image": null,
       "place": {
         "parent": "midframe-scale-window-1",
-        "x": 1.9128779238651807,
-        "y": 1.9128779238651805,
+        "x": 0.8615344186871948,
+        "y": 0.5383464538526467,
         "width": 2.015680119581465,
         "height": 2.015680119581465
       },
@@ -171,11 +171,11 @@
         "id": "aluminium-frame-label",
         "text": "Aluminium frame",
         "parent": "midframe-scale-window-1",
-        "x": 3.8281466258439285,
-        "y": 3.828146625843928,
-        "width": 2.54826060117713,
-        "height": 0.3973094485706277,
-        "fontSize": 0.1541645602474075
+        "x": 3.138282435235704,
+        "y": 1.9610165114141602,
+        "width": 2.2651205343796708,
+        "height": 0.3531639542850024,
+        "fontSize": 0.13703516466436222
       },
       "link": {
         "id": "aluminium-frame-link",
@@ -233,7 +233,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.03,
-      "count": null,
+      "count": "×44",
+      "repeat": {
+        "count": 44,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.030235201793721973
+        },
+        "region": {
+          "x": 0.023825321985717116,
+          "y": 0.6738821605507396,
+          "width": 0.03023520179372197,
+          "height": 1.3303488789237667
+        }
+      },
       "image": null,
       "place": {
         "parent": "aluminium-frame-scale-window-1",
@@ -255,11 +268,11 @@
       },
       "label": {
         "id": "aluminium-grains-label",
-        "text": "Metal grains",
+        "text": "Metal grains ×44",
         "parent": "aluminium-frame-scale-window-1",
-        "x": 0.04962819126055201,
-        "y": 0.049628191260552006,
-        "width": 0.027181446412556046,
+        "x": 0.05189331179493169,
+        "y": 0.05189331179493168,
+        "width": 0.036241928550074735,
         "height": 0.005297459314275037,
         "fontSize": 0.0020555274699654335
       },
@@ -448,7 +461,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2.9e-7,
-      "count": null,
+      "count": "×~4.84 thousand",
+      "repeat": {
+        "count": 110,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 11,
+          "pitchX": 2.882422571001494e-7,
+          "pitchY": 2.882422571001494e-7
+        },
+        "region": {
+          "x": 0.000001469397040688111,
+          "y": 0.0000015488805762712762,
+          "width": 0.0000028864539312406565,
+          "height": 0.000003174696188340806
+        }
+      },
       "image": null,
       "place": {
         "parent": "aluminium-grains-scale-window-4",
@@ -470,11 +499,11 @@
       },
       "label": {
         "id": "aluminium-atoms-label",
-        "text": "Aluminium atoms",
+        "text": "Aluminium atoms ×~4.84 thousand",
         "parent": "aluminium-grains-scale-window-4",
-        "x": 5.73945459739573e-7,
-        "y": 3.58640927458768e-7,
-        "width": 5.096521202354262e-7,
+        "x": 7.694305009786435e-7,
+        "y": 4.807935384857941e-7,
+        "width": 0.0000010532810484865474,
         "height": 7.946188971412557e-8,
         "fontSize": 3.083291204948151e-8
       },
@@ -702,18 +731,32 @@
     {
       "id": "antenna-bands",
       "name": "Antenna bands",
-      "parent": "midframe-scale-window-1",
+      "parent": "midframe",
       "kind": "part",
       "status": "planned",
-      "sizeMm": 2,
-      "count": null,
+      "sizeMm": 7.65,
+      "count": "×6",
+      "repeat": {
+        "count": 6,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 11,
+          "density": 0.00026256678238313055
+        },
+        "region": {
+          "x": -8.483811659192833,
+          "y": -17.778298654708514,
+          "width": 151.166561353754,
+          "height": 151.166561353754
+        }
+      },
       "image": null,
       "place": {
-        "parent": "midframe-scale-window-1",
-        "x": -1.9128779238651805,
-        "y": 1.9128779238651807,
-        "width": 2.015680119581465,
-        "height": 2.015680119581465
+        "parent": "midframe",
+        "x": -8.483811659192833,
+        "y": -17.778298654708514,
+        "width": 7.709976457399104,
+        "height": 7.709976457399104
       },
       "visibility": {
         "minScale": 0.02,
@@ -724,17 +767,17 @@
           1,
           1.6
         ],
-        "fadeInOf": "midframe-scale-window-1"
+        "fadeInOf": "midframe"
       },
       "label": {
         "id": "antenna-bands-label",
-        "text": "Antenna bands",
-        "parent": "midframe-scale-window-1",
-        "x": -3.74320460580469,
-        "y": 3.7432046058046904,
-        "width": 2.208492521020179,
-        "height": 0.3973094485706277,
-        "fontSize": 0.1541645602474075
+        "text": "Antenna bands ×6",
+        "parent": "midframe",
+        "x": -14.589108013773561,
+        "y": -30.572286348863223,
+        "width": 27.18144641255605,
+        "height": 3.973094485706277,
+        "fontSize": 1.5416456024740748
       },
       "link": {
         "id": "antenna-bands-link",
@@ -749,12 +792,25 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 10,
-      "count": null,
+      "count": "×3",
+      "repeat": {
+        "count": 3,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 10.078400597907324
+        },
+        "region": {
+          "x": 8.483811659192824,
+          "y": -7.699898056801194,
+          "width": 10.078400597907326,
+          "height": 30.235201793721973
+        }
+      },
       "image": null,
       "place": {
         "parent": "midframe",
-        "x": -8.483811659192833,
-        "y": -17.778298654708514,
+        "x": 8.483811659192824,
+        "y": -17.778298654708518,
         "width": 10.078400597907324,
         "height": 10.078400597907324
       },
@@ -771,11 +827,11 @@
       },
       "label": {
         "id": "buttons-label",
-        "text": "Buttons",
+        "text": "Buttons ×3",
         "parent": "midframe",
-        "x": -13.851076672342225,
-        "y": -29.02570067115267,
-        "width": 11.891882805493271,
+        "x": 14.323733639958729,
+        "y": -30.016179605513514,
+        "width": 16.98840400784753,
         "height": 3.973094485706277,
         "fontSize": 1.5416456024740748
       },
@@ -1395,7 +1451,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 5e-7,
-      "count": null,
+      "count": "×100",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 4.8030923575348e-8
+        },
+        "region": {
+          "x": 2.737226237404423e-8,
+          "y": 0.0000023946348048296874,
+          "width": 4.8030923575348e-8,
+          "height": 0.000004803092357534801
+        }
+      },
       "image": null,
       "place": {
         "parent": "glass-compression-scale-window-4",
@@ -1417,13 +1486,13 @@
       },
       "label": {
         "id": "glass-network-label",
-        "text": "Glass network",
+        "text": "Glass network ×100",
         "parent": "glass-compression-scale-window-4",
-        "x": 8.839222509858659e-8,
-        "y": 5.523359241117718e-8,
-        "width": 7.016717547813653e-8,
-        "height": 1.2623127102146147e-8,
-        "fontSize": 4.898043189384545e-9
+        "x": 9.389974904837011e-8,
+        "y": 5.8675075332303514e-8,
+        "width": 8.635960058847571e-8,
+        "height": 1.1220557424129909e-8,
+        "fontSize": 4.3538161683418175e-9
       },
       "link": {
         "id": "glass-network-link",
@@ -1438,7 +1507,21 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2e-7,
-      "count": null,
+      "count": "×300",
+      "repeat": {
+        "count": 3,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 3,
+          "density": 11262375659311416
+        },
+        "region": {
+          "x": 4.383278470538804e-9,
+          "y": 4.383278470538804e-9,
+          "width": 1.6320957081361995e-8,
+          "height": 1.6320957081361995e-8
+        }
+      },
       "image": null,
       "place": {
         "parent": "glass-network",
@@ -1460,11 +1543,11 @@
       },
       "label": {
         "id": "glass-silicon-label",
-        "text": "Silicon sites",
+        "text": "Silicon sites ×300",
         "parent": "glass-network",
-        "x": 1.0271179103847185e-8,
-        "y": 1.0271179103847183e-8,
-        "width": 7.0167175478136535e-9,
+        "x": 1.094586348344465e-8,
+        "y": 1.094586348344465e-8,
+        "width": 9.715455066203519e-9,
         "height": 1.262312710214615e-9,
         "fontSize": 4.898043189384545e-10
       },
@@ -1481,7 +1564,21 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 1.6e-7,
-      "count": null,
+      "count": "×600",
+      "repeat": {
+        "count": 6,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 4,
+          "density": 22524751318622830
+        },
+        "region": {
+          "x": -4.383278470538804e-9,
+          "y": 4.383278470538804e-9,
+          "width": 1.6320957081361995e-8,
+          "height": 1.6320957081361995e-8
+        }
+      },
       "image": null,
       "place": {
         "parent": "glass-network",
@@ -1503,11 +1600,11 @@
       },
       "label": {
         "id": "glass-oxygen-label",
-        "text": "Oxygen bridges",
+        "text": "Oxygen bridges ×600",
         "parent": "glass-network",
-        "x": -9.642487366006413e-9,
-        "y": 9.642487366006415e-9,
-        "width": 7.556465051491627e-9,
+        "x": -1.0317171745603879e-8,
+        "y": 1.0317171745603879e-8,
+        "width": 1.0255202569881492e-8,
         "height": 1.262312710214615e-9,
         "fontSize": 4.898043189384545e-10
       },
@@ -1653,7 +1750,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 5,
-      "count": null,
+      "count": "×364",
+      "repeat": {
+        "count": 364,
+        "pattern": {
+          "kind": "grid",
+          "cols": 28,
+          "rows": 13,
+          "pitchX": 0.48030923575348,
+          "pitchY": 0.48030923575348
+        },
+        "region": {
+          "x": 8.41001989368585,
+          "y": 4.807700625534751,
+          "width": 13.448658601097438,
+          "height": 6.24402006479524
+        }
+      },
       "image": null,
       "place": {
         "parent": "touch-layer",
@@ -1675,11 +1788,11 @@
       },
       "label": {
         "id": "touch-electrodes-label",
-        "text": "Transparent electrodes",
+        "text": "Transparent electrodes ×364",
         "parent": "touch-layer",
-        "x": 3.1806692512167007,
-        "y": 3.1806692512167,
-        "width": 3.324844622656314,
+        "x": 3.3695808775039913,
+        "y": 3.3695808775039904,
+        "width": 4.080491127805476,
         "height": 0.353447558860092,
         "fontSize": 0.1371452093027672
       },
@@ -1868,7 +1981,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 16.5652,
-      "count": null,
+      "count": "×36",
+      "repeat": {
+        "count": 36,
+        "pattern": {
+          "kind": "grid",
+          "cols": 9,
+          "rows": 4,
+          "pitchX": 1.5912837104207094,
+          "pitchY": 1.5912837104207094
+        },
+        "region": {
+          "x": 7.131558188156076,
+          "y": 2.8658400254299745,
+          "width": 14.321553393786385,
+          "height": 6.3651348416828375
+        }
+      },
       "image": null,
       "place": {
         "parent": "oled-panel",
@@ -1890,11 +2019,11 @@
       },
       "label": {
         "id": "display-array-region-label",
-        "text": "Pixel-array region",
+        "text": "Pixel-array region ×36",
         "parent": "oled-panel",
-        "x": 2.9157640436384877,
-        "y": 1.821971588268902,
-        "width": 2.720327418536984,
+        "x": 3.1331440696742,
+        "y": 1.9578057042558703,
+        "width": 3.324844622656314,
         "height": 0.353447558860092,
         "fontSize": 0.1371452093027672
       },
@@ -1911,7 +2040,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 1.65652,
-      "count": null,
+      "count": "×~3.6 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.15912837104207092,
+          "pitchY": 0.15912837104207092
+        },
+        "region": {
+          "x": 0.8067630698250225,
+          "y": 0.7727441968997542,
+          "width": 1.5912837104207092,
+          "height": 1.5912837104207092
+        }
+      },
       "image": null,
       "place": {
         "parent": "display-array-region",
@@ -1933,11 +2078,11 @@
       },
       "label": {
         "id": "display-array-tile-label",
-        "text": "Pixel-array tile",
+        "text": "Pixel-array tile ×~3.6 thousand",
         "parent": "display-array-region",
-        "x": 0.3121377467653717,
-        "y": 0.1950453115277156,
-        "width": 0.2861128111336435,
+        "x": 0.40859159338912454,
+        "y": 0.2553163641566617,
+        "width": 0.5543435715714343,
         "height": 0.04182092501449426,
         "fontSize": 0.016227413008158567
       },
@@ -1954,7 +2099,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.165652,
-      "count": null,
+      "count": "×~360 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.01591283710420709,
+          "pitchY": 0.01591283710420709
+        },
+        "region": {
+          "x": 0.08067630698250226,
+          "y": 0.07727441968997542,
+          "width": 0.15912837104207092,
+          "height": 0.1591283710420709
+        }
+      },
       "image": null,
       "place": {
         "parent": "display-array-tile",
@@ -1976,11 +2137,11 @@
       },
       "label": {
         "id": "display-pixel-neighbourhood-label",
-        "text": "Pixel neighbourhood",
+        "text": "Pixel neighbourhood ×~360 thousand",
         "parent": "display-array-tile",
-        "x": 0.03314285160901224,
-        "y": 0.020709952205350487,
-        "width": 0.03397589632212017,
+        "x": 0.04278823627138752,
+        "y": 0.026737057468245097,
+        "width": 0.06079897236589924,
         "height": 0.004182092501449426,
         "fontSize": 0.0016227413008158568
       },
@@ -1997,7 +2158,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.0552174,
-      "count": "×~2.96 million",
+      "count": "×~3.24 million",
+      "repeat": {
+        "count": 9,
+        "pattern": {
+          "kind": "grid",
+          "cols": 3,
+          "rows": 3,
+          "pitchX": 0.0053042854388588405,
+          "pitchY": 0.0053042854388588405
+        },
+        "region": {
+          "x": 0.005587677314282913,
+          "y": 0.00548136833639145,
+          "width": 0.01591285631657652,
+          "height": 0.01591285631657652
+        }
+      },
       "image": null,
       "place": {
         "parent": "display-pixel-neighbourhood",
@@ -2019,7 +2196,7 @@
       },
       "label": {
         "id": "display-pixel-label",
-        "text": "Display pixel ×~2.96 million",
+        "text": "Display pixel ×~3.24 million",
         "parent": "display-pixel-neighbourhood",
         "x": 0.005606383556316957,
         "y": 0.0035032572593908877,
@@ -2298,7 +2475,21 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.0000015,
-      "count": null,
+      "count": "×~32.4 million",
+      "repeat": {
+        "count": 10,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 5,
+          "density": 230745452991102.84
+        },
+        "region": {
+          "x": 7.414864140921233e-9,
+          "y": 4.633321350233163e-9,
+          "width": 2.081773252104372e-7,
+          "height": 2.081773252104372e-7
+        }
+      },
       "image": null,
       "place": {
         "parent": "oled-organic-layer-scale-window-1",
@@ -2320,11 +2511,11 @@
       },
       "label": {
         "id": "oled-emitter-molecule-label",
-        "text": "Emitter molecule",
+        "text": "Emitter molecule ×~32.4 million",
         "parent": "oled-organic-layer-scale-window-1",
-        "x": 6.495034324075956e-8,
-        "y": 4.058547888714179e-8,
-        "width": 3.743028307283661e-8,
+        "x": 7.756877430047419e-8,
+        "y": 4.84703497255382e-8,
+        "width": 7.252117345362092e-8,
         "height": 5.471160328186802e-9,
         "fontSize": 2.122927176971082e-9
       },
@@ -2601,7 +2792,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2,
-      "count": null,
+      "count": "×2",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.8682907492427502
+        },
+        "region": {
+          "x": -0.8220703461448753,
+          "y": 1.2562157207662505,
+          "width": 0.8682907492427501,
+          "height": 1.7365814984855006
+        }
+      },
       "image": null,
       "place": {
         "parent": "protection-board",
@@ -2623,13 +2827,13 @@
       },
       "label": {
         "id": "mosfet-switches-label",
-        "text": "MOSFET switches",
+        "text": "MOSFET switches ×2",
         "parent": "protection-board",
-        "x": -2.4884196720580807,
-        "y": 2.4884196720580807,
-        "width": 3.7617055084745763,
-        "height": 0.5865024717514123,
-        "fontSize": 0.14646030813413274
+        "x": -2.854041100821254,
+        "y": 2.8540411008212545,
+        "width": 5.078302436440678,
+        "height": 0.6598152807203389,
+        "fontSize": 0.16476784665089936
       },
       "link": {
         "id": "mosfet-switches-link",
@@ -2903,7 +3107,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.2,
-      "count": null,
+      "count": "×20",
+      "repeat": {
+        "count": 20,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.05908558013168189
+        },
+        "region": {
+          "x": -0.07446716607230634,
+          "y": 0.6357801773232844,
+          "width": 0.059085580131681886,
+          "height": 1.1817116026336378
+        }
+      },
       "image": null,
       "place": {
         "parent": "electrode-stack",
@@ -2925,11 +3142,11 @@
       },
       "label": {
         "id": "electrode-repeat-label",
-        "text": "Electrode-layer repeat",
+        "text": "Electrode-layer repeat ×20",
         "parent": "electrode-stack",
-        "x": -0.1924975136195894,
-        "y": 0.1924975136195894,
-        "width": 0.2921486509611011,
+        "x": -0.2031043952529713,
+        "y": 0.20310439525297133,
+        "width": 0.34526658749948314,
         "height": 0.031056858056715292,
         "fontSize": 0.0077554609225798056
       },
@@ -3075,7 +3292,20 @@
       "kind": "part",
       "status": "built",
       "sizeMm": 0.006,
-      "count": null,
+      "count": "×~1.2 thousand",
+      "repeat": {
+        "count": 60,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.00023382659124223607
+        },
+        "region": {
+          "x": 0.00013341754954914942,
+          "y": 0.006981252979366072,
+          "width": 0.00023411174562179977,
+          "height": 0.014029595474534166
+        }
+      },
       "image": "images/smartphone/graphite-particle.webp",
       "place": {
         "parent": "graphite-coating",
@@ -3097,13 +3327,13 @@
       },
       "label": {
         "id": "graphite-particle-label",
-        "text": "Graphite particle",
+        "text": "Graphite particle ×~1.2 thousand",
         "parent": "graphite-coating",
-        "x": 0.00044918279053136857,
-        "y": 0.00028068055920815944,
-        "width": 0.0003975477564819961,
-        "height": 0.00005469110501887043,
-        "fontSize": 0.00001365736118611795
+        "x": 0.0006104924936136372,
+        "y": 0.0003814780488298627,
+        "width": 0.000841865837255992,
+        "height": 0.00006152749314622924,
+        "fontSize": 0.000015364531334382695
       },
       "link": {
         "id": "graphite-particle-link",
@@ -3247,7 +3477,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 6.7094e-7,
-      "count": null,
+      "count": "×~259.2 thousand",
+      "repeat": {
+        "count": 216,
+        "pattern": {
+          "kind": "grid",
+          "cols": 24,
+          "rows": 9,
+          "pitchX": 9.598581570493792e-9,
+          "pitchY": 2.6181496885371277e-8
+        },
+        "region": {
+          "x": 1.2372544301559356e-7,
+          "y": 1.1306284131349587e-7,
+          "width": 2.469465318892723e-7,
+          "height": 2.356311308508853e-7
+        }
+      },
       "image": null,
       "place": {
         "parent": "graphite-particle-scale-window-3",
@@ -3269,13 +3515,13 @@
       },
       "label": {
         "id": "graphite-crystal-label",
-        "text": "Graphite crystal region",
+        "text": "Graphite crystal region ×~259.2 thousand",
         "parent": "graphite-particle-scale-window-3",
-        "x": 5.444330188993123e-8,
-        "y": 3.4019950767765195e-8,
-        "width": 6.050910705277442e-8,
-        "height": 6.152749314622924e-9,
-        "fontSize": 1.5364531334382694e-9
+        "x": 6.616759333437439e-8,
+        "y": 4.134610116425046e-8,
+        "width": 9.354064858399909e-8,
+        "height": 5.469110501887043e-9,
+        "fontSize": 1.3657361186117949e-9
       },
       "link": {
         "id": "graphite-crystal-link",
@@ -3290,7 +3536,21 @@
       "kind": "part",
       "status": "built",
       "sizeMm": 1.42e-7,
-      "count": null,
+      "count": "×~518.4 thousand",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 4.041820367566933e-9,
+          "stagger": 1.5263142750299596e-9
+        },
+        "region": {
+          "x": 4.294604608833989e-9,
+          "y": 3.932991347694603e-9,
+          "width": 4.57894282508988e-9,
+          "height": 5.755069597998289e-9
+        }
+      },
       "image": "images/smartphone/graphite-carbon-sheet.webp",
       "place": {
         "parent": "graphite-crystal",
@@ -3312,13 +3572,13 @@
       },
       "label": {
         "id": "graphite-carbon-sheet-label",
-        "text": "Carbon sheet",
+        "text": "Carbon sheet ×~518.4 thousand",
         "parent": "graphite-crystal",
-        "x": 7.089906341141134e-9,
-        "y": 3.1566296792269206e-9,
-        "width": 3.530259155303345e-9,
-        "height": 6.880209375255175e-10,
-        "fontSize": 1.718113108915121e-10
+        "x": 8.767058879481228e-9,
+        "y": 3.903346098933956e-9,
+        "width": 7.583519666947927e-9,
+        "height": 6.115741666893489e-10,
+        "fontSize": 1.5272116523689963e-10
       },
       "link": {
         "id": "graphite-carbon-sheet-link",
@@ -3333,7 +3593,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 3.35e-7,
-      "count": null,
+      "count": "×~518.4 thousand",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 4.041820367566934e-9
+        },
+        "region": {
+          "x": -2.925048128126461e-9,
+          "y": 3.3232255163334068e-9,
+          "width": 4.041820367566934e-9,
+          "height": 8.083640735133867e-9
+        }
+      },
       "image": null,
       "place": {
         "parent": "graphite-crystal",
@@ -3355,11 +3628,11 @@
       },
       "label": {
         "id": "graphite-layer-gap-label",
-        "text": "Layer spacing",
+        "text": "Layer spacing ×~518.4 thousand",
         "parent": "graphite-crystal",
-        "x": -7.529330877194887e-9,
-        "y": 3.352274087706449e-9,
-        "width": 3.824447418245291e-9,
+        "x": -9.616245070453668e-9,
+        "y": 4.281428150322782e-9,
+        "width": 8.825647888258364e-9,
         "height": 6.880209375255175e-10,
         "fontSize": 1.718113108915121e-10
       },
@@ -3376,7 +3649,23 @@
       "kind": "part",
       "status": "built",
       "sizeMm": 1.5e-7,
-      "count": null,
+      "count": "×~1.04 million",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "grid",
+          "cols": 2,
+          "rows": 2,
+          "pitchX": 1.4825004438451192e-9,
+          "pitchY": 1.4840116573454712e-9
+        },
+        "region": {
+          "x": -2.337418496384251e-9,
+          "y": -2.336662889634076e-9,
+          "width": 3.2904278143879472e-9,
+          "height": 3.2937819711814113e-9
+        }
+      },
       "image": "images/smartphone/graphite-carbon-atom.webp",
       "place": {
         "parent": "graphite-crystal",
@@ -3398,11 +3687,11 @@
       },
       "label": {
         "id": "graphite-carbon-atom-label",
-        "text": "Carbon atom",
+        "text": "Carbon atom ×~1.04 million",
         "parent": "graphite-crystal",
-        "x": -5.1343925915561495e-9,
-        "y": -5.1343925915561495e-9,
-        "width": 3.2360708923614e-9,
+        "x": -6.252436668597845e-9,
+        "y": -6.2524366685978455e-9,
+        "width": 7.648894836490582e-9,
         "height": 6.880209375255175e-10,
         "fontSize": 1.718113108915121e-10
       },
@@ -3677,7 +3966,21 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.00005,
-      "count": null,
+      "count": "×160",
+      "repeat": {
+        "count": 8,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 7,
+          "density": 106424835969.08821
+        },
+        "region": {
+          "x": 4.940981813001842e-7,
+          "y": 3.0874681032862346e-7,
+          "width": 0.000008670087865024804,
+          "height": 0.000008670087865024804
+        }
+      },
       "image": null,
       "place": {
         "parent": "separator-scale-window-2",
@@ -3699,13 +4002,13 @@
       },
       "label": {
         "id": "separator-pores-label",
-        "text": "Electrolyte-filled pores",
+        "text": "Electrolyte-filled pores ×160",
         "parent": "separator-scale-window-2",
-        "x": 0.0000028731858957335535,
-        "y": 0.000001795365808582046,
-        "width": 0.000002338322697197189,
-        "height": 2.2786074670268308e-7,
-        "fontSize": 5.690096253830183e-8
+        "x": 0.000002929781748988145,
+        "y": 0.000001830730822725998,
+        "width": 0.0000025115317858784625,
+        "height": 2.025428859579405e-7,
+        "fontSize": 5.05786333673794e-8
       },
       "link": {
         "id": "separator-pores-link",
@@ -3806,7 +4109,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.006,
-      "count": null,
+      "count": "×~1.2 thousand",
+      "repeat": {
+        "count": 60,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.0010894315223737606
+        },
+        "region": {
+          "x": 0.0010313373792593548,
+          "y": 0.033169567289285294,
+          "width": 0.0010894315223737606,
+          "height": 0.06536589134242564
+        }
+      },
       "image": null,
       "place": {
         "parent": "cathode",
@@ -3828,11 +4144,11 @@
       },
       "label": {
         "id": "lco-particle-label",
-        "text": "LiCoO₂ particle",
+        "text": "LiCoO₂ particle ×~1.2 thousand",
         "parent": "cathode",
-        "x": 0.0022718668113039207,
-        "y": 0.0022718668113039203,
-        "width": 0.002087948937482037,
+        "x": 0.0027938540456744305,
+        "y": 0.0027938540456744296,
+        "width": 0.004175897874964074,
         "height": 0.0003255404257364466,
         "fontSize": 0.00008129335059935647
       },
@@ -3978,7 +4294,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.000001391,
-      "count": null,
+      "count": "×~100.8 thousand",
+      "repeat": {
+        "count": 84,
+        "pattern": {
+          "kind": "grid",
+          "cols": 21,
+          "rows": 4,
+          "pitchX": 5.1094338399329364e-8,
+          "pitchY": 2.525665412703168e-7
+        },
+        "region": {
+          "x": 5.730288140645869e-7,
+          "y": 4.176450943571361e-7,
+          "width": 0.000001274453309256904,
+          "height": 0.0000010102661650812672
+        }
+      },
       "image": null,
       "place": {
         "parent": "lco-particle-scale-window-3",
@@ -4000,11 +4332,11 @@
       },
       "label": {
         "id": "lco-lattice-label",
-        "text": "Layered oxide lattice",
+        "text": "Layered oxide lattice ×~100.8 thousand",
         "parent": "lco-particle-scale-window-3",
-        "x": 3.3424248252563467e-7,
-        "y": 2.0885788343635805e-7,
-        "width": 2.570922213861778e-7,
+        "x": 4.0908175117085365e-7,
+        "y": 2.556226487320641e-7,
+        "width": 4.6521449584165516e-7,
         "height": 2.8631622197385394e-8,
         "fontSize": 7.149835527353926e-9
       },
@@ -4021,18 +4353,31 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 1.5e-7,
-      "count": null,
+      "count": "×~302.4 thousand",
+      "repeat": {
+        "count": 3,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 5.701513452210128e-8
+        },
+        "region": {
+          "x": -2.299245227969821e-8,
+          "y": 3.402268224240307e-8,
+          "width": 1.843161676361033e-8,
+          "height": 1.324618858078129e-7
+        }
+      },
       "image": null,
       "place": {
         "parent": "lco-lattice",
-        "x": 4.143271241413096e-8,
-        "y": 1.844703207691019e-8,
-        "width": 1.4725968701648158e-8,
-        "height": 1.4725968701648158e-8
+        "x": -2.2992452279698207e-8,
+        "y": -2.2992452279698214e-8,
+        "width": 1.8431616763610326e-8,
+        "height": 1.8431616763610326e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 480106950422.06024
+        "maxScale": 383582190104.8547
       },
       "fade": {
         "fadeIn": [
@@ -4043,11 +4388,11 @@
       },
       "label": {
         "id": "lithium-ions-label",
-        "text": "Lithium ions",
+        "text": "Lithium ions ×~302.4 thousand",
         "parent": "lco-lattice",
-        "x": 6.806606289624475e-8,
-        "y": 3.030496369742319e-8,
-        "width": 3.4058598090302214e-8,
+        "x": -5.623068658458181e-8,
+        "y": -5.623068658458182e-8,
+        "width": 8.230827871823035e-8,
         "height": 6.637764412760512e-9,
         "fontSize": 1.6575702030915513e-9
       },
@@ -4064,18 +4409,31 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 1.5e-7,
-      "count": null,
+      "count": "×~302.4 thousand",
+      "repeat": {
+        "count": 3,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 5.701513452210128e-8
+        },
+        "region": {
+          "x": -2.299245227969821e-8,
+          "y": 8.00075868017995e-8,
+          "width": 1.843161676361033e-8,
+          "height": 1.324618858078129e-7
+        }
+      },
       "image": null,
       "place": {
         "parent": "lco-lattice",
-        "x": -4.143271241413095e-8,
-        "y": 1.84470320769102e-8,
-        "width": 1.4725968701648158e-8,
-        "height": 1.4725968701648158e-8
+        "x": -2.2992452279698207e-8,
+        "y": 2.2992452279698214e-8,
+        "width": 1.8431616763610326e-8,
+        "height": 1.8431616763610326e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 480106950422.06024
+        "maxScale": 383582190104.8547
       },
       "fade": {
         "fadeIn": [
@@ -4086,11 +4444,11 @@
       },
       "label": {
         "id": "lco-cobalt-label",
-        "text": "Cobalt sites",
+        "text": "Cobalt sites ×~302.4 thousand",
         "parent": "lco-lattice",
-        "x": -6.806606289624475e-8,
-        "y": 3.03049636974232e-8,
-        "width": 3.4058598090302214e-8,
+        "x": -5.623068658458181e-8,
+        "y": 5.623068658458182e-8,
+        "width": 8.230827871823035e-8,
         "height": 6.637764412760512e-9,
         "fontSize": 1.6575702030915513e-9
       },
@@ -4107,18 +4465,31 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2.8e-7,
-      "count": null,
+      "count": "×~604.8 thousand",
+      "repeat": {
+        "count": 6,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 2.848299177203249e-8
+        },
+        "region": {
+          "x": 2.2992452279698217e-8,
+          "y": 4.821502715038301e-8,
+          "width": 3.4405684625405945e-8,
+          "height": 1.7682064348556838e-7
+        }
+      },
       "image": null,
       "place": {
         "parent": "lco-lattice",
-        "x": -2.9701825253389255e-8,
-        "y": -2.970182525338926e-8,
-        "width": 2.7488474909743227e-8,
-        "height": 2.7488474909743227e-8
+        "x": 2.2992452279698214e-8,
+        "y": -2.2992452279698207e-8,
+        "width": 3.4405684625405945e-8,
+        "height": 3.4405684625405945e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 257200152011.81796
+        "maxScale": 205490458984.74356
       },
       "fade": {
         "fadeIn": [
@@ -4129,11 +4500,11 @@
       },
       "label": {
         "id": "lco-oxygen-label",
-        "text": "Oxygen sites",
+        "text": "Oxygen sites ×~604.8 thousand",
         "parent": "lco-lattice",
-        "x": -5.5952627775605235e-8,
-        "y": -5.595262777560524e-8,
-        "width": 3.4058598090302214e-8,
+        "x": 6.535122452434776e-8,
+        "y": -6.535122452434773e-8,
+        "width": 8.230827871823035e-8,
         "height": 6.637764412760512e-9,
         "fontSize": 1.6575702030915513e-9
       },
@@ -4141,49 +4512,6 @@
         "id": "lco-oxygen-link",
         "from": "lco-oxygen-label",
         "to": "lco-oxygen"
-      }
-    },
-    {
-      "id": "lco-lithium-site",
-      "name": "Lithium sites",
-      "parent": "lco-lattice",
-      "kind": "part",
-      "status": "planned",
-      "sizeMm": 2.814e-7,
-      "count": null,
-      "image": null,
-      "place": {
-        "parent": "lco-lattice",
-        "x": 2.970182525338926e-8,
-        "y": -2.9701825253389255e-8,
-        "width": 2.7625917284291943e-8,
-        "height": 2.7625917284291943e-8
-      },
-      "visibility": {
-        "minScale": 0.02,
-        "maxScale": 255920549265.49054
-      },
-      "fade": {
-        "fadeIn": [
-          1,
-          1.6
-        ],
-        "fadeInOf": "lco-lattice"
-      },
-      "label": {
-        "id": "lco-lithium-site-label",
-        "text": "Lithium sites",
-        "parent": "lco-lattice",
-        "x": 5.553327160056358e-8,
-        "y": -5.553327160056357e-8,
-        "width": 3.279716853140214e-8,
-        "height": 5.900235033564899e-9,
-        "fontSize": 1.4733957360813788e-9
-      },
-      "link": {
-        "id": "lco-lithium-site-link",
-        "from": "lco-lithium-site-label",
-        "to": "lco-lithium-site"
       }
     },
     {
@@ -4197,14 +4525,14 @@
       "image": null,
       "place": {
         "parent": "lco-lattice",
-        "x": 6.364676840011982e-9,
-        "y": 8.486235786682645e-9,
-        "width": 4.908656233882719e-8,
-        "height": 2.748847490974323e-8
+        "x": 9.56417444024087e-9,
+        "y": 2.1481487504815763e-8,
+        "width": 6.143872254536776e-8,
+        "height": 3.4405684625405945e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 144032085126.61807
+        "maxScale": 115074657031.4564
       },
       "fade": {
         "fadeIn": [
@@ -4217,8 +4545,8 @@
         "id": "cathode-intercalation-label",
         "text": "Cathode intercalation",
         "parent": "lco-lattice",
-        "x": 3.609818409034848e-8,
-        "y": 4.813091212046465e-8,
+        "x": 2.8880980290147492e-8,
+        "y": 6.486774379807412e-8,
         "width": 5.9602546658028876e-8,
         "height": 6.637764412760512e-9,
         "fontSize": 1.6575702030915513e-9
@@ -4360,6 +4688,124 @@
       }
     },
     {
+      "id": "soc-ball-region",
+      "name": "Solder-ball region",
+      "parent": "system-on-chip",
+      "kind": "view",
+      "status": "planned",
+      "sizeMm": 3.5,
+      "count": "×16",
+      "repeat": {
+        "count": 16,
+        "pattern": {
+          "kind": "grid",
+          "cols": 4,
+          "rows": 4,
+          "pitchX": 0.31300800455634215,
+          "pitchY": 0.31300800455634215
+        },
+        "region": {
+          "x": 0.7966126549746303,
+          "y": 0.7966126549746302,
+          "width": 1.2520320182253684,
+          "height": 1.2520320182253686
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "system-on-chip",
+        "x": 0.32710064814011713,
+        "y": 0.3271006481401171,
+        "width": 0.31300800455634215,
+        "height": 0.31300800455634215
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 14536.533853607643
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "system-on-chip"
+      },
+      "label": {
+        "id": "soc-ball-region-label",
+        "text": "Solder-ball region ×16",
+        "parent": "system-on-chip",
+        "x": 0.785963460254705,
+        "y": 0.7859634602547048,
+        "width": 0.990762154527897,
+        "height": 0.10532295630978375,
+        "fontSize": 0.04086755878036548
+      },
+      "link": {
+        "id": "soc-ball-region-link",
+        "from": "soc-ball-region-label",
+        "to": "soc-ball-region"
+      }
+    },
+    {
+      "id": "soc-solder-ball",
+      "name": "Solder ball",
+      "parent": "soc-ball-region",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.2,
+      "count": "×~1.6 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.031300800455634215,
+          "pitchY": 0.031300800455634215
+        },
+        "region": {
+          "x": 0.15869156265598688,
+          "y": 0.1519999969333799,
+          "width": 0.29959337578964174,
+          "height": 0.29959337578964174
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "soc-ball-region",
+        "x": 0.017837960605632912,
+        "y": 0.011146394883025953,
+        "width": 0.01788617168893384,
+        "height": 0.01788617168893384
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 254389.3424381337
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "soc-ball-region"
+      },
+      "label": {
+        "id": "soc-solder-ball-label",
+        "text": "Solder ball ×~1.6 thousand",
+        "parent": "soc-ball-region",
+        "x": 0.06567745777290816,
+        "y": 0.041039830473609346,
+        "width": 0.09145311373124924,
+        "height": 0.008226241619746364,
+        "fontSize": 0.0031919576198341498
+      },
+      "link": {
+        "id": "soc-solder-ball-link",
+        "from": "soc-solder-ball-label",
+        "to": "soc-solder-ball"
+      }
+    },
+    {
       "id": "soc-die",
       "name": "Processor die",
       "parent": "system-on-chip",
@@ -4370,10 +4816,10 @@
       "image": null,
       "place": {
         "parent": "system-on-chip",
-        "x": 0.028548072624881238,
-        "y": 0.01783881563936995,
-        "width": 1.4913551211334586,
-        "height": 1.4913551211334586
+        "x": -0.3271006481401171,
+        "y": 0.32710064814011713,
+        "width": 0.8943085844466918,
+        "height": 0.8943085844466918
       },
       "visibility": {
         "minScale": 0.02,
@@ -4390,8 +4836,8 @@
         "id": "soc-die-label",
         "text": "Processor die",
         "parent": "system-on-chip",
-        "x": 1.2858924364723372,
-        "y": 0.8035147734035752,
+        "x": -1.0228328701949836,
+        "y": 1.0228328701949838,
         "width": 0.5854503640392119,
         "height": 0.10532295630978375,
         "fontSize": 0.04086755878036548
@@ -4404,23 +4850,36 @@
     },
     {
       "id": "cpu-gpu-cores",
-      "name": "CPU and GPU cores",
+      "name": "CPU performance core",
       "parent": "soc-die",
       "kind": "part",
       "status": "planned",
       "sizeMm": 1,
-      "count": null,
+      "count": "×2",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.08943085844466919
+        },
+        "region": {
+          "x": 0.12806488951700437,
+          "y": 0.1727803187393389,
+          "width": 0.08943085844466919,
+          "height": 0.17886171688933836
+        }
+      },
       "image": null,
       "place": {
         "parent": "soc-die",
-        "x": 0.08499058654264856,
-        "y": 0.053108012731298414,
-        "width": 0.14913551211334586,
-        "height": 0.14913551211334586
+        "x": 0.12806488951700437,
+        "y": 0.12806488951700434,
+        "width": 0.08943085844466919,
+        "height": 0.08943085844466919
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 30509.510378891624
+        "maxScale": 50877.86848762674
       },
       "fade": {
         "fadeIn": [
@@ -4431,13 +4890,13 @@
       },
       "label": {
         "id": "cpu-gpu-cores-label",
-        "text": "CPU and GPU cores",
+        "text": "CPU performance core ×2",
         "parent": "soc-die",
-        "x": 0.2862008856109464,
-        "y": 0.17883816190758767,
-        "width": 0.2532486701809183,
-        "height": 0.03483971269092329,
-        "fontSize": 0.013518553373108182
+        "x": 0.24403097371190186,
+        "y": 0.2440309737119018,
+        "width": 0.23114523250755312,
+        "height": 0.02350354748498962,
+        "fontSize": 0.00911987891381186
       },
       "link": {
         "id": "cpu-gpu-cores-link",
@@ -4446,24 +4905,272 @@
       }
     },
     {
+      "id": "cpu-efficiency-core",
+      "name": "CPU efficiency core",
+      "parent": "soc-die",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 1,
+      "count": "×4",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 16,
+          "density": 5.001326325390469
+        },
+        "region": {
+          "x": -0.12806488951700434,
+          "y": 0.12806488951700437,
+          "width": 0.8943085844466919,
+          "height": 0.8943085844466919
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "soc-die",
+        "x": -0.12806488951700434,
+        "y": 0.12806488951700437,
+        "width": 0.08943085844466919,
+        "height": 0.08943085844466919
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 50877.86848762674
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "soc-die"
+      },
+      "label": {
+        "id": "cpu-efficiency-core-label",
+        "text": "CPU efficiency core ×4",
+        "parent": "soc-die",
+        "x": -0.24151852553247188,
+        "y": 0.2415185255324719,
+        "width": 0.22109543978983343,
+        "height": 0.02350354748498962,
+        "fontSize": 0.00911987891381186
+      },
+      "link": {
+        "id": "cpu-efficiency-core-link",
+        "from": "cpu-efficiency-core-label",
+        "to": "cpu-efficiency-core"
+      }
+    },
+    {
+      "id": "gpu-core",
+      "name": "GPU core",
+      "parent": "soc-die",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 1,
+      "count": "×4",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 17,
+          "density": 5.001326325390469
+        },
+        "region": {
+          "x": -0.1280648895170044,
+          "y": -0.12806488951700434,
+          "width": 0.8943085844466919,
+          "height": 0.8943085844466919
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "soc-die",
+        "x": -0.1280648895170044,
+        "y": -0.12806488951700434,
+        "width": 0.08943085844466919,
+        "height": 0.08943085844466919
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 50877.86848762674
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "soc-die"
+      },
+      "label": {
+        "id": "gpu-core-label",
+        "text": "GPU core ×4",
+        "parent": "soc-die",
+        "x": -0.21015794924263428,
+        "y": -0.21015794924263417,
+        "width": 0.09826463990659262,
+        "height": 0.020892042208879663,
+        "fontSize": 0.00810655903449943
+      },
+      "link": {
+        "id": "gpu-core-link",
+        "from": "gpu-core-label",
+        "to": "gpu-core"
+      }
+    },
+    {
+      "id": "soc-bump-region",
+      "name": "Die-bump region",
+      "parent": "soc-die",
+      "kind": "view",
+      "status": "planned",
+      "sizeMm": 1,
+      "count": "×100",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.08943085844466919,
+          "pitchY": 0.08943085844466919
+        },
+        "region": {
+          "x": 0.5305037525180157,
+          "y": 0.274373973484007,
+          "width": 0.894308584446692,
+          "height": 0.8943085844466919
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "soc-die",
+        "x": 0.12806488951700432,
+        "y": -0.1280648895170044,
+        "width": 0.08943085844466919,
+        "height": 0.08943085844466919
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 50877.86848762674
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "soc-die"
+      },
+      "label": {
+        "id": "soc-bump-region-label",
+        "text": "Die-bump region ×100",
+        "parent": "soc-die",
+        "x": 0.2364936291736119,
+        "y": -0.23649362917361205,
+        "width": 0.20099585435439402,
+        "height": 0.02350354748498962,
+        "fontSize": 0.00911987891381186
+      },
+      "link": {
+        "id": "soc-bump-region-link",
+        "from": "soc-bump-region-label",
+        "to": "soc-bump-region"
+      }
+    },
+    {
+      "id": "soc-bump",
+      "name": "Solder bump",
+      "parent": "soc-bump-region",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.06,
+      "count": "×~4.9 thousand",
+      "repeat": {
+        "count": 49,
+        "pattern": {
+          "kind": "grid",
+          "cols": 7,
+          "rows": 7,
+          "pitchX": 0.013414628766700378,
+          "pitchY": 0.013414628766700378
+        },
+        "region": {
+          "x": 0.045340446473139104,
+          "y": 0.043428570552394255,
+          "width": 0.08585362410688241,
+          "height": 0.08585362410688241
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "soc-bump-region",
+        "x": 0.0050965601730379746,
+        "y": 0.0031846842522931292,
+        "width": 0.0053658515066801514,
+        "height": 0.0053658515066801514
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 847964.4747937791
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "soc-bump-region"
+      },
+      "label": {
+        "id": "soc-bump-label",
+        "text": "Solder bump ×~4.9 thousand",
+        "parent": "soc-bump-region",
+        "x": 0.01891428414193439,
+        "y": 0.011818956473599413,
+        "width": 0.02612946106607122,
+        "height": 0.002350354748498962,
+        "fontSize": 0.0009119878913811858
+      },
+      "link": {
+        "id": "soc-bump-link",
+        "from": "soc-bump-label",
+        "to": "soc-bump"
+      }
+    },
+    {
       "id": "cpu-gpu-cores-scale-window-1",
-      "name": "CPU and GPU cores detail 100 µm",
+      "name": "CPU performance core detail 100 µm",
       "parent": "cpu-gpu-cores",
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.1,
-      "count": null,
+      "count": "×200",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.00894308584446692,
+          "pitchY": 0.00894308584446692
+        },
+        "region": {
+          "x": 0.04534044647313912,
+          "y": 0.04342857055239427,
+          "width": 0.08943085844466919,
+          "height": 0.08943085844466919
+        }
+      },
       "image": null,
       "place": {
         "parent": "cpu-gpu-cores",
-        "x": 0.008499058654264858,
-        "y": 0.005310801273129842,
-        "width": 0.014913551211334586,
-        "height": 0.014913551211334586
+        "x": 0.0050965601730379746,
+        "y": 0.0031846842522931292,
+        "width": 0.00894308584446692,
+        "height": 0.00894308584446692
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 305095.1037889162
+        "maxScale": 508778.6848762674
       },
       "fade": {
         "fadeIn": [
@@ -4474,13 +5181,13 @@
       },
       "label": {
         "id": "cpu-gpu-cores-scale-window-1-label",
-        "text": "CPU and GPU cores detail 100 µm",
+        "text": "CPU performance core detail 100 µm ×200",
         "parent": "cpu-gpu-cores",
-        "x": 0.038293307551790834,
-        "y": 0.023928314272352088,
-        "width": 0.05195321983858543,
-        "height": 0.00391946767772887,
-        "fontSize": 0.0015208372544746702
+        "x": 0.02422942281423078,
+        "y": 0.015140223731065461,
+        "width": 0.03483928142142829,
+        "height": 0.002089204220887966,
+        "fontSize": 0.0008106559034499429
       },
       "link": {
         "id": "cpu-gpu-cores-scale-window-1-link",
@@ -4490,23 +5197,39 @@
     },
     {
       "id": "cpu-gpu-cores-scale-window-2",
-      "name": "CPU and GPU cores detail 10 µm",
+      "name": "CPU performance core detail 10 µm",
       "parent": "cpu-gpu-cores-scale-window-1",
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.01,
-      "count": null,
+      "count": "×~20 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0008943085844466919,
+          "pitchY": 0.0008943085844466919
+        },
+        "region": {
+          "x": 0.004534044647313912,
+          "y": 0.004342857055239426,
+          "width": 0.00894308584446692,
+          "height": 0.00894308584446692
+        }
+      },
       "image": null,
       "place": {
         "parent": "cpu-gpu-cores-scale-window-1",
-        "x": 0.0008499058654264857,
-        "y": 0.0005310801273129842,
-        "width": 0.0014913551211334585,
-        "height": 0.0014913551211334585
+        "x": 0.0005096560173037975,
+        "y": 0.00031846842522931294,
+        "width": 0.0008943085844466919,
+        "height": 0.0008943085844466919
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 3050951.037889162
+        "maxScale": 5087786.848762675
       },
       "fade": {
         "fadeIn": [
@@ -4517,13 +5240,13 @@
       },
       "label": {
         "id": "cpu-gpu-cores-scale-window-2-label",
-        "text": "CPU and GPU cores detail 10 µm",
+        "text": "CPU performance core detail 10 µm ×~20 thousand",
         "parent": "cpu-gpu-cores-scale-window-1",
-        "x": 0.003769066229051171,
-        "y": 0.002355173971850538,
-        "width": 0.005027730952121172,
-        "height": 0.000391946767772887,
-        "fontSize": 0.00015208372544746703
+        "x": 0.002874516361096547,
+        "y": 0.0017961971756111574,
+        "width": 0.004723402577328259,
+        "height": 0.0002350354748498962,
+        "fontSize": 0.0000911987891381186
       },
       "link": {
         "id": "cpu-gpu-cores-scale-window-2-link",
@@ -4532,24 +5255,40 @@
       }
     },
     {
-      "id": "standard-cell",
-      "name": "Standard cell",
+      "id": "cpu-gpu-cores-scale-window-3",
+      "name": "CPU performance core detail 1 µm",
       "parent": "cpu-gpu-cores-scale-window-2",
-      "kind": "part",
+      "kind": "view",
       "status": "planned",
       "sizeMm": 0.001,
-      "count": null,
+      "count": "×~2 million",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0000894308584446692,
+          "pitchY": 0.0000894308584446692
+        },
+        "region": {
+          "x": 0.0005305037525180158,
+          "y": 0.0005305037525180157,
+          "width": 0.000894308584446692,
+          "height": 0.0008943085844466919
+        }
+      },
       "image": null,
       "place": {
         "parent": "cpu-gpu-cores-scale-window-2",
-        "x": 0.00008499058654264855,
-        "y": 0.00005310801273129841,
-        "width": 0.00014913551211334587,
-        "height": 0.00014913551211334587
+        "x": 0.00012806488951700438,
+        "y": 0.00012806488951700435,
+        "width": 0.0000894308584446692,
+        "height": 0.0000894308584446692
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 30509510.378891617
+        "maxScale": 50877868.48762675
       },
       "fade": {
         "fadeIn": [
@@ -4559,14 +5298,175 @@
         "fadeInOf": "cpu-gpu-cores-scale-window-2"
       },
       "label": {
-        "id": "standard-cell-label",
-        "text": "Standard cell",
+        "id": "cpu-gpu-cores-scale-window-3-label",
+        "text": "CPU performance core detail 1 µm ×~2 million",
         "parent": "cpu-gpu-cores-scale-window-2",
-        "x": 0.0002744569284876662,
-        "y": 0.00017149972303111264,
-        "width": 0.00021786834125858413,
-        "height": 0.0000391946767772887,
-        "fontSize": 0.000015208372544746706
+        "x": 0.0002967923854799303,
+        "y": 0.00029679238547993024,
+        "width": 0.00044219087957966677,
+        "height": 0.000023503547484989617,
+        "fontSize": 0.000009119878913811858
+      },
+      "link": {
+        "id": "cpu-gpu-cores-scale-window-3-link",
+        "from": "cpu-gpu-cores-scale-window-3-label",
+        "to": "cpu-gpu-cores-scale-window-3"
+      }
+    },
+    {
+      "id": "sram-array-region",
+      "name": "SRAM array region",
+      "parent": "cpu-gpu-cores-scale-window-2",
+      "kind": "view",
+      "status": "planned",
+      "sizeMm": 0.001,
+      "count": null,
+      "image": null,
+      "place": {
+        "parent": "cpu-gpu-cores-scale-window-2",
+        "x": -0.00012806488951700435,
+        "y": 0.00012806488951700438,
+        "width": 0.0000894308584446692,
+        "height": 0.0000894308584446692
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 50877868.48762675
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "cpu-gpu-cores-scale-window-2"
+      },
+      "label": {
+        "id": "sram-array-region-label",
+        "text": "SRAM array region",
+        "parent": "cpu-gpu-cores-scale-window-2",
+        "x": -0.00022895628463532225,
+        "y": 0.00022895628463532228,
+        "width": 0.00017084647620123485,
+        "height": 0.000023503547484989617,
+        "fontSize": 0.000009119878913811858
+      },
+      "link": {
+        "id": "sram-array-region-link",
+        "from": "sram-array-region-label",
+        "to": "sram-array-region"
+      }
+    },
+    {
+      "id": "sram-bitcell",
+      "name": "SRAM bitcell",
+      "parent": "sram-array-region",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.000145,
+      "count": "×~980 thousand",
+      "repeat": {
+        "count": 49,
+        "pattern": {
+          "kind": "grid",
+          "cols": 7,
+          "rows": 7,
+          "pitchX": 0.000012967474474477031,
+          "pitchY": 0.000012967474474477031
+        },
+        "region": {
+          "x": 0.00004399898359646908,
+          "y": 0.00004208710767572423,
+          "width": 0.00009077232132133922,
+          "height": 0.00009077232132133922
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "sram-array-region",
+        "x": 0.000005096560173037976,
+        "y": 0.0000031846842522931295,
+        "width": 0.000012967474474477031,
+        "height": 0.000012967474474477031
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 350881851.63880515
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "sram-array-region"
+      },
+      "label": {
+        "id": "sram-bitcell-label",
+        "text": "SRAM bitcell ×~980 thousand",
+        "parent": "sram-array-region",
+        "x": 0.000024278457944060738,
+        "y": 0.000015170864280863093,
+        "width": 0.00002713444033784319,
+        "height": 0.000002350354748498962,
+        "fontSize": 9.119878913811859e-7
+      },
+      "link": {
+        "id": "sram-bitcell-link",
+        "from": "sram-bitcell-label",
+        "to": "sram-bitcell"
+      }
+    },
+    {
+      "id": "standard-cell",
+      "name": "Standard cell",
+      "parent": "cpu-gpu-cores-scale-window-3",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.0002,
+      "count": "×~60 million",
+      "repeat": {
+        "count": 30,
+        "pattern": {
+          "kind": "grid",
+          "cols": 5,
+          "rows": 6,
+          "pitchX": 0.00001788617168893384,
+          "pitchY": 0.000015024384218704426
+        },
+        "region": {
+          "x": 0.00004086890355090566,
+          "y": 0.0000407456447990542,
+          "width": 0.00008943085844466921,
+          "height": 0.00009300809278245598
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "cpu-gpu-cores-scale-window-3",
+        "x": 0.000005096560173037976,
+        "y": 0.0000031846842522931295,
+        "width": 0.00001788617168893384,
+        "height": 0.00001788617168893384
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 254389342.43813372
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "cpu-gpu-cores-scale-window-3"
+      },
+      "label": {
+        "id": "standard-cell-label",
+        "text": "Standard cell ×~60 million",
+        "parent": "cpu-gpu-cores-scale-window-3",
+        "x": 0.000027291581645388205,
+        "y": 0.000017053672935334224,
+        "width": 0.000026129461066071224,
+        "height": 0.000002350354748498962,
+        "fontSize": 9.119878913811859e-7
       },
       "link": {
         "id": "standard-cell-link",
@@ -4581,34 +5481,31 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.00005,
-      "count": "×4",
+      "count": "×~240 million",
       "repeat": {
         "count": 4,
         "pattern": {
-          "kind": "grid",
-          "cols": 2,
-          "rows": 2,
-          "pitchX": 0.00000760591111778064,
-          "pitchY": 0.00000760591111778064
+          "kind": "rows",
+          "pitch": 0.000004560973780678129
         },
         "region": {
-          "x": 0.000012302014213155177,
-          "y": 0.000009113756832020163,
-          "width": 0.000015062686723447936,
-          "height": 0.000015062686723447936
+          "x": 0.0000010193120346075953,
+          "y": 0.000007478397521475819,
+          "width": 0.00000447154292223346,
+          "height": 0.000018154464264267847
         }
       },
       "image": null,
       "place": {
         "parent": "standard-cell",
-        "x": 0.000008499058654264857,
-        "y": 0.000005310801273129842,
-        "width": 0.000007456775605667294,
-        "height": 0.000007456775605667294
+        "x": 0.0000010193120346075951,
+        "y": 6.369368504586258e-7,
+        "width": 0.00000447154292223346,
+        "height": 0.00000447154292223346
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 610190207.5778323
+        "maxScale": 1017557369.7525349
       },
       "fade": {
         "fadeIn": [
@@ -4619,13 +5516,13 @@
       },
       "label": {
         "id": "transistor-label",
-        "text": "Transistor ×4",
+        "text": "Transistor ×~240 million",
         "parent": "standard-cell",
-        "x": 0.000022734438689519027,
-        "y": 0.000014206053969942094,
-        "width": 0.000021786834125858416,
-        "height": 0.000003919467677728871,
-        "fontSize": 0.0000015208372544746706
+        "x": 0.000005927309737266022,
+        "y": 0.0000037037941940912643,
+        "width": 0.000004823900504505456,
+        "height": 4.700709496997924e-7,
+        "fontSize": 1.8239757827623718e-7
       },
       "link": {
         "id": "transistor-link",
@@ -4644,14 +5541,14 @@
       "image": null,
       "place": {
         "parent": "transistor",
-        "x": -8.769168112264739e-7,
-        "y": -8.76916811226474e-7,
-        "width": 5.010789134278573e-7,
-        "height": 5.010789134278573e-7
+        "x": -5.25853447654655e-7,
+        "y": -5.258534476546551e-7,
+        "width": 3.0047784556046875e-7,
+        "height": 3.0047784556046875e-7
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 9080508743.7361
+        "maxScale": 15142718579.456072
       },
       "fade": {
         "fadeIn": [
@@ -4664,11 +5561,11 @@
         "id": "transistor-channel-label",
         "text": "Channel",
         "parent": "transistor",
-        "x": -0.0000016683982408154386,
-        "y": -0.0000016683982408154388,
-        "width": 5.865686110808034e-7,
-        "height": 1.9597338388644353e-7,
-        "fontSize": 7.604186272373353e-8
+        "x": -0.0000010004745669850983,
+        "y": -0.0000010004745669850985,
+        "width": 3.5174274512018953e-7,
+        "height": 1.175177374249481e-7,
+        "fontSize": 4.5599394569059296e-8
       },
       "link": {
         "id": "transistor-channel-link",
@@ -4687,14 +5584,14 @@
       "image": null,
       "place": {
         "parent": "transistor",
-        "x": 1.8791074526281582e-7,
-        "y": 2.5054766035042104e-7,
-        "width": 0.000002505394567139286,
-        "height": 0.0000014030209575980004
+        "x": 1.1268288164028319e-7,
+        "y": 1.502438421870442e-7,
+        "width": 0.0000015023892278023437,
+        "height": 8.413379675693125e-7
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 1816101748.7472203
+        "maxScale": 3028543715.891215
       },
       "fade": {
         "fadeIn": [
@@ -4707,11 +5604,11 @@
         "id": "transistor-switching-label",
         "text": "Transistor switching",
         "parent": "transistor",
-        "x": 0.0000013865776121273674,
-        "y": 0.0000018487701495031562,
-        "width": 0.0000014896980598877549,
-        "height": 1.7419856345461647e-7,
-        "fontSize": 6.759276686554091e-8
+        "x": 8.314775226605015e-7,
+        "y": 0.0000011086366968806684,
+        "width": 8.933149082417512e-7,
+        "height": 1.044602110443983e-7,
+        "fontSize": 4.053279517249715e-8
       },
       "link": {
         "id": "transistor-switching-link",
@@ -4730,14 +5627,14 @@
       "image": null,
       "place": {
         "parent": "transistor",
-        "x": -0.0000013153752168397106,
-        "y": -0.0000013153752168397108,
-        "width": 2.5053945671392866e-7,
-        "height": 2.5053945671392866e-7
+        "x": -7.887801714819821e-7,
+        "y": -7.887801714819823e-7,
+        "width": 1.5023892278023438e-7,
+        "height": 1.5023892278023438e-7
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 18161017487.4722
+        "maxScale": 30285437158.912144
       },
       "fade": {
         "fadeIn": [
@@ -4750,11 +5647,11 @@
         "id": "gate-stack-label",
         "text": "Gate stack",
         "parent": "transistor",
-        "x": -0.0000019046221772935789,
-        "y": -0.0000019046221772935793,
-        "width": 8.379551586868621e-7,
-        "height": 1.9597338388644353e-7,
-        "fontSize": 7.604186272373353e-8
+        "x": -0.000001142129020207233,
+        "y": -0.0000011421290202072335,
+        "width": 5.024896358859851e-7,
+        "height": 1.175177374249481e-7,
+        "fontSize": 4.5599394569059296e-8
       },
       "link": {
         "id": "gate-stack-link",
@@ -4773,14 +5670,14 @@
       "image": null,
       "place": {
         "parent": "gate-stack",
-        "x": 2.3431136234437005e-8,
-        "y": 2.3431136234437e-8,
-        "width": 4.994610499927784e-8,
-        "height": 4.994610499927784e-8
+        "x": 1.4050755571799023e-8,
+        "y": 1.405075557179902e-8,
+        "width": 2.995076747822614e-8,
+        "height": 2.995076747822614e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 91099224949.55774
+        "maxScale": 151917691524.64212
       },
       "fade": {
         "fadeIn": [
@@ -4793,11 +5690,11 @@
         "id": "transistor-gate-label",
         "text": "Gate",
         "parent": "gate-stack",
-        "x": 5.769414954263299e-8,
-        "y": 5.769414954263298e-8,
-        "width": 1.3623082958819871e-8,
-        "height": 6.584490096762937e-9,
-        "fontSize": 2.5549229294012607e-9
+        "x": 3.459697323405684e-8,
+        "y": 3.459697323405683e-8,
+        "width": 8.169241426175243e-9,
+        "height": 3.9484666893180335e-9,
+        "fontSize": 1.5320894909501344e-9
       },
       "link": {
         "id": "transistor-gate-link",
@@ -4816,14 +5713,14 @@
       "image": null,
       "place": {
         "parent": "gate-stack",
-        "x": -2.3431136234437e-8,
-        "y": 2.3431136234437005e-8,
-        "width": 3.7459578749458375e-8,
-        "height": 3.7459578749458375e-8
+        "x": -1.405075557179902e-8,
+        "y": 1.4050755571799023e-8,
+        "width": 2.246307560866961e-8,
+        "height": 2.246307560866961e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 121465633266.07701
+        "maxScale": 202556922032.85614
       },
       "fade": {
         "fadeIn": [
@@ -4836,11 +5733,11 @@
         "id": "gate-dielectric-label",
         "text": "Gate dielectric",
         "parent": "gate-stack",
-        "x": -5.7543488084938344e-8,
-        "y": 5.754348808493835e-8,
-        "width": 4.22315571723416e-8,
-        "height": 6.584490096762937e-9,
-        "fontSize": 2.5549229294012607e-9
+        "x": -3.450662732445272e-8,
+        "y": 3.450662732445272e-8,
+        "width": 2.5324648421143253e-8,
+        "height": 3.9484666893180335e-9,
+        "fontSize": 1.5320894909501344e-9
       },
       "link": {
         "id": "gate-dielectric-link",
@@ -4859,14 +5756,14 @@
       "image": null,
       "place": {
         "parent": "gate-dielectric",
-        "x": 6.671180132672977e-10,
-        "y": 4.168616005973744e-10,
-        "width": 1.2486526249819458e-8,
-        "height": 1.2486526249819458e-8
+        "x": 4.000451385787523e-10,
+        "y": 2.4997594647818207e-10,
+        "width": 7.487691869556536e-9,
+        "height": 7.487691869556536e-9
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 364396899798.231
+        "maxScale": 607670766098.5685
       },
       "fade": {
         "fadeIn": [
@@ -4879,11 +5776,11 @@
         "id": "hafnia-network-label",
         "text": "Hafnium–oxygen neighbourhood",
         "parent": "gate-dielectric",
-        "x": 1.3197684383372517e-8,
-        "y": 8.246828487341838e-9,
-        "width": 1.0477027958681846e-8,
-        "height": 8.750973813415135e-10,
-        "fontSize": 3.395564929390049e-10
+        "x": 7.9141461826327e-9,
+        "y": 4.945307396057374e-9,
+        "width": 6.282672658015904e-9,
+        "height": 5.247624051914205e-10,
+        "fontSize": 2.0361903227258907e-10
       },
       "link": {
         "id": "hafnia-network-link",
@@ -4898,14 +5795,28 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 1.5e-7,
-      "count": null,
+      "count": "×~960 million",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 9,
+          "density": 183822726049532640
+        },
+        "region": {
+          "x": 7.469055027600375e-10,
+          "y": 7.469055027600374e-10,
+          "width": 4.664771709091219e-9,
+          "height": 4.664771709091219e-9
+        }
+      },
       "image": null,
       "place": {
         "parent": "hafnia-network",
-        "x": 1.2455447324517331e-9,
-        "y": 1.245544732451733e-9,
-        "width": 2.333701576254862e-9,
-        "height": 2.333701576254862e-9
+        "x": 7.469055027600375e-10,
+        "y": 7.469055027600374e-10,
+        "width": 1.3994315127273655e-9,
+        "height": 1.3994315127273655e-9
       },
       "visibility": {
         "minScale": 0.02,
@@ -4920,13 +5831,13 @@
       },
       "label": {
         "id": "hafnium-site-label",
-        "text": "Hafnium site",
+        "text": "Hafnium site ×~960 million",
         "parent": "hafnia-network",
-        "x": 3.1134090614572352e-9,
-        "y": 3.113409061457235e-9,
-        "width": 1.683808064788154e-9,
-        "height": 3.2816151800306764e-10,
-        "fontSize": 1.2733368485212688e-10
+        "x": 2.1614925291020165e-9,
+        "y": 2.161492529102016e-9,
+        "width": 2.187716371987681e-9,
+        "height": 1.9678590194678266e-10,
+        "fontSize": 7.635713710222089e-11
       },
       "link": {
         "id": "hafnium-site-link",
@@ -4941,14 +5852,28 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 1.5e-7,
-      "count": null,
+      "count": "×~1.68 billion",
+      "repeat": {
+        "count": 7,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 10,
+          "density": 321689770586682100
+        },
+        "region": {
+          "x": -7.469055027600374e-10,
+          "y": 7.469055027600375e-10,
+          "width": 4.664771709091219e-9,
+          "height": 4.664771709091219e-9
+        }
+      },
       "image": null,
       "place": {
         "parent": "hafnia-network",
-        "x": -1.245544732451733e-9,
-        "y": 1.2455447324517331e-9,
-        "width": 2.333701576254862e-9,
-        "height": 2.333701576254862e-9
+        "x": -7.469055027600374e-10,
+        "y": 7.469055027600375e-10,
+        "width": 1.3994315127273655e-9,
+        "height": 1.3994315127273655e-9
       },
       "visibility": {
         "minScale": 0.02,
@@ -4963,13 +5888,13 @@
       },
       "label": {
         "id": "hafnia-oxygen-site-label",
-        "text": "Oxide oxygen site",
+        "text": "Oxide oxygen site ×~1.68 billion",
         "parent": "hafnia-network",
-        "x": -3.288805734872668e-9,
-        "y": 3.288805734872668e-9,
-        "width": 2.3853947584498845e-9,
-        "height": 3.2816151800306764e-10,
-        "fontSize": 1.2733368485212688e-10
+        "x": -2.287706935178228e-9,
+        "y": 2.2877069351782283e-9,
+        "width": 2.6925739962925297e-9,
+        "height": 1.9678590194678266e-10,
+        "fontSize": 7.635713710222089e-11
       },
       "link": {
         "id": "hafnia-oxygen-site-link",
@@ -4984,18 +5909,34 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 5.43099e-7,
-      "count": null,
+      "count": "×~19.44 billion",
+      "repeat": {
+        "count": 81,
+        "pattern": {
+          "kind": "grid",
+          "cols": 9,
+          "rows": 9,
+          "pitchX": 8.133130908712309e-9,
+          "pitchY": 8.133130908712309e-9
+        },
+        "region": {
+          "x": 1.848176806305021e-8,
+          "y": 1.8481768063050213e-8,
+          "width": 7.319816320302705e-8,
+          "height": 7.319816320302703e-8
+        }
+      },
       "image": null,
       "place": {
         "parent": "gate-stack",
-        "x": -2.3431136234437008e-8,
-        "y": -2.3431136234437e-8,
-        "width": 1.3562839839501397e-8,
-        "height": 1.3562839839501397e-8
+        "x": -1.4050755571799025e-8,
+        "y": -1.405075557179902e-8,
+        "width": 8.133115933328569e-9,
+        "height": 8.133115933328569e-9
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 335479258660.236
+        "maxScale": 559447509660.8248
       },
       "fade": {
         "fadeIn": [
@@ -5006,13 +5947,13 @@
       },
       "label": {
         "id": "silicon-lattice-label",
-        "text": "Silicon lattice",
+        "text": "Silicon lattice ×~19.44 billion",
         "parent": "gate-stack",
-        "x": -4.40461461307907e-8,
-        "y": -4.40461461307907e-8,
-        "width": 4.22315571723416e-8,
-        "height": 6.584490096762937e-9,
-        "fontSize": 2.5549229294012607e-9
+        "x": -3.325118150601082e-8,
+        "y": -3.325118150601082e-8,
+        "width": 5.233760673702938e-8,
+        "height": 3.9484666893180335e-9,
+        "fontSize": 1.5320894909501344e-9
       },
       "link": {
         "id": "silicon-lattice-link",
@@ -5027,14 +5968,30 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2.22e-7,
-      "count": null,
+      "count": "×~155.52 billion",
+      "repeat": {
+        "count": 8,
+        "pattern": {
+          "kind": "grid",
+          "cols": 2,
+          "rows": 4,
+          "pitchX": 1.6759023899050625e-9,
+          "pitchY": 8.382598325933977e-10
+        },
+        "region": {
+          "x": 1.637674772389297e-9,
+          "y": 2.057113326326862e-9,
+          "width": 3.0462535153522958e-9,
+          "height": 3.885130623227427e-9
+        }
+      },
       "image": null,
       "place": {
         "parent": "silicon-lattice",
-        "x": 1.3336245155685226e-9,
-        "y": 1.3336245155685224e-9,
-        "width": 2.285206923235735e-9,
-        "height": 2.285206923235735e-9
+        "x": 7.997235774367658e-10,
+        "y": 7.997235774367657e-10,
+        "width": 1.3703511254472335e-9,
+        "height": 1.3703511254472335e-9
       },
       "visibility": {
         "minScale": 0.02,
@@ -5049,13 +6006,13 @@
       },
       "label": {
         "id": "silicon-atom-label",
-        "text": "Silicon atom",
+        "text": "Silicon atom ×~155.52 billion",
         "parent": "silicon-lattice",
-        "x": 3.2164835488286874e-9,
-        "y": 3.2164835488286865e-9,
-        "width": 1.8289489523567636e-9,
-        "height": 3.564483845318961e-10,
-        "fontSize": 1.383095938190105e-10
+        "x": 2.3172346069309766e-9,
+        "y": 2.3172346069309766e-9,
+        "width": 2.650480818722614e-9,
+        "height": 2.1374845312279144e-10,
+        "fontSize": 8.293896960615813e-11
       },
       "link": {
         "id": "silicon-atom-link",
@@ -5070,14 +6027,30 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 2.35e-7,
-      "count": null,
+      "count": "×~311.04 billion",
+      "repeat": {
+        "count": 16,
+        "pattern": {
+          "kind": "grid",
+          "cols": 4,
+          "rows": 4,
+          "pitchX": 8.382598325933977e-10,
+          "pitchY": 8.382598325933977e-10
+        },
+        "region": {
+          "x": 4.5766617145333093e-10,
+          "y": 2.0571133263268626e-9,
+          "width": 3.965376409852715e-9,
+          "height": 3.965376409852715e-9
+        }
+      },
       "image": null,
       "place": {
         "parent": "silicon-lattice",
-        "x": -1.3336245155685224e-9,
-        "y": 1.3336245155685226e-9,
-        "width": 2.419025346668458e-9,
-        "height": 2.419025346668458e-9
+        "x": -7.997235774367657e-10,
+        "y": 7.997235774367658e-10,
+        "width": 1.4505969120725217e-9,
+        "height": 1.4505969120725217e-9
       },
       "visibility": {
         "minScale": 0.02,
@@ -5092,13 +6065,13 @@
       },
       "label": {
         "id": "silicon-bond-label",
-        "text": "Covalent bond",
+        "text": "Covalent bond ×~311.04 billion",
         "parent": "silicon-lattice",
-        "x": -3.332850733477984e-9,
-        "y": 3.3328507334779846e-9,
-        "width": 1.981361365053161e-9,
-        "height": 3.564483845318961e-10,
-        "fontSize": 1.383095938190105e-10
+        "x": -2.387015553604942e-9,
+        "y": 2.3870155536049426e-9,
+        "width": 2.741876709023394e-9,
+        "height": 2.1374845312279144e-10,
+        "fontSize": 8.293896960615813e-11
       },
       "link": {
         "id": "silicon-bond-link",
@@ -5117,10 +6090,10 @@
       "image": null,
       "place": {
         "parent": "silicon-lattice",
-        "x": -1.3336245155685228e-9,
-        "y": -1.3336245155685224e-9,
-        "width": 2.5734312198600616e-9,
-        "height": 2.5734312198600616e-9
+        "x": -7.99723577436766e-10,
+        "y": -7.997235774367657e-10,
+        "width": 1.5431882043324699e-9,
+        "height": 1.5431882043324699e-9
       },
       "visibility": {
         "minScale": 0.02,
@@ -5137,11 +6110,11 @@
         "id": "dopant-site-label",
         "text": "Dopant site",
         "parent": "silicon-lattice",
-        "x": -3.3469492365242456e-9,
-        "y": -3.3469492365242456e-9,
-        "width": 1.6765365396603669e-9,
-        "height": 3.564483845318961e-10,
-        "fontSize": 1.383095938190105e-10
+        "x": -2.0070373524825126e-9,
+        "y": -2.0070373524825126e-9,
+        "width": 1.0053547933085778e-9,
+        "height": 2.1374845312279144e-10,
+        "fontSize": 8.293896960615813e-11
       },
       "link": {
         "id": "dopant-site-link",
@@ -5199,7 +6172,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 8,
-      "count": null,
+      "count": "×2",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.12427959342778826
+        },
+        "region": {
+          "x": 0.01903204841658751,
+          "y": 0.07403234047347412,
+          "width": 0.994236747422306,
+          "height": 1.1185163408500944
+        }
+      },
       "image": null,
       "place": {
         "parent": "ram",
@@ -5221,11 +6207,11 @@
       },
       "label": {
         "id": "ram-die-label",
-        "text": "DRAM die",
+        "text": "DRAM die ×2",
         "parent": "ram",
-        "x": 0.803281181269304,
-        "y": 0.5019457911407089,
-        "width": 0.24018476473403566,
+        "x": 0.8356694470966566,
+        "y": 0.5221842258177137,
+        "width": 0.33025405150929904,
         "height": 0.07021530420652251,
         "fontSize": 0.027245039186910323
       },
@@ -5242,7 +6228,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 1,
-      "count": null,
+      "count": "×128",
+      "repeat": {
+        "count": 64,
+        "pattern": {
+          "kind": "grid",
+          "cols": 8,
+          "rows": 8,
+          "pitchX": 0.12427959342778826,
+          "pitchY": 0.12427959342778826
+        },
+        "region": {
+          "x": 0.49163896802569124,
+          "y": 0.4703839188181245,
+          "width": 0.994236747422306,
+          "height": 0.994236747422306
+        }
+      },
       "image": null,
       "place": {
         "parent": "ram-die",
@@ -5264,13 +6266,13 @@
       },
       "label": {
         "id": "dram-bank-label",
-        "text": "Bank region",
+        "text": "Bank region ×128",
         "parent": "ram-die",
-        "x": 0.1919885942489259,
-        "y": 0.11996778846230916,
-        "width": 0.12290008994073977,
-        "height": 0.026129784518192468,
-        "fontSize": 0.010138915029831138
+        "x": 0.20428193797021726,
+        "y": 0.1276495221862311,
+        "width": 0.15890112638802714,
+        "height": 0.02322647512728219,
+        "fontSize": 0.009012368915405454
       },
       "link": {
         "id": "dram-bank-link",
@@ -5285,7 +6287,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.1,
-      "count": null,
+      "count": "×~12.8 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.012427959342778827,
+          "pitchY": 0.012427959342778827
+        },
+        "region": {
+          "x": 0.06300836592105877,
+          "y": 0.06035148477011292,
+          "width": 0.12427959342778827,
+          "height": 0.12427959342778826
+        }
+      },
       "image": null,
       "place": {
         "parent": "dram-bank",
@@ -5307,11 +6325,11 @@
       },
       "label": {
         "id": "dram-subarray-label",
-        "text": "Subarray region",
+        "text": "Subarray region ×~12.8 thousand",
         "parent": "dram-bank",
-        "x": 0.023875819476104065,
-        "y": 0.014919267842337247,
-        "width": 0.020948878967171552,
+        "x": 0.03191108962649236,
+        "y": 0.019940261893626743,
+        "width": 0.043294349865487865,
         "height": 0.0032662230647740585,
         "fontSize": 0.0012673643787288922
       },
@@ -5328,7 +6346,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.01,
-      "count": null,
+      "count": "×~1.28 million",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0012427959342778826,
+          "pitchY": 0.0012427959342778826
+        },
+        "region": {
+          "x": 0.006300836592105877,
+          "y": 0.006035148477011292,
+          "width": 0.012427959342778825,
+          "height": 0.012427959342778825
+        }
+      },
       "image": null,
       "place": {
         "parent": "dram-subarray",
@@ -5350,11 +6384,11 @@
       },
       "label": {
         "id": "dram-cell-tile-label",
-        "text": "Cell tile",
+        "text": "Cell tile ×~1.28 million",
         "parent": "dram-subarray",
-        "x": 0.0020862593169708454,
-        "y": 0.0013036395073103683,
-        "width": 0.0012569327380302937,
+        "x": 0.002839565893569749,
+        "y": 0.0017743576996187595,
+        "width": 0.0033518206347474496,
         "height": 0.00032662230647740605,
         "fontSize": 0.00012673643787288927
       },
@@ -5371,7 +6405,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.001,
-      "count": null,
+      "count": "×~128 million",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.00012427959342778825,
+          "pitchY": 0.00012427959342778825
+        },
+        "region": {
+          "x": 0.0006300836592105876,
+          "y": 0.0006035148477011292,
+          "width": 0.0012427959342778826,
+          "height": 0.0012427959342778826
+        }
+      },
       "image": null,
       "place": {
         "parent": "dram-cell-tile",
@@ -5393,13 +6443,13 @@
       },
       "label": {
         "id": "dram-cell-patch-label",
-        "text": "Cell neighbourhood",
+        "text": "Cell neighbourhood ×~128 million",
         "parent": "dram-cell-tile",
-        "x": 0.00024296477698156,
-        "y": 0.0001518212427292617,
-        "width": 0.0002234547089831632,
-        "height": 0.000029033093909102748,
-        "fontSize": 0.00001126546114425682
+        "x": 0.00032413294010891637,
+        "y": 0.0002025407402183234,
+        "width": 0.0004469094179663265,
+        "height": 0.00003266223064774059,
+        "fontSize": 0.000012673643787288923
       },
       "link": {
         "id": "dram-cell-patch-link",
@@ -5414,7 +6464,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.0001,
-      "count": "×~8.59 billion",
+      "count": "×~12.8 billion",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.000012427959342778824,
+          "pitchY": 0.000012427959342778824
+        },
+        "region": {
+          "x": 0.00006300836592105877,
+          "y": 0.00006035148477011292,
+          "width": 0.00012427959342778825,
+          "height": 0.00012427959342778825
+        }
+      },
       "image": null,
       "place": {
         "parent": "dram-cell-patch",
@@ -5436,7 +6502,7 @@
       },
       "label": {
         "id": "dram-cell-label",
-        "text": "DRAM cell ×~8.59 billion",
+        "text": "DRAM cell ×~12.8 billion",
         "parent": "dram-cell-patch",
         "x": 0.00002839565893569749,
         "y": 0.00001774357699618759,
@@ -5586,7 +6652,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 8,
-      "count": null,
+      "count": "×2",
+      "repeat": {
+        "count": 2,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.09750572768324477
+        },
+        "region": {
+          "x": 0.08079184967249431,
+          "y": 0.1564753300716148,
+          "width": 0.7800458214659581,
+          "height": 0.8775515491492029
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-storage",
@@ -5608,11 +6687,11 @@
       },
       "label": {
         "id": "nand-die-label",
-        "text": "NAND die",
+        "text": "NAND die ×2",
         "parent": "nand-storage",
-        "x": 0.5366763106277758,
-        "y": 0.7155684141703678,
-        "width": 0.28822171768084276,
+        "x": 0.5561312765712327,
+        "y": 0.7415083687616436,
+        "width": 0.3963048618111588,
         "height": 0.08425836504782701,
         "fontSize": 0.032694047024292384
       },
@@ -5629,7 +6708,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.8,
-      "count": null,
+      "count": "×200",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.07800458214659582,
+          "pitchY": 0.07800458214659582
+        },
+        "region": {
+          "x": 0.3954745199796447,
+          "y": 0.37879849954245864,
+          "width": 0.7800458214659581,
+          "height": 0.7800458214659581
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-die",
@@ -5651,13 +6746,13 @@
       },
       "label": {
         "id": "nand-plane-region-label",
-        "text": "Plane region",
+        "text": "Plane region ×200",
         "parent": "nand-die",
-        "x": 0.14040121503802258,
-        "y": 0.08773241624809129,
-        "width": 0.10518917902468444,
-        "height": 0.02050057924540221,
-        "fontSize": 0.007954663035461993
+        "x": 0.1496959387855263,
+        "y": 0.09354040425237017,
+        "width": 0.13246044766071371,
+        "height": 0.018222737107024187,
+        "fontSize": 0.0070708115870773275
       },
       "link": {
         "id": "nand-plane-region-link",
@@ -5672,7 +6767,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.08,
-      "count": null,
+      "count": "×~20 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0078004582146595815,
+          "pitchY": 0.0078004582146595815
+        },
+        "region": {
+          "x": 0.03954745199796447,
+          "y": 0.037879849954245856,
+          "width": 0.07800458214659581,
+          "height": 0.07800458214659581
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-plane-region",
@@ -5694,11 +6805,11 @@
       },
       "label": {
         "id": "nand-block-region-label",
-        "text": "Block region",
+        "text": "Block region ×~20 thousand",
         "parent": "nand-plane-region",
-        "x": 0.01404012150380226,
-        "y": 0.008773241624809129,
-        "width": 0.010518917902468445,
+        "x": 0.018453069672322086,
+        "y": 0.011530757686881568,
+        "width": 0.022790988788681635,
         "height": 0.002050057924540221,
         "fontSize": 0.0007954663035461996
       },
@@ -5715,7 +6826,23 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.008,
-      "count": null,
+      "count": "×~2 million",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0007800458214659582,
+          "pitchY": 0.0007800458214659582
+        },
+        "region": {
+          "x": 0.003954745199796448,
+          "y": 0.003787984995424586,
+          "width": 0.007800458214659582,
+          "height": 0.0078004582146595815
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-block-region",
@@ -5737,11 +6864,11 @@
       },
       "label": {
         "id": "nand-string-region-label",
-        "text": "String-array region",
+        "text": "String-array region ×~2 million",
         "parent": "nand-block-region",
-        "x": 0.0016246595588062177,
-        "y": 0.0010151999655845351,
-        "width": 0.001665495334557504,
+        "x": 0.0020029122589650603,
+        "y": 0.001251558485190744,
+        "width": 0.0027173871248043486,
         "height": 0.00020500579245402213,
         "fontSize": 0.00007954663035461996
       },
@@ -5758,7 +6885,23 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.002,
-      "count": null,
+      "count": "×~200 million",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.00007800458214659583,
+          "pitchY": 0.00007800458214659583
+        },
+        "region": {
+          "x": 0.0003954745199796447,
+          "y": 0.0003787984995424587,
+          "width": 0.0008970526946858519,
+          "height": 0.000897052694685852
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-string-region",
@@ -5780,11 +6923,11 @@
       },
       "label": {
         "id": "nand-string-label",
-        "text": "NAND string",
+        "text": "NAND string ×~200 million",
         "parent": "nand-string-region",
-        "x": 0.00021752250179233343,
-        "y": 0.0001359231447206709,
-        "width": 0.00009642341410596075,
+        "x": 0.0002616519834775317,
+        "y": 0.0001634983053413953,
+        "width": 0.00021914412296809263,
         "height": 0.00002050057924540221,
         "fontSize": 0.000007954663035461994
       },
@@ -5844,7 +6987,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.00005,
-      "count": null,
+      "count": "×~800 million",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.0000048752863841622385
+        },
+        "region": {
+          "x": 0.0000011113475079990884,
+          "y": 0.000008007376573312793,
+          "width": 0.000004875286384162239,
+          "height": 0.000019501145536648954
+        }
+      },
       "image": null,
       "place": {
         "parent": "nand-string-scale-window-1",
@@ -5866,13 +7022,13 @@
       },
       "label": {
         "id": "nand-cell-label",
-        "text": "NAND memory cell",
+        "text": "NAND memory cell ×~800 million",
         "parent": "nand-string-scale-window-1",
-        "x": 0.0000058320757741404635,
-        "y": 0.0000036442854092732404,
-        "width": 0.0000035063059674894825,
-        "height": 5.125144811350554e-7,
-        "fontSize": 1.988665758865499e-7
+        "x": 0.000006659841636596605,
+        "y": 0.000004161530927278875,
+        "width": 0.000005843843279149137,
+        "height": 4.5556842767560476e-7,
+        "fontSize": 1.7677028967693322e-7
       },
       "link": {
         "id": "nand-cell-link",
@@ -6225,6 +7381,220 @@
       }
     },
     {
+      "id": "logic-board-passives",
+      "name": "Passives",
+      "parent": "logic-board",
+      "kind": "view",
+      "status": "planned",
+      "sizeMm": 4.5,
+      "count": null,
+      "image": null,
+      "place": {
+        "parent": "logic-board",
+        "x": 3.3296942014705606,
+        "y": 7.478615622358513,
+        "width": 1.2022596677454511,
+        "height": 1.2022596677454511
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 10000
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "logic-board"
+      },
+      "label": {
+        "id": "logic-board-passives-label",
+        "text": "Passives",
+        "parent": "logic-board",
+        "x": 4.283532337582993,
+        "y": 9.62097115241929,
+        "width": 3.532266016260162,
+        "height": 1.032618089430894,
+        "fontSize": 0.4006778953617885
+      },
+      "link": {
+        "id": "logic-board-passives-link",
+        "from": "logic-board-passives-label",
+        "to": "logic-board-passives"
+      }
+    },
+    {
+      "id": "mlcc",
+      "name": "Ceramic capacitor",
+      "parent": "logic-board-passives",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.4,
+      "count": "×16",
+      "repeat": {
+        "count": 16,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 12,
+          "density": 11.069054690460028
+        },
+        "region": {
+          "x": 0.17884255477660582,
+          "y": 0.1788425547766058,
+          "width": 1.2022775141847573,
+          "height": 1.2022775141847573
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "logic-board-passives",
+        "x": 0.17884255477660582,
+        "y": 0.1788425547766058,
+        "width": 0.10686752602181789,
+        "height": 0.10686752602181789
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 42576.55832469175
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "logic-board-passives"
+      },
+      "label": {
+        "id": "mlcc-label",
+        "text": "Ceramic capacitor ×16",
+        "parent": "logic-board-passives",
+        "x": 0.3201731131269073,
+        "y": 0.3201731131269073,
+        "width": 0.2837182533420797,
+        "height": 0.03159688689293514,
+        "fontSize": 0.012260267634109649
+      },
+      "link": {
+        "id": "mlcc-link",
+        "from": "mlcc-label",
+        "to": "mlcc"
+      }
+    },
+    {
+      "id": "inductor",
+      "name": "Inductor",
+      "parent": "logic-board-passives",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.4,
+      "count": "×4",
+      "repeat": {
+        "count": 4,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 13,
+          "density": 2.7669134304086263
+        },
+        "region": {
+          "x": -0.1788425547766058,
+          "y": 0.17884255477660582,
+          "width": 1.2023536052904433,
+          "height": 1.2023536052904433
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "logic-board-passives",
+        "x": -0.1788425547766058,
+        "y": 0.17884255477660582,
+        "width": 0.10686752602181789,
+        "height": 0.10686752602181789
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 42576.55832469175
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "logic-board-passives"
+      },
+      "label": {
+        "id": "inductor-label",
+        "text": "Inductor ×4",
+        "parent": "logic-board-passives",
+        "x": -0.28139126363973577,
+        "y": 0.28139126363973577,
+        "width": 0.13210162060371963,
+        "height": 0.028086121682609013,
+        "fontSize": 0.010898015674764132
+      },
+      "link": {
+        "id": "inductor-link",
+        "from": "inductor-label",
+        "to": "inductor"
+      }
+    },
+    {
+      "id": "chip-resistor",
+      "name": "Chip resistor",
+      "parent": "logic-board-passives",
+      "kind": "part",
+      "status": "planned",
+      "sizeMm": 0.4,
+      "count": "×8",
+      "repeat": {
+        "count": 8,
+        "pattern": {
+          "kind": "scatter",
+          "seed": 14,
+          "density": 5.535227829642776
+        },
+        "region": {
+          "x": -0.17884255477660585,
+          "y": -0.1788425547766058,
+          "width": 1.2022014375235501,
+          "height": 1.2022014375235501
+        }
+      },
+      "image": null,
+      "place": {
+        "parent": "logic-board-passives",
+        "x": -0.17884255477660585,
+        "y": -0.1788425547766058,
+        "width": 0.10686752602181789,
+        "height": 0.10686752602181789
+      },
+      "visibility": {
+        "minScale": 0.02,
+        "maxScale": 42576.55832469175
+      },
+      "fade": {
+        "fadeIn": [
+          1,
+          1.6
+        ],
+        "fadeInOf": "logic-board-passives"
+      },
+      "label": {
+        "id": "chip-resistor-label",
+        "text": "Chip resistor ×8",
+        "parent": "logic-board-passives",
+        "x": -0.30328512185654544,
+        "y": -0.30328512185654544,
+        "width": 0.21616628826063214,
+        "height": 0.03159688689293514,
+        "fontSize": 0.012260267634109649
+      },
+      "link": {
+        "id": "chip-resistor-link",
+        "from": "chip-resistor-label",
+        "to": "chip-resistor"
+      }
+    },
+    {
       "id": "camera-module",
       "name": "Camera module",
       "parent": "phone",
@@ -6403,7 +7773,7 @@
       "parent": "image-sensor",
       "kind": "part",
       "status": "planned",
-      "sizeMm": 8,
+      "sizeMm": 7.504,
       "count": null,
       "image": null,
       "place": {
@@ -6447,18 +7817,34 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.64,
-      "count": null,
+      "count": "×80",
+      "repeat": {
+        "count": 80,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 8,
+          "pitchX": 0.12467561752183084,
+          "pitchY": 0.12467561752183084
+        },
+        "region": {
+          "x": 0.6443477853949268,
+          "y": 0.48842096895141895,
+          "width": 1.2467561752183085,
+          "height": 0.9974049401746468
+        }
+      },
       "image": null,
       "place": {
         "parent": "sensor-die",
         "x": 0.083307506546688,
         "y": 0.052056307625010984,
-        "width": 0.11694572923547732,
-        "height": 0.11694572923547732
+        "width": 0.12467561752183084,
+        "height": 0.12467561752183084
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 38907.3759634406
+        "maxScale": 36495.11865370727
       },
       "fade": {
         "fadeIn": [
@@ -6469,13 +7855,13 @@
       },
       "label": {
         "id": "sensor-array-region-label",
-        "text": "Pixel-array region",
+        "text": "Pixel-array region ×80",
         "parent": "sensor-die",
-        "x": 0.26572611437812244,
-        "y": 0.16604410487684118,
-        "width": 0.2628355264567352,
-        "height": 0.03414977718299875,
-        "fontSize": 0.013250843645688118
+        "x": 0.307431094174385,
+        "y": 0.19210426857352336,
+        "width": 0.361398848878011,
+        "height": 0.038418499330873594,
+        "fontSize": 0.014907199101399133
       },
       "link": {
         "id": "sensor-array-region-link",
@@ -6490,18 +7876,34 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.064,
-      "count": null,
+      "count": "×~8 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.012467561752183085,
+          "pitchY": 0.012467561752183085
+        },
+        "region": {
+          "x": 0.06320914571396571,
+          "y": 0.06054379825795915,
+          "width": 0.12467561752183086,
+          "height": 0.12467561752183084
+        }
+      },
       "image": null,
       "place": {
         "parent": "sensor-array-region",
-        "x": 0.0066646005237350385,
-        "y": 0.004164504610000878,
-        "width": 0.011694572923547732,
-        "height": 0.011694572923547732
+        "x": 0.007105117829141834,
+        "y": 0.004439770373135266,
+        "width": 0.012467561752183085,
+        "height": 0.012467561752183085
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 389073.75963440596
+        "maxScale": 364951.18653707276
       },
       "fade": {
         "fadeIn": [
@@ -6512,13 +7914,13 @@
       },
       "label": {
         "id": "sensor-array-tile-label",
-        "text": "Pixel-array tile",
+        "text": "Pixel-array tile ×~8 thousand",
         "parent": "sensor-array-region",
-        "x": 0.022939452077809747,
-        "y": 0.014334160553016052,
-        "width": 0.02102684211653882,
-        "height": 0.0030734799464698878,
-        "fontSize": 0.0011925759281119306
+        "x": 0.031005166779227225,
+        "y": 0.019374178471176326,
+        "width": 0.040630225305145644,
+        "height": 0.0032766310729956164,
+        "fontSize": 0.0012714029084348944
       },
       "link": {
         "id": "sensor-array-tile-link",
@@ -6533,18 +7935,34 @@
       "kind": "view",
       "status": "planned",
       "sizeMm": 0.0064,
-      "count": null,
+      "count": "×~800 thousand",
+      "repeat": {
+        "count": 100,
+        "pattern": {
+          "kind": "grid",
+          "cols": 10,
+          "rows": 10,
+          "pitchX": 0.0012467561752183085,
+          "pitchY": 0.0012467561752183085
+        },
+        "region": {
+          "x": 0.006320914571396571,
+          "y": 0.006054379825795915,
+          "width": 0.012467561752183085,
+          "height": 0.012467561752183085
+        }
+      },
       "image": null,
       "place": {
         "parent": "sensor-array-tile",
-        "x": 0.000666460052373504,
-        "y": 0.00041645046100008783,
-        "width": 0.0011694572923547733,
-        "height": 0.0011694572923547733
+        "x": 0.0007105117829141834,
+        "y": 0.0004439770373135266,
+        "width": 0.0012467561752183085,
+        "height": 0.0012467561752183085
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 3890737.5963440593
+        "maxScale": 3649511.8653707276
       },
       "fade": {
         "fadeIn": [
@@ -6555,13 +7973,13 @@
       },
       "label": {
         "id": "sensor-pixel-group-label",
-        "text": "Pixel neighbourhood",
+        "text": "Pixel neighbourhood ×~800 thousand",
         "parent": "sensor-array-tile",
-        "x": 0.002435715846883407,
-        "y": 0.0015220041826773131,
-        "width": 0.0024969375013389845,
-        "height": 0.00030734799464698877,
-        "fontSize": 0.00011925759281119308
+        "x": 0.003352419021743675,
+        "y": 0.0020948239014454717,
+        "width": 0.004763543656465351,
+        "height": 0.00032766310729956166,
+        "fontSize": 0.00012714029084348943
       },
       "link": {
         "id": "sensor-pixel-group-link",
@@ -6576,18 +7994,34 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.0008,
-      "count": "×48 million",
+      "count": "×~51.2 million",
+      "repeat": {
+        "count": 64,
+        "pattern": {
+          "kind": "grid",
+          "cols": 8,
+          "rows": 8,
+          "pitchX": 0.00015584452190228854,
+          "pitchY": 0.00015584452190228854
+        },
+        "region": {
+          "x": 0.0006165070049494282,
+          "y": 0.0005898535303893624,
+          "width": 0.0012467561752183083,
+          "height": 0.001246756175218308
+        }
+      },
       "image": null,
       "place": {
         "parent": "sensor-pixel-group",
-        "x": 0.0000666460052373504,
-        "y": 0.00004164504610000879,
-        "width": 0.00014618216154434666,
-        "height": 0.00014618216154434666
+        "x": 0.00007105117829141834,
+        "y": 0.00004439770373135265,
+        "width": 0.00015584452190228856,
+        "height": 0.00015584452190228856
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 31125900.770752475
+        "maxScale": 29196094.92296582
       },
       "fade": {
         "fadeIn": [
@@ -6598,13 +8032,13 @@
       },
       "label": {
         "id": "sensor-pixel-label",
-        "text": "Sensor pixel ×48 million",
+        "text": "Sensor pixel ×~51.2 million",
         "parent": "sensor-pixel-group",
-        "x": 0.0002872578856202917,
-        "y": 0.00017949864881839538,
-        "width": 0.00031540263174808234,
-        "height": 0.00003073479946469888,
-        "fontSize": 0.00001192575928111931
+        "x": 0.000321359221247905,
+        "y": 0.00020080752831126459,
+        "width": 0.000378281408013425,
+        "height": 0.00003276631072995617,
+        "fontSize": 0.000012714029084348945
       },
       "link": {
         "id": "sensor-pixel-link",
@@ -6623,14 +8057,14 @@
       "image": null,
       "place": {
         "parent": "sensor-pixel",
-        "x": 0.00001458170438221302,
-        "y": 0.000014581704382213017,
-        "width": 0.000027321326880586592,
-        "height": 0.000027321326880586592
+        "x": 0.000015545527059928597,
+        "y": 0.000015545527059928593,
+        "width": 0.000029127214158407886,
+        "height": 0.000029127214158407886
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 166538450.88016286
+        "maxScale": 156213066.9255927
       },
       "fade": {
         "fadeIn": [
@@ -6643,11 +8077,11 @@
         "id": "sensor-microlens-label",
         "text": "Microlens",
         "parent": "sensor-pixel",
-        "x": 0.00003469984779378373,
-        "y": 0.000034699847793783724,
-        "width": 0.000013141776322836763,
-        "height": 0.0000034149777182998757,
-        "fontSize": 0.0000013250843645688121
+        "x": 0.00003699344114475879,
+        "y": 0.000036993441144758774,
+        "width": 0.000014010422519015743,
+        "height": 0.000003640701192217352,
+        "fontSize": 0.0000014126698982609938
       },
       "link": {
         "id": "sensor-microlens-link",
@@ -6666,14 +8100,14 @@
       "image": null,
       "place": {
         "parent": "sensor-pixel",
-        "x": -0.000014581704382213017,
-        "y": 0.00001458170438221302,
-        "width": 0.000027321326880586592,
-        "height": 0.000027321326880586592
+        "x": -0.000015545527059928593,
+        "y": 0.000015545527059928597,
+        "width": 0.000029127214158407886,
+        "height": 0.000029127214158407886
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 166538450.88016286
+        "maxScale": 156213066.9255927
       },
       "fade": {
         "fadeIn": [
@@ -6686,11 +8120,11 @@
         "id": "sensor-colour-filter-label",
         "text": "Colour filter",
         "parent": "sensor-pixel",
-        "x": -0.00003685996839792384,
-        "y": 0.00003685996839792384,
-        "width": 0.000021355386524609745,
-        "height": 0.00000384184993308736,
-        "fontSize": 0.0000014907199101399137
+        "x": -0.00003929634157561177,
+        "y": 0.000039296341575611774,
+        "width": 0.000022766936593400582,
+        "height": 0.000004095788841244521,
+        "fontSize": 0.0000015892536355436181
       },
       "link": {
         "id": "sensor-colour-filter-link",
@@ -6709,14 +8143,14 @@
       "image": null,
       "place": {
         "parent": "sensor-pixel",
-        "x": -0.000014581704382213022,
-        "y": -0.000014581704382213017,
-        "width": 0.000020490995160439943,
-        "height": 0.000020490995160439943
+        "x": -0.000015545527059928597,
+        "y": -0.000015545527059928593,
+        "width": 0.000021845410618805913,
+        "height": 0.000021845410618805913
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 222051267.8402171
+        "maxScale": 208284089.23412365
       },
       "fade": {
         "fadeIn": [
@@ -6729,11 +8163,11 @@
         "id": "sensor-photodiode-label",
         "text": "Photodiode",
         "parent": "sensor-pixel",
-        "x": -0.00003163318814233626,
-        "y": -0.00003163318814233626,
-        "width": 0.000016427220403545956,
-        "height": 0.00000384184993308736,
-        "fontSize": 0.0000014907199101399137
+        "x": -0.00003372408117519857,
+        "y": -0.00003372408117519857,
+        "width": 0.00001751302814876968,
+        "height": 0.000004095788841244521,
+        "fontSize": 0.0000015892536355436181
       },
       "link": {
         "id": "sensor-photodiode-link",
@@ -6752,14 +8186,14 @@
       "image": null,
       "place": {
         "parent": "sensor-photodiode",
-        "x": -0.0000036146115463016054,
-        "y": -0.0000036146115463016062,
-        "width": 5.912703918174736e-7,
-        "height": 5.912703918174736e-7
+        "x": -0.000003853530433157363,
+        "y": -0.000003853530433157363,
+        "width": 6.303522300825946e-7,
+        "height": 6.303522300825946e-7
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 7695381872.069205
+        "maxScale": 7218268196.000914
       },
       "fade": {
         "fadeIn": [
@@ -6772,11 +8206,11 @@
         "id": "sensor-photodiode-scale-window-1-label",
         "text": "Photodiode detail 60 nm",
         "parent": "sensor-photodiode",
-        "x": -0.000005513810659326299,
-        "y": -0.000005513810659326301,
-        "width": 0.000005296153836655208,
-        "height": 5.385289665603121e-7,
-        "fontSize": 2.089607524033069e-7
+        "x": -0.000005878262963034437,
+        "y": -0.000005878262963034437,
+        "width": 0.000005646219442063123,
+        "height": 5.741246978254927e-7,
+        "fontSize": 2.2277265714638265e-7
       },
       "link": {
         "id": "sensor-photodiode-scale-window-1-link",
@@ -6795,14 +8229,14 @@
       "image": null,
       "place": {
         "parent": "sensor-photodiode-scale-window-1",
-        "x": 3.3695809062348555e-8,
-        "y": 2.1055478370850184e-8,
-        "width": 5.912703918174736e-8,
-        "height": 5.912703918174736e-8
+        "x": 3.592303737990251e-8,
+        "y": 2.2447205086194226e-8,
+        "width": 6.303522300825945e-8,
+        "height": 6.303522300825945e-8
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 76953818720.69205
+        "maxScale": 72182681960.00914
       },
       "fade": {
         "fadeIn": [
@@ -6815,11 +8249,11 @@
         "id": "sensor-photodiode-scale-window-2-label",
         "text": "Photodiode detail 6 nm",
         "parent": "sensor-photodiode-scale-window-1",
-        "x": 1.3031612650039074e-7,
-        "y": 8.143055350963309e-8,
-        "width": 1.4617682261707493e-7,
-        "height": 1.5539324984952978e-8,
-        "fontSize": 6.029590314213158e-9
+        "x": 1.3892977238847626e-7,
+        "y": 8.681295683329754e-8,
+        "width": 1.5583883008216944e-7,
+        "height": 1.656644454685819e-8,
+        "fontSize": 6.428134663340255e-9
       },
       "link": {
         "id": "sensor-photodiode-scale-window-2-link",
@@ -6834,18 +8268,34 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 5.43099e-7,
-      "count": null,
+      "count": "×~6.2 billion",
+      "repeat": {
+        "count": 121,
+        "pattern": {
+          "kind": "grid",
+          "cols": 11,
+          "rows": 11,
+          "pitchX": 5.705738269297618e-9,
+          "pitchY": 5.705738269297618e-9
+        },
+        "region": {
+          "x": 3.212099508447834e-8,
+          "y": 3.077341185510751e-8,
+          "width": 6.27631104564033e-8,
+          "height": 6.27631104564033e-8
+        }
+      },
       "image": null,
       "place": {
         "parent": "sensor-photodiode-scale-window-2",
-        "x": 3.3695809062348554e-9,
-        "y": 2.1055478370850183e-9,
-        "width": 5.351972642094635e-9,
-        "height": 5.351972642094635e-9
+        "x": 3.5923037379902516e-9,
+        "y": 2.244720508619423e-9,
+        "width": 5.705727763427117e-9,
+        "height": 5.705727763427117e-9
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 850163436729.1273
+        "maxScale": 797453303651.9214
       },
       "fade": {
         "fadeIn": [
@@ -6856,13 +8306,13 @@
       },
       "label": {
         "id": "photodiode-silicon-label",
-        "text": "Sensor silicon",
+        "text": "Sensor silicon ×~6.2 billion",
         "parent": "sensor-photodiode-scale-window-2",
-        "x": 1.0735496048532036e-8,
-        "y": 6.708282458271359e-9,
-        "width": 9.302161439268404e-9,
-        "height": 1.5539324984952977e-9,
-        "fontSize": 6.029590314213158e-10
+        "x": 1.5011179320667853e-8,
+        "y": 9.380025893500419e-9,
+        "width": 1.983403291954884e-8,
+        "height": 1.6566444546858187e-9,
+        "fontSize": 6.428134663340254e-10
       },
       "link": {
         "id": "photodiode-silicon-link",
@@ -6881,14 +8331,14 @@
       "image": null,
       "place": {
         "parent": "sensor-photodiode",
-        "x": -0.0000024097410308677374,
-        "y": 0.0000024097410308677378,
-        "width": 0.0000019709013060582457,
-        "height": 0.0000019709013060582457
+        "x": -0.0000025690202887715756,
+        "y": 0.000002569020288771576,
+        "width": 0.0000021011741002753153,
+        "height": 0.0000021011741002753153
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 2308614561.6207614
+        "maxScale": 2165480458.800274
       },
       "fade": {
         "fadeIn": [
@@ -6901,11 +8351,11 @@
         "id": "photodiode-depletion-label",
         "text": "Depletion region",
         "parent": "sensor-photodiode",
-        "x": -0.000004618130679426298,
-        "y": 0.000004618130679426299,
-        "width": 0.0000036842809298471013,
-        "height": 5.385289665603121e-7,
-        "fontSize": 2.089607524033069e-7
+        "x": -0.000004923380255251918,
+        "y": 0.000004923380255251919,
+        "width": 0.000003927804829261302,
+        "height": 5.741246978254927e-7,
+        "fontSize": 2.2277265714638265e-7
       },
       "link": {
         "id": "photodiode-depletion-link",
@@ -6924,14 +8374,14 @@
       "image": null,
       "place": {
         "parent": "sensor-photodiode",
-        "x": 0.0000010023804026930618,
-        "y": -0.000002251383245889533,
-        "width": 0.000005912703918174736,
-        "height": 0.0000033111141941778528
+        "x": 0.0000010686358237665907,
+        "y": -0.0000024001953580911876,
+        "width": 0.000006303522300825947,
+        "height": 0.0000035299724884625306
       },
       "visibility": {
         "minScale": 0.02,
-        "maxScale": 769538187.2069205
+        "maxScale": 721826819.6000912
       },
       "fade": {
         "fadeIn": [
@@ -6944,11 +8394,11 @@
         "id": "photoelectric-conversion-label",
         "text": "Photoelectric conversion",
         "parent": "sensor-photodiode",
-        "x": 0.000002825415292083798,
-        "y": -0.00000634598664757153,
-        "width": 0.000005526421394770651,
-        "height": 5.385289665603121e-7,
-        "fontSize": 2.089607524033069e-7
+        "x": 0.0000030121698209848595,
+        "y": -0.000006765444187176473,
+        "width": 0.000005891707243891954,
+        "height": 5.741246978254927e-7,
+        "fontSize": 2.2277265714638265e-7
       },
       "link": {
         "id": "photoelectric-conversion-link",
@@ -7136,7 +8586,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.05,
-      "count": null,
+      "count": "×10",
+      "repeat": {
+        "count": 10,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.005476852364245375
+        },
+        "region": {
+          "x": 0.0031211941961276904,
+          "y": 0.026596174233621653,
+          "width": 0.005476852364245376,
+          "height": 0.05476852364245375
+        }
+      },
       "image": null,
       "place": {
         "parent": "voice-coil-scale-window-1",
@@ -7158,13 +8621,13 @@
       },
       "label": {
         "id": "speaker-copper-wire-label",
-        "text": "Copper winding",
+        "text": "Copper winding ×10",
         "parent": "voice-coil-scale-window-1",
-        "x": 0.010300471344102544,
-        "y": 0.006436448853149956,
-        "width": 0.008616457982049035,
-        "height": 0.0014393852619782373,
-        "fontSize": 0.0005585122547117777
+        "x": 0.01070716580685461,
+        "y": 0.006690579758514952,
+        "width": 0.00984738055091318,
+        "height": 0.0012794535662028776,
+        "fontSize": 0.0004964553375215802
       },
       "link": {
         "id": "speaker-copper-wire-link",
@@ -7998,7 +9461,20 @@
       "kind": "part",
       "status": "planned",
       "sizeMm": 0.5,
-      "count": null,
+      "count": "×9",
+      "repeat": {
+        "count": 9,
+        "pattern": {
+          "kind": "rows",
+          "pitch": 0.09997175728154067
+        },
+        "region": {
+          "x": 0.12384482320090881,
+          "y": 0.5237318523270715,
+          "width": 0.09997175728154069,
+          "height": 0.8997458155338661
+        }
+      },
       "image": null,
       "place": {
         "parent": "wireless-charging-coil-scale-window-1",
@@ -8020,11 +9496,11 @@
       },
       "label": {
         "id": "charging-copper-label",
-        "text": "Copper turns",
+        "text": "Copper turns ×9",
         "parent": "wireless-charging-coil-scale-window-1",
-        "x": 0.218557878726599,
-        "y": 0.218557878726599,
-        "width": 0.12133072322474181,
+        "x": 0.22614104892814535,
+        "y": 0.22614104892814535,
+        "width": 0.1516634040309273,
         "height": 0.02364644471449941,
         "fontSize": 0.009175326093905875
       },
@@ -8158,15 +9634,15 @@
     "midframe-scale-window-1",
     "midframe-scale-window-1-label",
     "midframe-scale-window-1-link",
+    "antenna-bands",
+    "antenna-bands-label",
+    "antenna-bands-link",
     "buttons",
     "buttons-label",
     "buttons-link",
     "aluminium-frame",
     "aluminium-frame-label",
     "aluminium-frame-link",
-    "antenna-bands",
-    "antenna-bands-label",
-    "antenna-bands-link",
     "aluminium-frame-scale-window-1",
     "aluminium-frame-scale-window-1-label",
     "aluminium-frame-scale-window-1-link",
@@ -8428,9 +9904,6 @@
     "lco-oxygen",
     "lco-oxygen-label",
     "lco-oxygen-link",
-    "lco-lithium-site",
-    "lco-lithium-site-label",
-    "lco-lithium-site-link",
     "cathode-intercalation",
     "cathode-intercalation-label",
     "cathode-intercalation-link",
@@ -8449,21 +9922,51 @@
     "power-management-chip",
     "power-management-chip-label",
     "power-management-chip-link",
+    "logic-board-passives",
+    "logic-board-passives-label",
+    "logic-board-passives-link",
+    "soc-ball-region",
+    "soc-ball-region-label",
+    "soc-ball-region-link",
     "soc-die",
     "soc-die-label",
     "soc-die-link",
+    "soc-solder-ball",
+    "soc-solder-ball-label",
+    "soc-solder-ball-link",
     "cpu-gpu-cores",
     "cpu-gpu-cores-label",
     "cpu-gpu-cores-link",
+    "cpu-efficiency-core",
+    "cpu-efficiency-core-label",
+    "cpu-efficiency-core-link",
+    "gpu-core",
+    "gpu-core-label",
+    "gpu-core-link",
+    "soc-bump-region",
+    "soc-bump-region-label",
+    "soc-bump-region-link",
     "cpu-gpu-cores-scale-window-1",
     "cpu-gpu-cores-scale-window-1-label",
     "cpu-gpu-cores-scale-window-1-link",
+    "soc-bump",
+    "soc-bump-label",
+    "soc-bump-link",
     "cpu-gpu-cores-scale-window-2",
     "cpu-gpu-cores-scale-window-2-label",
     "cpu-gpu-cores-scale-window-2-link",
+    "cpu-gpu-cores-scale-window-3",
+    "cpu-gpu-cores-scale-window-3-label",
+    "cpu-gpu-cores-scale-window-3-link",
+    "sram-array-region",
+    "sram-array-region-label",
+    "sram-array-region-link",
     "standard-cell",
     "standard-cell-label",
     "standard-cell-link",
+    "sram-bitcell",
+    "sram-bitcell-label",
+    "sram-bitcell-link",
     "transistor",
     "transistor-label",
     "transistor-link",
@@ -8566,6 +10069,15 @@
     "nand-programming",
     "nand-programming-label",
     "nand-programming-link",
+    "mlcc",
+    "mlcc-label",
+    "mlcc-link",
+    "inductor",
+    "inductor-label",
+    "inductor-link",
+    "chip-resistor",
+    "chip-resistor-label",
+    "chip-resistor-link",
     "lens-stack",
     "lens-stack-label",
     "lens-stack-link",
@@ -8835,23 +10347,19 @@
       },
       {
         "id": "lithium-ions",
-        "factor": 0.5406845092773438
+        "factor": 0.6767425537109375
       },
       {
         "id": "lco-cobalt",
-        "factor": 0.5406845092773438
+        "factor": 0.6767425537109375
       },
       {
         "id": "lco-oxygen",
-        "factor": 0.5406845092773438
-      },
-      {
-        "id": "lco-lithium-site",
-        "factor": 0.5406845092773438
+        "factor": 0.6767425537109375
       },
       {
         "id": "cathode-intercalation",
-        "factor": 0.5406845092773438
+        "factor": 0.6767425537109375
       },
       {
         "id": "system-on-chip",
@@ -8874,8 +10382,16 @@
         "factor": 0.27198944091796884
       },
       {
+        "id": "logic-board-passives",
+        "factor": 0.27198944091796884
+      },
+      {
+        "id": "soc-ball-region",
+        "factor": 0.33473539352417
+      },
+      {
         "id": "soc-die",
-        "factor": 0.5582070350646975
+        "factor": 0.33473539352417
       },
       {
         "id": "transistor-channel",
@@ -8975,7 +10491,7 @@
       },
       {
         "id": "sensor-die",
-        "factor": 0.37213802337646495
+        "factor": 0.3967356325975107
       },
       {
         "id": "sensor-microlens",

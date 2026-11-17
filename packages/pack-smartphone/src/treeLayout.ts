@@ -201,6 +201,9 @@ function placeChildren(
     }
   }
   if (!best) return null;
+  // A child past half a pitch is nearer the next copy, so the zoom misses
+  // the authored one. Slide the centres in; the drawn size stays.
+  best = { ...best, boxes: holdInCentreCopy(parent, space, best.boxes) };
 
   const host = ctx.hosts.get(parent.id);
   const fade: ZoomFade = host?.fadeAgainstOpening
@@ -263,6 +266,32 @@ function placeChildren(
     });
   }
   return placed;
+}
+
+/**
+ * Half-pitch of the centre copy, in the parent's box. A pitch wider than the
+ * part does not pull children in: they already sit inside that copy.
+ */
+function holdInCentreCopy(parent: HierarchyNode, space: Space, boxes: Box[]): Box[] {
+  const pattern = parent.repeat?.pattern;
+  if (!pattern || !(parent.sizeMm > 0)) return boxes;
+  let limitX = Number.POSITIVE_INFINITY;
+  let limitY: number;
+  if (pattern.kind === 'grid') {
+    limitX = (pattern.pitchXMm / parent.sizeMm) * space.width * 0.45;
+    limitY = (pattern.pitchYMm / parent.sizeMm) * space.height * 0.45;
+  } else if (pattern.kind === 'rows') {
+    limitY = (pattern.pitchMm / parent.sizeMm) * space.height * 0.45;
+  } else {
+    return boxes;
+  }
+  let scale = 1;
+  for (const box of boxes) {
+    if (Math.abs(box.x) > limitX) scale = Math.min(scale, limitX / Math.abs(box.x));
+    if (Math.abs(box.y) > limitY) scale = Math.min(scale, limitY / Math.abs(box.y));
+  }
+  if (!(scale < 1)) return boxes;
+  return boxes.map((box) => ({ ...box, x: box.x * scale, y: box.y * scale }));
 }
 
 function artSize(
