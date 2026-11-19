@@ -33,13 +33,32 @@ export type HierarchyNode = {
 /**
  * Arrangement from a `Repeat:` line, before it is scaled into parent-local units.
  * `count` is per parent copy. A grid's `cols * rows` equals that count.
+ * A lattice's count is unit cells times its basis.
+ * `occupancy` keeps a deterministic subset of those copies.
  */
 export type HierarchyRepeat = {
   count: number;
   pattern: HierarchyPattern;
+  /** 0..1. Omit and a repeated view is stamped at 0.25. */
+  opacity?: number;
+  /** 0..1. Copy i is kept when hash(seed, i) is below this. */
+  occupancy?: number;
+  /** Seed for occupancy. Omit for the core default. */
+  seed?: number;
 };
+
+export type HierarchyLattice = 'hex' | 'honeycomb' | 'diamond' | 'square';
 
 export type HierarchyPattern =
   | { kind: 'grid'; cols: number; rows: number; pitchXMm: number; pitchYMm: number }
   | { kind: 'rows'; pitchMm: number; staggerMm?: number }
-  | { kind: 'scatter'; seed: number; densityPerMm2: number };
+  | { kind: 'scatter'; seed: number; densityPerMm2: number }
+  | {
+      kind: 'lattice';
+      lattice: HierarchyLattice;
+      /** Crystallographic lattice constant, millimetres. */
+      aMm: number;
+      cols: number;
+      rows: number;
+      basis?: number;
+    };

@@ -28,6 +28,15 @@ describe('smartphone data', () => {
     expect(parseRepeat('rows, pitch 0.2 mm, no stagger')).toEqual({ kind: 'rows', pitchMm: 0.2 });
     expect(parseRepeat('rows, pitch 0.335 nm, stagger 0.1 nm')?.kind).toBe('rows');
     expect(parseRepeat('scatter seed 3 density 4 /nm²')?.kind).toBe('scatter');
+    expect(parseRepeat('lattice honeycomb, a 0.246 nm, 2 × 1')).toEqual({
+      kind: 'lattice',
+      lattice: 'honeycomb',
+      aMm: 0.246e-6,
+      cols: 2,
+      rows: 1,
+    });
+    expect(parseRepeat('lattice diamond, a 0.543099 nm, 1 × 1, basis 4')?.kind).toBe('lattice');
+    expect(parseRepeat('lattice diamond, a 0.543099 nm, 1 × 1, basis 8')).toBeNull();
 
     const parsed = parseHierarchy(`### Example (\`example\`)
 - Parent: none

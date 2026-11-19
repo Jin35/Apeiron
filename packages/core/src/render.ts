@@ -9,6 +9,7 @@ import {
   createRepeatResolver,
   footprint,
   patternBounds,
+  VIEW_REPEAT_OPACITY,
   repeatDetail,
   visibleCopies,
   type RepeatFocus,
@@ -379,6 +380,8 @@ function drawRepeated(
   };
   const copies = visibleCopies(repeat, node.x, node.y, foot.w, foot.h, view);
   const minor = Math.min(foot.w, foot.h) * plane.pixelsPerLocal;
+  const savedAlpha = ctx.globalAlpha;
+  const copyAlpha = savedAlpha * repeatPaintOpacity(node);
   if (repeatDetail(minor, copies) === 'fill') {
     const bounds = node.repeat?.region
       ? {
@@ -395,10 +398,15 @@ function drawRepeated(
     const fill = clipToView(left, top, width, height, viewW, viewH);
     if (!fill) return;
     const paint = paintColors(theme);
+    // The fill stays at or below the copy opacity. Occupancy thins it further,
+    // so a sparse repeat does not turn into a solid plate.
+    ctx.globalAlpha = copyAlpha * repeatFillOccupancy(repeat);
     ctx.fillStyle = node.payload.type === 'image' ? paint.plate : paint.placeholder;
     ctx.fillRect(fill.x, fill.y, fill.w, fill.h);
+    ctx.globalAlpha = savedAlpha;
     return;
   }
+  ctx.globalAlpha = copyAlpha;
   const cssW = foot.w * plane.pixelsPerLocal;
   const cssH = foot.h * plane.pixelsPerLocal;
   copies.forEach((copy) => {
@@ -413,6 +421,27 @@ function drawRepeated(
       drawShapeObject(ctx, theme, box, node.payload);
     }
   });
+  ctx.globalAlpha = savedAlpha;
+}
+
+/** Opacity of one copy. A repeated view with no authored value is faint. */
+function repeatPaintOpacity(node: CanvasObject): number {
+  const authored = node.repeat?.opacity;
+  if (authored !== undefined && Number.isFinite(authored)) return clampUnit(authored);
+  if (node.payload.type === 'shape' && node.payload.kind === 'view') return VIEW_REPEAT_OPACITY;
+  return 1;
+}
+
+function repeatFillOccupancy(repeat: NonNullable<CanvasObject['repeat']>): number {
+  const value = repeat.occupancy;
+  if (value === undefined || !Number.isFinite(value)) return 1;
+  return clampUnit(value);
+}
+
+function clampUnit(value: number): number {
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
+  return value;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { frameOn } from './boot';
-import type { CanvasObject } from './model';
+import type { CanvasObject, NodeRepeat } from './model';
 import {
   MAX_REPEAT_COPIES,
   REPEAT_LOD_PX,
@@ -8,6 +8,8 @@ import {
   copyLocalPosition,
   formatRepeatCount,
   gridMatchesCount,
+  latticeBasis,
+  latticeNeighbourDistance,
   repeatDetail,
   repeatTotal,
   visibleCopies,
@@ -160,4 +162,181 @@ describe('chain total', () => {
     expect(copy1?.x).toBeCloseTo(20);
     expect(copy1?.y).toBeCloseTo(0);
   });
+
+  it('multiplies the chain total by occupancy', () => {
+    const node = shape('ion', 0, 0, 1, {
+      repeat: { count: 4, occupancy: 0.25, pattern: { kind: 'grid', cols: 2, rows: 2, pitchX: 1, pitchY: 1 } },
+    });
+    expect(repeatTotal([node], 'ion')).toBe(1);
+    expect(formatRepeatCount(1)).toBe('×1');
+  });
 });
+
+describe('occupancy', () => {
+  const pitch = 10;
+  const repeat: NodeRepeat = {
+    count: 16,
+    occupancy: 0.5,
+    seed: 4,
+    pattern: { kind: 'grid', cols: 4, rows: 4, pitchX: pitch, pitchY: pitch },
+  };
+
+  function occupiedIndices(sample: NodeRepeat): number[] {
+    const found: number[] = [];
+    visibleCopies(sample, 0, 0, 4, 4, { left: -5, right: 40, top: -5, bottom: 40 }).forEach((copy) => {
+      found.push(copy.index);
+    });
+    return found;
+  }
+
+  it('keeps the same subset for the same seed and drops the rest from hits', () => {
+    const first = occupiedIndices(repeat);
+    const again = occupiedIndices({ ...repeat, pattern: { ...repeat.pattern } });
+    expect(again).toEqual(first);
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.length).toBeLessThan(16);
+    const other = occupiedIndices({ ...repeat, seed: 5 });
+    expect(other).not.toEqual(first);
+
+    const present = first[0] ?? 0;
+    const missing = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].find((index) => !first.includes(index));
+    expect(missing).toBeDefined();
+    const at = copyLocalPosition(repeat, 0, 0, present);
+    const gap = copyLocalPosition(repeat, 0, 0, missing ?? 0);
+    expect(at).not.toBeNull();
+    expect(gap).not.toBeNull();
+    expect(copyIndexAt(repeat, 0, 0, 4, 4, at?.x ?? 0, at?.y ?? 0)).toBe(present);
+    expect(copyIndexAt(repeat, 0, 0, 4, 4, gap?.x ?? 0, gap?.y ?? 0)).toBeNull();
+
+    const cell = shape('cell', 0, 0, 4, { repeat });
+    const store = createMemoryStore([cell]);
+    expect(store.hitTest({ x: at?.x ?? 0, y: at?.y ?? 0 }, { x: 0, y: 0, scale: 1 })?.id).toBe('cell');
+    expect(store.hitTest({ x: gap?.x ?? 0, y: gap?.y ?? 0 }, { x: 0, y: 0, scale: 1 })).toBeNull();
+
+    const framed = frameOn([cell], 'cell', 100, 100, missing ?? 0);
+    expect(samePoint(framed, gap)).toBe(false);
+    expect(first.some((index) => samePoint(framed, copyLocalPosition(repeat, 0, 0, index)))).toBe(true);
+  });
+
+  it('skips empty rows as well as empty lattice sites', () => {
+    const rows: NodeRepeat = {
+      count: 6,
+      occupancy: 0.5,
+      seed: 9,
+      pattern: { kind: 'rows', pitch: 8 },
+    };
+    const drawn: number[] = [];
+    visibleCopies(rows, 0, 0, 2, 2, { left: -2, right: 4, top: -2, bottom: 50 }).forEach((copy) => drawn.push(copy.index));
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(drawn.length).toBeLessThan(6);
+    const absent = [0, 1, 2, 3, 4, 5].find((index) => !drawn.includes(index)) ?? 0;
+    const spot = copyLocalPosition(rows, 0, 0, absent);
+    expect(copyIndexAt(rows, 0, 0, 2, 2, spot?.x ?? 0, spot?.y ?? 0)).toBeNull();
+  });
+});
+
+describe('lattice', () => {
+  it('spaces honeycomb and diamond neighbours at the bond length', () => {
+    expect(latticeBasis('honeycomb')).toBe(2);
+    expect(latticeBasis('diamond')).toBe(4);
+    expect(latticeBasis('hex')).toBe(1);
+    expect(latticeBasis('square')).toBe(1);
+
+    const bond = 0.142;
+    const graphiteA = bond * Math.sqrt(3);
+    expect(latticeNeighbourDistance('honeycomb', graphiteA)).toBeCloseTo(bond);
+    const sheet: NodeRepeat = {
+      count: 4,
+      pattern: { kind: 'lattice', lattice: 'honeycomb', a: graphiteA, cols: 2, rows: 1 },
+    };
+    const origin = copyLocalPosition(sheet, 0, 0, 0);
+    const partner = copyLocalPosition(sheet, 0, 0, 1);
+    expect(origin).not.toBeNull();
+    expect(partner).not.toBeNull();
+    expect(Math.hypot((partner?.x ?? 0) - (origin?.x ?? 0), (partner?.y ?? 0) - (origin?.y ?? 0))).toBeCloseTo(bond);
+
+    const siliconA = 0.543099;
+    const siliconBond = latticeNeighbourDistance('diamond', siliconA);
+    expect(siliconBond).toBeCloseTo((siliconA * Math.sqrt(3)) / 4);
+    expect(siliconBond).toBeCloseTo(0.235, 2);
+    const crystal: NodeRepeat = {
+      count: 4,
+      pattern: { kind: 'lattice', lattice: 'diamond', a: siliconA, cols: 1, rows: 1 },
+    };
+    const column = copyLocalPosition(crystal, 0, 0, 1);
+    const neighbour = copyLocalPosition(crystal, 0, 0, 2);
+    expect(column).not.toBeNull();
+    expect(neighbour).not.toBeNull();
+    expect(Math.hypot((neighbour?.x ?? 0) - (column?.x ?? 0), (neighbour?.y ?? 0) - (column?.y ?? 0))).toBeCloseTo(
+      siliconBond,
+    );
+
+    const hex: NodeRepeat = {
+      count: 2,
+      pattern: { kind: 'lattice', lattice: 'hex', a: 1.5, cols: 2, rows: 1 },
+    };
+    const hex0 = copyLocalPosition(hex, 0, 0, 0);
+    const hex1 = copyLocalPosition(hex, 0, 0, 1);
+    expect(Math.hypot((hex1?.x ?? 0) - (hex0?.x ?? 0), (hex1?.y ?? 0) - (hex0?.y ?? 0))).toBeCloseTo(1.5);
+  });
+
+  it('visits only the lattice copies inside the view when the cell count is huge', () => {
+    const repeat: NodeRepeat = {
+      count: 2e10,
+      pattern: { kind: 'lattice', lattice: 'honeycomb', a: 1, cols: 1e5, rows: 1e5 },
+    };
+    const started = performance.now();
+    const visible = visibleCopies(repeat, 0, 0, 0.2, 0.2, { left: -0.2, right: 2.2, top: -0.2, bottom: 1.2 });
+    const copies: number[] = [];
+    visible.forEach((copy) => copies.push(copy.index));
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(visible.capped).toBe(false);
+    expect(copies.length).toBeGreaterThan(0);
+    expect(copies.length).toBeLessThan(40);
+    for (const index of copies) {
+      const at = copyLocalPosition(repeat, 0, 0, index);
+      expect(at).not.toBeNull();
+      expect(at?.x).toBeGreaterThan(-1);
+      expect(at?.x).toBeLessThan(4);
+    }
+
+    const all = visibleCopies(repeat, 0, 0, 0.2, 0.2, { left: -1, right: 1e5, top: -1, bottom: 1e5 });
+    let visited = 0;
+    all.forEach(() => {
+      visited += 1;
+    });
+    expect(all.capped).toBe(true);
+    expect(visited).toBe(0);
+    expect(all.count).toBeGreaterThan(MAX_REPEAT_COPIES);
+  });
+
+  it('does not hit or focus an unoccupied lattice site', () => {
+    const repeat: NodeRepeat = {
+      count: 8,
+      occupancy: 0.5,
+      seed: 3,
+      pattern: { kind: 'lattice', lattice: 'honeycomb', a: 1, cols: 2, rows: 2 },
+    };
+    const drawn: number[] = [];
+    visibleCopies(repeat, 0, 0, 0.2, 0.2, { left: -1, right: 4, top: -2, bottom: 2 }).forEach((copy) => {
+      drawn.push(copy.index);
+    });
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(drawn.length).toBeLessThan(8);
+    const absent = [0, 1, 2, 3, 4, 5, 6, 7].find((index) => !drawn.includes(index)) ?? 0;
+    const spot = copyLocalPosition(repeat, 0, 0, absent);
+    expect(copyIndexAt(repeat, 0, 0, 0.2, 0.2, spot?.x ?? 0, spot?.y ?? 0)).toBeNull();
+    const cell = shape('atom', 0, 0, 0.2, { repeat });
+    const framed = frameOn([cell], 'atom', 80, 80, absent);
+    expect(samePoint(framed, spot)).toBe(false);
+    expect(drawn.some((index) => samePoint(framed, copyLocalPosition(repeat, 0, 0, index)))).toBe(true);
+  });
+});
+
+function samePoint(
+  camera: { x: number; y: number } | null | undefined,
+  point: { x: number; y: number } | null | undefined,
+): boolean {
+  if (!camera || !point) return false;
+  return Math.abs(camera.x - point.x) < 1e-9 && Math.abs(camera.y - point.y) < 1e-9;
+}
