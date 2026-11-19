@@ -12,14 +12,14 @@ This extends the original content tree. Original labels and all built ids, paren
               - Metal grains detail 300 nm (view) — planned
                 - Metal grains detail 30 nm (view) — planned
                   - Metal grains detail 3 nm (view) — planned
-                    - Aluminium atoms — planned
+                    - Aluminium atom — planned
           - Aluminium frame detail 20 µm (view) — planned
             - Aluminium frame detail 2 µm (view) — planned
               - Aluminium frame detail 200 nm (view) — planned
                 - Aluminium frame detail 20 nm (view) — planned
                   - Oxide skin — planned
-    - Antenna bands — planned
-    - Buttons (power, volume) — planned
+    - Antenna band — planned
+    - Button (power, volume) — planned
       - Button cap — planned
       - Spring contact — planned
       - Buttons detail 1 mm (view) — planned
@@ -35,12 +35,12 @@ This extends the original content tree. Original labels and all built ids, paren
                 - Compressed surface detail 50 nm (view) — planned
                   - Compressed surface detail 5 nm (view) — planned
                     - Glass network — planned
-                      - Silicon sites — planned
-                      - Oxygen bridges — planned
-                      - Potassium ions — planned
-                      - Sodium ions — planned
+                      - Silicon site — planned
+                      - Oxygen bridge — planned
+                      - Potassium ion — planned
+                      - Sodium ion — planned
     - Touch layer — planned
-      - Transparent electrodes — planned
+      - Touch electrode — planned
       - Touch layer detail 14 mm (view) — planned
         - Insulating separation — planned
       - Capacitive sensing (process) — planned
@@ -62,7 +62,7 @@ This extends the original content tree. Original labels and all built ids, paren
   - Battery — built
     - Protection board — built
       - Protection chip — planned
-      - MOSFET switches — planned
+      - Protection MOSFET — planned
       - Flex connector — planned
     - Cell — built
       - Pouch — built
@@ -87,7 +87,7 @@ This extends the original content tree. Original labels and all built ids, paren
             - Polymer scaffold — planned
             - Separator detail 2 µm (view) — planned
               - Separator detail 200 nm (view) — planned
-                - Electrolyte-filled pores — planned
+                - Pore — planned
             - Ion transport (process) — planned
           - Cathode (aluminium foil with lithium cobalt oxide) — planned
             - LiCoO₂ particle — planned
@@ -95,9 +95,9 @@ This extends the original content tree. Original labels and all built ids, paren
                 - LiCoO₂ particle detail 60 nm (view) — planned
                   - LiCoO₂ particle detail 6 nm (view) — planned
                     - Layered oxide lattice — planned
-                      - Lithium ions (particle level) — planned
-                      - Cobalt sites — planned
-                      - Oxygen sites — planned
+                      - Lithium ion (particle level) — planned
+                      - Cobalt site — planned
+                      - Oxygen site — planned
                       - Cathode intercalation (process) — planned
             - Aluminium current collector — planned
   - Logic board — built
@@ -106,9 +106,14 @@ This extends the original content tree. Original labels and all built ids, paren
         - Solder ball — planned
       - Processor die — planned
         - CPU performance core — planned
-          - CPU performance core detail 100 µm (view) — planned
-            - CPU performance core detail 10 µm (view) — planned
-              - CPU performance core detail 1 µm (view) — planned
+        - CPU efficiency core — planned
+        - GPU core — planned
+        - Die-bump region (view) — planned
+          - Solder bump — planned
+        - Logic tile (view) — planned
+          - Logic detail 100 µm (view) — planned
+            - Logic detail 10 µm (view) — planned
+              - Logic detail 1 µm (view) — planned
                 - Standard cell — planned
                   - Transistor — planned
                     - Channel — planned
@@ -123,28 +128,28 @@ This extends the original content tree. Original labels and all built ids, paren
                         - Silicon atom — planned
                         - Covalent bond — planned
                         - Dopant site — planned
+        - Cache SRAM — planned
+          - Cache SRAM detail 294 µm (view) — planned
+            - Cache SRAM detail 29 µm (view) — planned
               - SRAM array region (view) — planned
                 - SRAM bitcell — planned
-        - CPU efficiency core — planned
-        - GPU core — planned
-        - Die-bump region (view) — planned
-          - Solder bump — planned
     - RAM — planned
       - DRAM die — planned
-        - Bank region (view) — planned
-          - Subarray region (view) — planned
-            - Cell tile (view) — planned
-              - Cell neighbourhood (view) — planned
-                - DRAM cell — planned
-                  - Charge refresh (process) — planned
-                  - Word and bit lines — planned
+        - DRAM bank — planned
+          - DRAM subarray — planned
+            - DRAM mat — planned
+              - Cell tile (view) — planned
+                - Cell neighbourhood (view) — planned
+                  - DRAM cell — planned
+                    - Charge refresh (process) — planned
+                    - Word and bit lines — planned
     - Storage (NAND flash) — planned
       - NAND die — planned
-        - Plane region (view) — planned
-          - Block region (view) — planned
+        - NAND plane — planned
+          - Block group (view) — planned
             - String-array region (view) — planned
               - NAND string — planned
-                - NAND string detail 200 nm (view) — planned
+                - NAND string detail 704 nm (view) — planned
                   - NAND memory cell — planned
                     - Control gate — planned
                     - Charge-trap layer — planned
@@ -179,7 +184,7 @@ This extends the original content tree. Original labels and all built ids, paren
     - Magnet — planned
     - Voice coil — planned
       - Voice coil detail 500 µm (view) — planned
-        - Copper winding — planned
+        - Winding turn — planned
           - Wire insulation — planned
       - Lorentz force (process) — planned
     - Diaphragm — planned
@@ -199,18 +204,18 @@ This extends the original content tree. Original labels and all built ids, paren
   - Back glass — built
     - Wireless charging coil — planned
       - Wireless charging coil detail 4.5 mm (view) — planned
-        - Copper turns — planned
+        - Copper turn — planned
         - Ferrite backing — planned
       - Electromagnetic induction (process) — planned
 
 ## Scale conventions
 
 - Every edge below uses the **same declared characteristic size for a node** on both its incoming and outgoing edges. A node’s details state whether that is its largest dimension, a cross-sectional feature or a selected drawing window. Ratios are parent ÷ child, using nm internally, not an average of incompatible dimensions.
-- The target is 3–30×. No remaining edge exceeds 30× or 100× at these nominal drawing scales. **Some honest edges are under 3×:** assemblies and their covers can be almost coextensive; a pixel and its microlens share a pitch; a process acts in the same region as its hardware. Inserting a smaller part cannot fix such an edge without lying about size. These are labelled **<3×: context** rather than silently reported as scale jumps. Treat them as same-scale crossfades/cutaways before the next shrinking zoom.
+- The target is 3–30×. No remaining edge exceeds 30× or 100× at these nominal drawing scales. **Some honest edges are under 3×:** assemblies and their covers can be almost coextensive; a pixel and its microlens share a pitch; a process acts in the same region as its hardware. A DRAM bank is 2.2× of its 8 mm die, and a NAND plane is 2× of its die: those real counts cannot each be drawn 3× smaller. Inserting a smaller part cannot fix such an edge without lying about size. These are labelled **<3×: context** rather than silently reported as scale jumps. Treat them as same-scale crossfades/cutaways before the next shrinking zoom.
 - A **(view)** node is a deliberately chosen real-space crop, not a newly discovered component. Its width is a drawing decision with units, not a sourced manufacturing dimension. Shared crop ladders avoid adding duplicate views for tiny sibling features. These can become camera waypoints rather than extra part sprites.
 - Physical dimensions marked “rough” are illustrative working values, not measurements of the pictured phone. A named source supports the mechanism and any published values it actually gives; it does **not** magically verify every generic working dimension. Size evidence is explicit per node. The scale audit is deterministic for these working values, not proof that all possible phones or range endpoints satisfy the same ratios.
 - Reference examples are intentionally separate: Apple iPhone 13 for nominal display pitch/count and A15 counts; Sony IMX586 for sensor pitch/count; Samsung sixth-generation V-NAND for published channel-hole/layer information. This is **not** a claim that one phone combines all three references. Published counts are scoped to their named product or capacity unit.
-- One node is stored per part type. A Count that starts with an integer, and an optional Repeat line, is the number of copies inside one copy of the parent. Crop ladders under the display, the sensor, DRAM, NAND and the CPU are repeated tiles, so the product of those counts is the drawing total. A scale window that zooms into one spot, and every process node, stays single. Unknown inventories stay unknown; a rough count is marked as illustrative and is not a measured inventory.
+- One node is stored per part type. A Count that starts with an integer, and an optional Repeat line, is the number of copies inside one copy of the parent. Crop ladders under the display, the sensor, DRAM, NAND, the cache and the logic tiles are repeated tiles, so the product of those counts is the drawing total. A scale window that zooms into one spot, and every process node, stays single. Unknown inventories stay unknown; a rough count is marked as illustrative and is not a measured inventory.
 - The original Red, Green and Blue subpixels remain distinct types because they emit different spectra and can use different materials, areas and sharing layouts. Only the red representative expands into the common layer-stack explanation; this is not three copies of the same stack. No duplicate sibling instances in the previous file required deletion or merging.
 - Existing renderer-only groups `internals` and `battery-internals`, labels and leader links are not physical content nodes. Existing artwork widths in `smartphone.ts` are layout parameters, not independent measurements. Anode/cathode naming follows discharge convention.
 
@@ -262,9 +267,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 | `touch-layer-scale-window-1` → `touch-insulator` | 14 mm | 500 µm | 28× | 3–30× |
 | `touch-layer` → `capacitive-sensing` | 140 mm | 10 mm | 14× | 3–30× |
 | `display` → `oled-panel` | 140 mm | 140 mm | 1× | **<3×: context** |
-| `oled-panel` → `display-array-region` | 140 mm | 16.5652 mm | 8.451× | 3–30× |
-| `display-array-region` → `display-array-tile` | 16.5652 mm | 1.65652 mm | 10× | 3–30× |
-| `display-array-tile` → `display-pixel-neighbourhood` | 1.65652 mm | 165.652 µm | 10× | 3–30× |
+| `oled-panel` → `display-array-region` | 140 mm | 10.7674 mm | 13× | 3–30× |
+| `display-array-region` → `display-array-tile` | 10.7674 mm | 828.26 µm | 13× | 3–30× |
+| `display-array-tile` → `display-pixel-neighbourhood` | 828.26 µm | 165.652 µm | 5× | 3–30× |
 | `display-pixel-neighbourhood` → `display-pixel` | 165.652 µm | 55.2174 µm | 3× | 3–30× |
 | `display-pixel` → `red-subpixel` | 55.2174 µm | 20 µm | 2.761× | **<3×: context** |
 | `red-subpixel` → `oled-layer-stack` | 20 µm | 2 µm | 10× | 3–30× |
@@ -297,7 +302,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 | `graphite-particle-scale-window-3` → `graphite-crystal` | 6 nm | 0.67094 nm | 8.943× | 3–30× |
 | `graphite-crystal` → `graphite-carbon-sheet` | 0.67094 nm | 0.142 nm | 4.725× | 3–30× |
 | `graphite-crystal` → `graphite-layer-gap` | 0.67094 nm | 0.335 nm | 2.003× | **<3×: context** |
-| `graphite-crystal` → `graphite-carbon-atom` | 0.67094 nm | 0.15 nm | 4.473× | 3–30× |
+| `graphite-crystal` → `graphite-carbon-atom` | 0.67094 nm | 0.13 nm | 5.161× | 3–30× |
 | `graphite-crystal` → `anode-intercalation` | 0.67094 nm | 0.335 nm | 2.003× | **<3×: context** |
 | `graphite-crystal` → `anode-lithium-ion` | 0.67094 nm | 0.15 nm | 4.473× | 3–30× |
 | `electrode-repeat` → `separator` | 200 µm | 20 µm | 10× | 3–30× |
@@ -321,17 +326,21 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 | `logic-board` → `system-on-chip` | 45 mm | 15 mm | 3× | 3–30× |
 | `system-on-chip` → `soc-ball-region` | 15 mm | 3.5 mm | 4.286× | 3–30× |
 | `soc-ball-region` → `soc-solder-ball` | 3.5 mm | 0.2 mm | 17.5× | 3–30× |
-| `system-on-chip` → `soc-die` | 15 mm | 10 mm | 1.5× | **<3×: context** |
-| `soc-die` → `cpu-gpu-cores` | 10 mm | 1 mm | 10× | 3–30× |
-| `soc-die` → `cpu-efficiency-core` | 10 mm | 1 mm | 10× | 3–30× |
-| `soc-die` → `gpu-core` | 10 mm | 1 mm | 10× | 3–30× |
-| `soc-die` → `soc-bump-region` | 10 mm | 1 mm | 10× | 3–30× |
+| `system-on-chip` → `soc-die` | 15 mm | 12.55 mm | 1.195× | **<3×: context** |
+| `soc-die` → `cpu-gpu-cores` | 12.55 mm | 1 mm | 12.55× | 3–30× |
+| `soc-die` → `cpu-efficiency-core` | 12.55 mm | 1 mm | 12.55× | 3–30× |
+| `soc-die` → `gpu-core` | 12.55 mm | 1 mm | 12.55× | 3–30× |
+| `soc-die` → `soc-bump-region` | 12.55 mm | 1 mm | 12.55× | 3–30× |
 | `soc-bump-region` → `soc-bump` | 1 mm | 0.06 mm | 16.667× | 3–30× |
-| `cpu-gpu-cores` → `cpu-gpu-cores-scale-window-1` | 1 mm | 100 µm | 10× | 3–30× |
+| `soc-die` → `logic-tile` | 12.55 mm | 1 mm | 12.55× | 3–30× |
+| `logic-tile` → `cpu-gpu-cores-scale-window-1` | 1 mm | 100 µm | 10× | 3–30× |
 | `cpu-gpu-cores-scale-window-1` → `cpu-gpu-cores-scale-window-2` | 100 µm | 10 µm | 10× | 3–30× |
 | `cpu-gpu-cores-scale-window-2` → `cpu-gpu-cores-scale-window-3` | 10 µm | 1 µm | 10× | 3–30× |
-| `cpu-gpu-cores-scale-window-2` → `sram-array-region` | 10 µm | 1 µm | 10× | 3–30× |
 | `cpu-gpu-cores-scale-window-3` → `standard-cell` | 1 µm | 0.2 µm | 5× | 3–30× |
+| `soc-die` → `cache-sram` | 12.55 mm | 2.94 mm | 4.269× | 3–30× |
+| `cache-sram` → `cache-sram-tile` | 2.94 mm | 294 µm | 10× | 3–30× |
+| `cache-sram-tile` → `cache-sram-subtile` | 294 µm | 29.4 µm | 10× | 3–30× |
+| `cache-sram-subtile` → `sram-array-region` | 29.4 µm | 1 µm | 29.4× | 3–30× |
 | `sram-array-region` → `sram-bitcell` | 1 µm | 0.145 µm | 6.897× | 3–30× |
 | `standard-cell` → `transistor` | 0.2 µm | 50 nm | 4× | 3–30× |
 | `transistor` → `transistor-channel` | 50 nm | 10 nm | 5× | 3–30× |
@@ -348,25 +357,26 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 | `silicon-lattice` → `dopant-site` | 0.543099 nm | 0.25 nm | 2.172× | **<3×: context** |
 | `logic-board` → `ram` | 45 mm | 10 mm | 4.5× | 3–30× |
 | `ram` → `ram-die` | 10 mm | 8 mm | 1.25× | **<3×: context** |
-| `ram-die` → `dram-bank` | 8 mm | 1 mm | 8× | 3–30× |
-| `dram-bank` → `dram-subarray` | 1 mm | 100 µm | 10× | 3–30× |
-| `dram-subarray` → `dram-cell-tile` | 100 µm | 10 µm | 10× | 3–30× |
-| `dram-cell-tile` → `dram-cell-patch` | 10 µm | 1 µm | 10× | 3–30× |
-| `dram-cell-patch` → `dram-cell` | 1 µm | 100 nm | 10× | 3–30× |
-| `dram-cell` → `dram-refresh` | 100 nm | 100 nm | 1× | **<3×: context** |
-| `dram-cell` → `dram-lines` | 100 nm | 100 nm | 1× | **<3×: context** |
+| `ram-die` → `dram-bank` | 8 mm | 3.625 mm | 2.207× | **<3×: context** |
+| `dram-bank` → `dram-subarray` | 3.625 mm | 604 µm | 6.002× | 3–30× |
+| `dram-subarray` → `dram-mat` | 604 µm | 28.3 µm | 21.343× | 3–30× |
+| `dram-mat` → `dram-cell-tile` | 28.3 µm | 3.54 µm | 7.994× | 3–30× |
+| `dram-cell-tile` → `dram-cell-patch` | 3.54 µm | 443 nm | 7.991× | 3–30× |
+| `dram-cell-patch` → `dram-cell` | 443 nm | 55.3 nm | 8.011× | 3–30× |
+| `dram-cell` → `dram-refresh` | 55.3 nm | 55.3 nm | 1× | **<3×: context** |
+| `dram-cell` → `dram-lines` | 55.3 nm | 55.3 nm | 1× | **<3×: context** |
 | `logic-board` → `nand-storage` | 45 mm | 12 mm | 3.75× | 3–30× |
 | `nand-storage` → `nand-die` | 12 mm | 8 mm | 1.5× | **<3×: context** |
-| `nand-die` → `nand-plane-region` | 8 mm | 800 µm | 10× | 3–30× |
-| `nand-plane-region` → `nand-block-region` | 800 µm | 80 µm | 10× | 3–30× |
-| `nand-block-region` → `nand-string-region` | 80 µm | 8 µm | 10× | 3–30× |
-| `nand-string-region` → `nand-string` | 8 µm | 2 µm | 4× | 3–30× |
-| `nand-string` → `nand-string-scale-window-1` | 2 µm | 200 nm | 10× | 3–30× |
-| `nand-string-scale-window-1` → `nand-cell` | 200 nm | 50 nm | 4× | 3–30× |
-| `nand-cell` → `nand-control-gate` | 50 nm | 20 nm | 2.5× | **<3×: context** |
-| `nand-cell` → `nand-charge-trap` | 50 nm | 5 nm | 10× | 3–30× |
-| `nand-cell` → `nand-tunnel-oxide` | 50 nm | 5 nm | 10× | 3–30× |
-| `nand-cell` → `nand-programming` | 50 nm | 5 nm | 10× | 3–30× |
+| `nand-die` → `nand-plane-region` | 8 mm | 4 mm | 2× | **<3×: context** |
+| `nand-plane-region` → `nand-block-region` | 4 mm | 500 µm | 8× | 3–30× |
+| `nand-block-region` → `nand-string-region` | 500 µm | 25 µm | 20× | 3–30× |
+| `nand-string-region` → `nand-string` | 25 µm | 6.23 µm | 4.013× | 3–30× |
+| `nand-string` → `nand-string-scale-window-1` | 6.23 µm | 704 nm | 8.849× | 3–30× |
+| `nand-string-scale-window-1` → `nand-cell` | 704 nm | 44 nm | 16× | 3–30× |
+| `nand-cell` → `nand-control-gate` | 44 nm | 20 nm | 2.2× | **<3×: context** |
+| `nand-cell` → `nand-charge-trap` | 44 nm | 5 nm | 8.8× | 3–30× |
+| `nand-cell` → `nand-tunnel-oxide` | 44 nm | 5 nm | 8.8× | 3–30× |
+| `nand-cell` → `nand-programming` | 44 nm | 5 nm | 8.8× | 3–30× |
 | `nand-storage` → `nand-read-circuit` | 12 mm | 1 mm | 12× | 3–30× |
 | `nand-storage` → `nand-controller` | 12 mm | 2 mm | 6× | 3–30× |
 | `logic-board` → `modem-rf` | 45 mm | 5 mm | 9× | 3–30× |
@@ -380,10 +390,10 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 | `camera-module` → `ois` | 20 mm | 10 mm | 2× | **<3×: context** |
 | `camera-module` → `image-sensor` | 20 mm | 8 mm | 2.5× | **<3×: context** |
 | `image-sensor` → `sensor-die` | 8 mm | 7.504 mm | 1.066× | **<3×: context** |
-| `sensor-die` → `sensor-array-region` | 7.504 mm | 640 µm | 11.725× | 3–30× |
-| `sensor-array-region` → `sensor-array-tile` | 640 µm | 64 µm | 10× | 3–30× |
-| `sensor-array-tile` → `sensor-pixel-group` | 64 µm | 6.4 µm | 10× | 3–30× |
-| `sensor-pixel-group` → `sensor-pixel` | 6.4 µm | 800 nm | 8× | 3–30× |
+| `sensor-die` → `sensor-array-region` | 7.504 mm | 800 µm | 9.38× | 3–30× |
+| `sensor-array-region` → `sensor-array-tile` | 800 µm | 80 µm | 10× | 3–30× |
+| `sensor-array-tile` → `sensor-pixel-group` | 80 µm | 8 µm | 10× | 3–30× |
+| `sensor-pixel-group` → `sensor-pixel` | 8 µm | 800 nm | 10× | 3–30× |
 | `sensor-pixel` → `sensor-microlens` | 800 nm | 800 nm | 1× | **<3×: context** |
 | `sensor-pixel` → `sensor-colour-filter` | 800 nm | 800 nm | 1× | **<3×: context** |
 | `sensor-pixel` → `sensor-photodiode` | 800 nm | 600 nm | 1.333× | **<3×: context** |
@@ -455,7 +465,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 15 mm window around Aluminium frame, Antenna bands. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 15 mm window around Aluminium frame, Antenna band. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Smartphone — Wikipedia](https://en.wikipedia.org/wiki/Smartphone)
 
 ### Aluminium frame (`aluminium-frame`)
@@ -504,7 +514,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 3 µm window around Aluminium atoms. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 3 µm window around Aluminium atom. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Aluminium — Wikipedia](https://en.wikipedia.org/wiki/Aluminium)
 
 ### Metal grains detail 300 nm (view) (`aluminium-grains-scale-window-2`)
@@ -516,7 +526,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 300 nm window around Aluminium atoms. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 300 nm window around Aluminium atom. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Aluminium — Wikipedia](https://en.wikipedia.org/wiki/Aluminium)
 
 ### Metal grains detail 30 nm (view) (`aluminium-grains-scale-window-3`)
@@ -528,7 +538,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 30 nm window around Aluminium atoms. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 30 nm window around Aluminium atom. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Aluminium — Wikipedia](https://en.wikipedia.org/wiki/Aluminium)
 
 ### Metal grains detail 3 nm (view) (`aluminium-grains-scale-window-4`)
@@ -540,10 +550,10 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 3 nm window around Aluminium atoms. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 3 nm window around Aluminium atom. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Aluminium — Wikipedia](https://en.wikipedia.org/wiki/Aluminium)
 
-### Aluminium atoms (`aluminium-atoms`)
+### Aluminium atom (`aluminium-atoms`)
 - Parent: `aluminium-grains-scale-window-4`
 - Status: planned
 - Kind: part
@@ -616,7 +626,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Aluminium quickly grows a thin oxide skin in air. Anodising deliberately makes a much thicker protective coating.
 - Source: [Aluminium oxide — Wikipedia](https://en.wikipedia.org/wiki/Aluminium_oxide)
 
-### Antenna bands (`antenna-bands`)
+### Antenna band (`antenna-bands`)
 - Parent: `midframe`
 - Status: planned
 - Kind: part
@@ -629,7 +639,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Insulating breaks separate metal frame sections so selected sections can work as antennas. The breaks are spaced around the frame. The plastic strips are not themselves the whole antenna.
 - Source: [Antenna (radio) — Wikipedia](https://en.wikipedia.org/wiki/Antenna_(radio))
 
-### Buttons (`buttons`)
+### Button (`buttons`)
 - Parent: `midframe`
 - Status: planned
 - Kind: part
@@ -823,7 +833,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Glass contains a disordered network of bonded atoms, not orderly sheets. Phone cover glass usually includes other elements as well as silicon and oxygen.
 - Source: [Silicon dioxide — Wikipedia](https://en.wikipedia.org/wiki/Silicon_dioxide)
 
-### Silicon sites (`glass-silicon`)
+### Silicon site (`glass-silicon`)
 - Parent: `glass-network`
 - Status: planned
 - Kind: part
@@ -836,7 +846,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Silicon typically sits at the centre of an oxygen tetrahedron. Linked tetrahedra provide the basic network rather than isolated grains of sand.
 - Source: [Silicon dioxide — Wikipedia](https://en.wikipedia.org/wiki/Silicon_dioxide)
 
-### Oxygen bridges (`glass-oxygen`)
+### Oxygen bridge (`glass-oxygen`)
 - Parent: `glass-network`
 - Status: planned
 - Kind: part
@@ -849,7 +859,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Many oxygen atoms link neighbouring silicon-centred units. Other ingredients alter how connected and chemically durable the network is.
 - Source: [Silicon dioxide — Wikipedia](https://en.wikipedia.org/wiki/Silicon_dioxide)
 
-### Potassium ions (`glass-potassium`)
+### Potassium ion (`glass-potassium`)
 - Parent: `glass-network`
 - Status: planned
 - Kind: part
@@ -864,7 +874,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Potassium enters sites previously occupied by sodium. Its larger effective size is the useful part of the swap.
 - Source: [Chemically strengthened glass — Wikipedia](https://en.wikipedia.org/wiki/Chemically_strengthened_glass)
 
-### Sodium ions (`glass-sodium`)
+### Sodium ion (`glass-sodium`)
 - Parent: `glass-network`
 - Status: planned
 - Kind: part
@@ -891,7 +901,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A transparent electrode pattern senses a finger through changes in electrical capacitance. It does not need the glass to bend.
 - Source: [Touchscreen — Wikipedia](https://en.wikipedia.org/wiki/Touchscreen)
 
-### Transparent electrodes (`touch-electrodes`)
+### Touch electrode (`touch-electrodes`)
 - Parent: `touch-layer`
 - Status: planned
 - Kind: part
@@ -956,12 +966,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `oled-panel`
 - Status: planned
 - Kind: view
-- Size: 16.5652 mm (rough)
-- Characteristic size: 16.5652 mm; drawn feature: selected square crop width.
-- Size evidence: Chosen 300-pitch crop × (25.4 mm / 460); geometric drawing choice derived from published pixel pitch.
-- Count: 36 per parent (9 × 4 tiles)
-- Count evidence: The iPhone 13 array is 2532 × 1170, about 33 tiles of 300 pitches, with partial tiles on the edge. The renderer needs an integer grid, so this is 9 × 4 whole tiles. 36 × 100 × 100 × 9 is about 3.24 million, against 2,962,440 published pixels.
-- Repeat: grid 9 × 4, pitch 16.5652 mm
+- Size: 10.7674 mm (195 pixels)
+- Characteristic size: 10.7674 mm; drawn feature: 195 × 195-pixel crop.
+- Size evidence: Derived: 195 × 55.2174 µm.
+- Count: 78 per parent (13 × 6 tiles)
+- Count evidence: 13 × 195 = 2,535 by 6 × 195 = 1,170 pixels: 2,965,950 against 2,532 × 1,170 = 2,962,440 (+0.12%; 3 extra columns). 139.98 × 64.60 mm.
+- Repeat: grid 13 × 6, pitch 10.7674 mm
 - Description: A selected view 300 nominal display-pixel pitches wide. It is a camera window into the panel, not another manufactured component.
 - Source: [iPhone 13 technical specifications — Apple](https://support.apple.com/en-us/111872)
 
@@ -969,12 +979,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `display-array-region`
 - Status: planned
 - Kind: view
-- Size: 1.65652 mm (rough)
-- Characteristic size: 1.65652 mm; drawn feature: selected square crop width.
-- Size evidence: Chosen 30-pitch crop × (25.4 mm / 460); geometric drawing choice derived from published pixel pitch.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Derived: 300 pitches ÷ 30. The tiles cover the region.
-- Repeat: grid 10 × 10, pitch 1.65652 mm
+- Size: 828.26 µm (15 pixels)
+- Characteristic size: 828.26 µm; drawn feature: 15 × 15-pixel crop.
+- Size evidence: Derived: 15 × 55.2174 µm.
+- Count: 169 per parent (13 × 13)
+- Count evidence: Exact tiling: 13 × 828.26 µm = 10.7674 mm.
+- Repeat: grid 13 × 13, pitch 828.26 µm
 - Description: A selected view 30 nominal display-pixel pitches wide. It is a camera window into the panel, not another manufactured component.
 - Source: [iPhone 13 technical specifications — Apple](https://support.apple.com/en-us/111872)
 
@@ -985,9 +995,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: 165.652 µm (rough)
 - Characteristic size: 165.652 µm; drawn feature: selected square crop width.
 - Size evidence: Chosen 3-pitch crop × (25.4 mm / 460); geometric drawing choice derived from published pixel pitch.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Derived: 30 pitches ÷ 3. The neighbourhoods cover the tile.
-- Repeat: grid 10 × 10, pitch 165.652 µm
+- Count: 25 per parent (5 × 5)
+- Count evidence: Exact tiling: 5 × 165.652 µm = 828.26 µm.
+- Repeat: grid 5 × 5, pitch 165.652 µm
 - Description: A selected view 3 nominal display-pixel pitches wide. It is a camera window into the panel, not another manufactured component.
 - Source: [iPhone 13 technical specifications — Apple](https://support.apple.com/en-us/111872)
 
@@ -999,7 +1009,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Characteristic size: 55.2174 µm; drawn feature: nominal display-pixel pitch.
 - Size evidence: Derived from Apple’s 460 ppi specification; this is pixel pitch, not a subpixel width.
 - Count: 9 per parent (3 × 3)
-- Count evidence: Per neighbourhood, not per display. The iPhone 13 reference is 2532 × 1170 = 2,962,440 pixels. With the integer 9 × 4 region grid the chain is about 3.24 million.
+- Count evidence: Per neighbourhood. Chain: 78 × 169 × 25 × 9 = 2,965,950 pixels against 2,962,440 (+0.12%).
 - Repeat: grid 3 × 3, pitch 55.2174 µm
 - Description: A display pixel mixes red, green and blue light to make colours. Actual OLED layouts can share subpixels rather than repeat a neat RGB stripe.
 - Source: [iPhone 13 technical specifications — Apple](https://support.apple.com/en-us/111872)
@@ -1161,7 +1171,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: The chip checks conditions such as cell voltage and excessive current. When a limit is crossed, it tells the disconnect switches to open.
 - Source: [Battery management system — Wikipedia](https://en.wikipedia.org/wiki/Battery_management_system)
 
-### MOSFET switches (`mosfet-switches`)
+### Protection MOSFET (`mosfet-switches`)
 - Parent: `protection-board`
 - Status: planned
 - Kind: part
@@ -1456,7 +1466,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 2 µm window around Electrolyte-filled pores. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 2 µm window around Pore. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Separator (electricity) — Wikipedia](https://en.wikipedia.org/wiki/Separator_(electricity))
 
 ### Separator detail 200 nm (view) (`separator-scale-window-2`)
@@ -1468,10 +1478,10 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 200 nm window around Electrolyte-filled pores. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 200 nm window around Pore. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Separator (electricity) — Wikipedia](https://en.wikipedia.org/wiki/Separator_(electricity))
 
-### Electrolyte-filled pores (`separator-pores`)
+### Pore (`separator-pores`)
 - Parent: `separator-scale-window-2`
 - Status: planned
 - Kind: part
@@ -1570,7 +1580,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Cobalt–oxygen layers alternate with lithium-containing layers. The repeating crystal structure supplies sites from which lithium can leave and return.
 - Source: [Lithium cobalt oxide — Wikipedia](https://en.wikipedia.org/wiki/Lithium_cobalt_oxide)
 
-### Lithium ions (`lithium-ions`)
+### Lithium ion (`lithium-ions`)
 - Parent: `lco-lattice`
 - Status: planned
 - Kind: part
@@ -1585,7 +1595,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A lithium ion is a lithium atom missing one electron. In this cathode it occupies a site between the cobalt–oxygen layers. Charging empties some of those sites, so a full cell shows three lithium positions and a charged cell shows fewer. The separate lithium-site part was the same positions and has been merged here.
 - Source: [Lithium — Wikipedia](https://en.wikipedia.org/wiki/Lithium)
 
-### Cobalt sites (`lco-cobalt`)
+### Cobalt site (`lco-cobalt`)
 - Parent: `lco-lattice`
 - Status: planned
 - Kind: part
@@ -1598,7 +1608,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: Cobalt is part of the oxide framework. Its changing oxidation state helps balance the charge when lithium is removed or inserted.
 - Source: [Lithium cobalt oxide — Wikipedia](https://en.wikipedia.org/wiki/Lithium_cobalt_oxide)
 
-### Oxygen sites (`lco-oxygen`)
+### Oxygen site (`lco-oxygen`)
 - Parent: `lco-lattice`
 - Status: planned
 - Kind: part
@@ -1689,9 +1699,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `system-on-chip`
 - Status: planned
 - Kind: part
-- Size: ~5–15 mm die width (rough); working value 10 mm
-- Characteristic size: 10 mm; largest dimension: illustrative silicon-die width.
-- Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
+- Size: 8.58 × 12.55 mm = 107.68 mm² (A15, TechInsights via iPhone Mania)
+- Characteristic size: 12.55 mm; drawn feature: die length.
+- Size evidence: A15 APL1W07 die seal 8.58 × 12.55 mm = 107.68 mm²; 107.7 mm² also in SemiAnalysis.
 - Count: 1 representative item or feature; repeated total not established unless specified.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
 - Description: The die is the patterned piece of silicon inside the package. Its outline is not a measured A15 dimension; the A15 is only the reference for transistor and core counts.
@@ -1720,7 +1730,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Count: 4 per parent
 - Count evidence: The iPhone 13 A15 has 4 efficiency CPU cores. They are not copies of the performance core.
 - Repeat: scatter seed 16 density 0.04 /mm²
-- Description: An efficiency core runs the lighter general-purpose work and uses less power. The interior zoom (cells and transistors) is drawn under the performance core only.
+- Description: An efficiency core runs the lighter general-purpose work and uses less power. Cells and transistors are drawn once, on the die-wide logic tiles, so this core is a label.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
 
 ### GPU core (`gpu-core`)
@@ -1733,7 +1743,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Count: 4 per parent
 - Count evidence: The iPhone 13 A15 has 4 GPU cores. They are not copies of a CPU core.
 - Repeat: scatter seed 17 density 0.04 /mm²
-- Description: A GPU core runs many similar calculations at once. The interior zoom is drawn under the performance CPU core only.
+- Description: A GPU core runs many similar calculations at once. Cells and transistors are drawn once, on the die-wide logic tiles, so this core is a label.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
 
 ### Die-bump region (view) (`soc-bump-region`)
@@ -1762,8 +1772,21 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A bump joins the die to the package. Power and ground bumps are about 150 µm apart; signal bumps can be staggered down to about 80 µm.
 - Source: [IMAPS 2021: scale-down in advanced packages (PDF)](https://imapsource.org/article/68211-design-constraints-and-scale-down-evolution-in-advanced-semiconductor-packages.pdf)
 
-### CPU performance core detail 100 µm (view) (`cpu-gpu-cores-scale-window-1`)
-- Parent: `cpu-gpu-cores`
+### Logic tile (view) (`logic-tile`)
+- Parent: `soc-die`
+- Status: planned
+- Kind: view
+- Size: 1 mm (crop)
+- Characteristic size: 1 mm; drawn feature: 1 mm square of logic.
+- Size evidence: Working tile; 8 × 12 tiles = 96 mm² of the 107.68 mm² die, leaving ~11.7 mm² for cache SRAM (8.6 mm²) and edge I/O.
+- Count: 96 per parent (8 × 12)
+- Count evidence: Derived from the die outline: 8 × 12 one-millimetre tiles fit 8.58 × 12.55 mm. CPU, GPU, Neural Engine and uncore logic all sit inside these tiles; the core nodes are labels, not extra ladders.
+- Repeat: grid 8 × 12, pitch 1 mm
+- Description: A representative 1 mm square of the chip's logic. CPU cores, GPU cores, the Neural Engine and the rest are all the same fabric: rows of standard cells built from transistors.
+- Source: [iPhone Mania — A15 die 8.58 × 12.55 mm (TechInsights teardown)](https://iphone-mania.jp/news-406334/)
+
+### Logic detail 100 µm (view) (`cpu-gpu-cores-scale-window-1`)
+- Parent: `logic-tile`
 - Status: planned
 - Kind: view
 - Size: 100 µm selected field of view
@@ -1775,7 +1798,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A selected 100 µm window around Standard cell. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
 
-### CPU performance core detail 10 µm (view) (`cpu-gpu-cores-scale-window-2`)
+### Logic detail 10 µm (view) (`cpu-gpu-cores-scale-window-2`)
 - Parent: `cpu-gpu-cores-scale-window-1`
 - Status: planned
 - Kind: view
@@ -1788,7 +1811,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A selected 10 µm window around Standard cell. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
 
-### CPU performance core detail 1 µm (view) (`cpu-gpu-cores-scale-window-3`)
+### Logic detail 1 µm (view) (`cpu-gpu-cores-scale-window-3`)
 - Parent: `cpu-gpu-cores-scale-window-2`
 - Status: planned
 - Kind: view
@@ -1801,15 +1824,54 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Description: A selected 1 µm window around the standard cells. It is a tile of the core, not another manufactured block.
 - Source: [5 nm process — Wikipedia](https://en.wikipedia.org/wiki/5_nm_process)
 
+### Cache SRAM (`cache-sram`)
+- Parent: `soc-die`
+- Status: planned
+- Kind: part
+- Size: ~2.9 mm square of bit-cell area (derived, rough)
+- Characteristic size: 2.94 mm; drawn feature: the L2 and system-cache bit cells gathered into one square.
+- Size evidence: Derived: 48 MiB × 8 × 0.021 µm² ≈ 8.5 mm² of bit cells. Real caches are several macros with periphery, so they cover more area.
+- Count: 1 (L2 12 MB + 4 MB and 32 MB system cache drawn as one block)
+- Count evidence: A15: 12 MB + 4 MB L2 and 32 MB system cache = 48 MB (read as MiB). L1 and GPU/Neural Engine SRAM are not published and not counted.
+- Description: The chip's on-die cache memory: L2 caches beside the CPU clusters and a 32 MB system cache shared by everything. It is built from billions of six-transistor SRAM cells.
+- Source: [Apple A15 — Wikipedia](https://en.wikipedia.org/wiki/Apple_A15)
+
+### Cache SRAM detail 294 µm (view) (`cache-sram-tile`)
+- Parent: `cache-sram`
+- Status: planned
+- Kind: view
+- Size: 294 µm (crop)
+- Characteristic size: 294 µm; drawn feature: 1/10 × 1/10 crop of the cache block.
+- Size evidence: Exact tiling of the 2.94 mm block.
+- Count: 100 per parent (10 × 10)
+- Count evidence: Crop tiling.
+- Repeat: grid 10 × 10, pitch 294 µm
+- Description: A 294 µm square of cache array: rows of identical SRAM macros.
+- Source: [Apple A15 — Wikipedia](https://en.wikipedia.org/wiki/Apple_A15)
+
+### Cache SRAM detail 29 µm (view) (`cache-sram-subtile`)
+- Parent: `cache-sram-tile`
+- Status: planned
+- Kind: view
+- Size: 29.4 × 28.4 µm (crop)
+- Characteristic size: 29.4 µm; drawn feature: 29 × 28 one-micron patches.
+- Size evidence: Exact tiling: 29 × 1.015 µm by 28 × 1.015 µm.
+- Count: 100 per parent (10 × 10)
+- Count evidence: Crop tiling.
+- Repeat: grid 10 × 10, pitch 29.4 µm
+- Description: A 29 µm square of one SRAM macro, small enough to see the grid of bit cells forming.
+- Source: [Apple A15 — Wikipedia](https://en.wikipedia.org/wiki/Apple_A15)
+
 ### SRAM array region (view) (`sram-array-region`)
-- Parent: `cpu-gpu-cores-scale-window-2`
+- Parent: `cache-sram-subtile`
 - Status: planned
 - Kind: view
 - Size: 1 µm selected field of view
 - Characteristic size: 1 µm; drawn feature: one patch of SRAM array.
 - Size evidence: Working crop of 1 µm, the same step as the logic tile beside it. One patch per 10 µm window, not a tile that covers the die.
-- Count: 1 selected view; not a repeated component and not a multiplier.
-- Count evidence: One patch. The bitcells inside it repeat. The listed A15 caches (12 MB plus 4 MB L2 plus 32 MB system cache) are at least about 4 × 10^8 bits and are not this patch.
+- Count: 812 per parent (29 × 28)
+- Count evidence: Chain: 100 × 100 × 812 × 49 = 397,880,000 bits, against 48 MiB = 402,653,184 (−1.2%).
+- Repeat: grid 29 × 28, pitch 1.015 µm
 - Description: A 1 µm window of SRAM array next to the logic tiles. It does not claim to be the whole cache.
 - Source: [Apple A15 — Wikipedia](https://en.wikipedia.org/wiki/Apple_A15)
 
@@ -1847,7 +1909,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Characteristic size: 50 nm; drawn feature: active-device span, not a process-node label.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: 4 per parent (2-input NAND: 2 NMOS and 2 PMOS; other cells are about 2 to 20+)
-- Count evidence: A 2-input CMOS NAND is four transistors. The A15 figure of about 15 billion is the whole die, not this cell. The label multiplies per-parent counts up the ancestor chain, which here is the performance-core tiles only.
+- Count evidence: Per standard cell. Chain: 96 tiles × 100 × 100 × 100 × 30 cells × 4 = 11.52 billion logic transistors. Cache SRAM adds 397.88 million bit cells × 6 = 2.39 billion, for 13.91 billion against Apple's 15 billion (−7.3%).
 - Repeat: rows, pitch 51 nm
 - Description: A tiny field-effect switch uses a gate to control a conducting channel. A chip’s advertised process-node number is not a ruler measurement of this whole switch.
 - Source: [iPhone 13 and A15 announcement — Apple](https://www.apple.com/newsroom/2021/09/apple-introduces-iphone-13-and-iphone-13-mini/)
@@ -2024,47 +2086,60 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Characteristic size: 8 mm; largest dimension: illustrative die width.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: 2 per parent (rough; the package can be 1–4 dies)
-- Count evidence: iPhone 13 is 4 GB LPDDR4X. LPDDR4 allows up to two dies per channel, so a phone can be 1–4 dies. Two is the illustrative split. The copies are offset in the plane because the renderer has no z stack.
+- Count evidence: Two 16 Gb dies give 2^35 bits = 4 GiB (the "4 GB" of [iPhone 13](https://en.wikipedia.org/wiki/IPhone_13) read as GiB; the A15 article gives 4 GiB). Assumed: 2 × 16 Gb dies, consistent with a 64-bit interface of four 16-bit channels at 2 channels per die. Die area 68.34 mm² is Micron's D1z 16 Gb LPDDR4 (TechInsights), ≈8.3 mm across, close to the 8 mm working value.
 - Repeat: rows, pitch 1 mm
 - Description: A package can contain one or more memory dies. This representative die contains banks and arrays of charge-storing cells.
 - Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
 
-### Bank region (view) (`dram-bank`)
+### DRAM bank (`dram-bank`)
 - Parent: `ram-die`
 - Status: planned
-- Kind: view
-- Size: 1 mm (rough)
-- Characteristic size: 1 mm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space crop; no manufactured array dimension asserted.
-- Count: 64 per parent (8 × 8 crops of 1 mm)
-- Count evidence: This is a crop count, not a DRAM bank. A channel has 8 banks, so a die has about 8–16 real banks. The name stays Bank region.
-- Repeat: grid 8 × 8, pitch 1 mm
-- Description: A selected region makes the repeated memory-cell pattern readable. Its framing is chosen for zoom spacing, not a verified bank or subarray boundary.
-- Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
+- Kind: part
+- Size: ~0.60 × 3.63 mm cell array per bank (derived, rough)
+- Characteristic size: 3.625 mm; drawn feature: one bank's cell array (128 subarrays stacked).
+- Size evidence: Derived: 128 subarrays × 28.32 µm tall = 3625 µm; 32 mats × 18.88 µm = 604 µm wide, from a 6F² cell of 0.00204 µm².
+- Count: 16 per parent (2 channels × 8 banks per die)
+- Count evidence: LPDDR4 gives each 16-bit channel 8 banks; a 4-channel, 64-bit interface over 2 dies is 2 channels per die (derived). 16 Gb ÷ 16 = 1 Gib (2^30 cells) per bank.
+- Repeat: grid 8 × 2, pitch 1 mm × 4 mm
+- Description: An independent block of DRAM cells with its own row and column decoders. The memory controller can open a row in one bank while another bank is busy.
+- Source: [LPDDR — Wikipedia](https://en.wikipedia.org/wiki/LPDDR)
 
-### Subarray region (view) (`dram-subarray`)
+### DRAM subarray (`dram-subarray`)
 - Parent: `dram-bank`
 - Status: planned
-- Kind: view
-- Size: 100 µm (rough)
-- Characteristic size: 100 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space crop; no manufactured array dimension asserted.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 100 µm covers the 1 mm crop.
-- Repeat: grid 10 × 10, pitch 100 µm
-- Description: A selected region makes the repeated memory-cell pattern readable. Its framing is chosen for zoom spacing, not a verified bank or subarray boundary.
-- Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
+- Kind: part
+- Size: ~604 × 28.3 µm (derived, rough)
+- Characteristic size: 604 µm; drawn feature: one row of 32 mats.
+- Size evidence: Derived: 32 mats × 18.88 µm wide; one mat (512 cells × 55.3 nm) tall.
+- Count: 128 per parent (2^30 cells per bank ÷ 2^23 per subarray)
+- Count evidence: A subarray is a row of mats that share a row buffer; a group of 32 mats is activated together (HPCA 2017). 32 mats × 512 × 512 = 2^23 cells, so a 2^30-cell bank holds 128 (derived).
+- Repeat: grid 1 × 128, pitch 604.2 µm × 28.32 µm
+- Description: A horizontal row of mats that open together and share one local row buffer. Splitting a bank into subarrays keeps the bit lines short.
+- Source: [Chatterjee et al., HPCA 2017 — DRAM mats and subarrays (PDF)](https://www.cs.utexas.edu/~skeckler/pubs/HPCA_2017_Subchannels.pdf)
 
-### Cell tile (view) (`dram-cell-tile`)
+### DRAM mat (`dram-mat`)
 - Parent: `dram-subarray`
 - Status: planned
+- Kind: part
+- Size: ~18.9 × 28.3 µm (derived, rough)
+- Characteristic size: 28.3 µm; drawn feature: 512 × 512 cell array.
+- Size evidence: Derived: 512 × 36.9 nm by 512 × 55.3 nm (6F² cell, 0.00204 µm²).
+- Count: 32 per parent (one subarray row)
+- Count evidence: Each mat is a 512 × 512 array of cells with its own 512-bit sense amplifier; 32 mats form a subarray (HPCA 2017). DRAM-standard figure; LPDDR4X specifics not published.
+- Repeat: grid 32 × 1, pitch 18.88 µm × 28.32 µm
+- Description: A 512 × 512 square of cells with its own sense amplifiers and word-line drivers. It is the tile that every modern DRAM is built from.
+- Source: [Chatterjee et al., HPCA 2017 — DRAM mats and subarrays (PDF)](https://www.cs.utexas.edu/~skeckler/pubs/HPCA_2017_Subchannels.pdf)
+
+### Cell tile (view) (`dram-cell-tile`)
+- Parent: `dram-mat`
+- Status: planned
 - Kind: view
-- Size: 10 µm (rough)
-- Characteristic size: 10 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space crop; no manufactured array dimension asserted.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 10 µm covers the 100 µm crop.
-- Repeat: grid 10 × 10, pitch 10 µm
+- Size: ~2.36 × 3.54 µm (64 × 64 cells; derived)
+- Characteristic size: 3.54 µm; drawn feature: 64 × 64 cell crop.
+- Size evidence: Derived: 64 cells × 36.9 nm by 64 × 55.3 nm.
+- Count: 64 per parent (8 × 8)
+- Count evidence: Exact tiling: 8 × 8 tiles of 64 × 64 cells fill one 512 × 512 mat.
+- Repeat: grid 8 × 8, pitch 2.360 µm × 3.540 µm
 - Description: A selected region makes the repeated memory-cell pattern readable. Its framing is chosen for zoom spacing, not a verified bank or subarray boundary.
 - Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
 
@@ -2072,12 +2147,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `dram-cell-tile`
 - Status: planned
 - Kind: view
-- Size: 1 µm (rough)
-- Characteristic size: 1 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space crop; no manufactured array dimension asserted.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 1 µm covers the 10 µm crop.
-- Repeat: grid 10 × 10, pitch 1 µm
+- Size: ~295 × 443 nm (8 × 8 cells; derived)
+- Characteristic size: 443 nm; drawn feature: 8 × 8 cell crop.
+- Size evidence: Derived: 8 × 36.9 nm by 8 × 55.3 nm.
+- Count: 64 per parent (8 × 8)
+- Count evidence: Exact tiling: 8 × 8 patches of 8 × 8 cells fill a 64 × 64 tile.
+- Repeat: grid 8 × 8, pitch 295.0 nm × 442.5 nm
 - Description: A selected region makes the repeated memory-cell pattern readable. Its framing is chosen for zoom spacing, not a verified bank or subarray boundary.
 - Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
 
@@ -2085,21 +2160,21 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `dram-cell-patch`
 - Status: planned
 - Kind: part
-- Size: ~20–200 nm lateral cell scale (rough; generation-dependent)
-- Characteristic size: 100 nm; drawn feature: local cell footprint span.
-- Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 100 per parent at the 100 nm working pitch
-- Count evidence: Per patch, not per gigabyte. About 8.59 billion one-bit cells is 2^30 × 8 per GiB. The tile chain is 64 × 10^8 = 6.4 billion cells per die, about 2.7× short of a 2-die 4 GB package, because the working cell is larger than a real 6–8 F² cell.
-- Repeat: grid 10 × 10, pitch 100 nm
+- Size: ~0.00204 µm² cell (6F²), ≈36.9 × 55.3 nm (Micron D1z; Samsung D1z 0.00197 µm²)
+- Characteristic size: 55.3 nm; drawn feature: 3F side of a 2F × 3F (6F²) cell.
+- Size evidence: Cell area 0.00204 µm² (Micron D1z 16 Gb LPDDR4, TechInsights). Pitch derived: F = √(0.00204/6) = 18.44 nm, so 2F × 3F = 36.9 × 55.3 nm. TechInsights quotes the D1z design rule as 15.9 nm; the 6F² F here is an effective value.
+- Count: 64 per parent (8 × 8)
+- Count evidence: Per patch. Chain: 2 dies × 16 banks × 128 subarrays × 32 mats × 64 × 64 × 64 = 2^35 = 34,359,738,368 cells = 4 GiB.
+- Repeat: grid 8 × 8, pitch 36.9 nm × 55.3 nm
 - Description: A typical DRAM cell combines an access transistor with a tiny capacitor. Stored charge shifts the electrical reading used to recover a bit.
-- Source: [Dynamic random-access memory — Wikipedia](https://en.wikipedia.org/wiki/Dynamic_random-access_memory)
+- Source: [TechInsights — Samsung 12Gb D1z LPDDR5 (Micron D1z comparison table)](https://www.techinsights.com/blog/samsung-12gb-d1z-lpddr5-euv-lithography-applied)
 
 ### Charge refresh (process) (`dram-refresh`)
 - Parent: `dram-cell`
 - Status: planned
 - Kind: process
 - Size: ~20–200 nm cell scale (rough)
-- Characteristic size: 100 nm; drawn feature: same cell during refresh.
+- Characteristic size: 55.3 nm; drawn feature: same cell.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: Not applicable: a process, not another physical part.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
@@ -2111,7 +2186,7 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Status: planned
 - Kind: part
 - Size: ~20–200 nm local wiring pitch (rough)
-- Characteristic size: 100 nm; drawn feature: local wiring pitch.
+- Characteristic size: 55.3 nm; drawn feature: same cell.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: 1 representative item or feature; repeated total not established unless specified.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
@@ -2138,34 +2213,34 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Characteristic size: 8 mm; largest dimension: illustrative die width.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: 2 per parent
-- Count evidence: 128 GB base storage divided by an illustrative 512 Gb die. The die density in the phone is not published. The copies are offset in the plane because the renderer has no z stack.
+- Count evidence: Assumed 2 × 512 Gb TLC dies (128L-class dies are 512 Gb: TechInsights table). 2 × 512 Gib-bit = 1.0995 × 10¹² raw bits for 128 GB (10⁹ bytes) of user space; the ~7% extra is spare area. Samsung's 128L 512 Gb die is 74.09 mm² (≈8.6 mm across).
 - Repeat: rows, pitch 1 mm
 - Description: A storage package contains one or more silicon dies. Each die contains arrays of charge-trap or floating-gate memory cells and control circuits.
 - Source: [Flash memory — Wikipedia](https://en.wikipedia.org/wiki/Flash_memory)
 
-### Plane region (view) (`nand-plane-region`)
+### NAND plane (`nand-plane-region`)
 - Parent: `nand-die`
 - Status: planned
-- Kind: view
-- Size: 800 µm (rough)
-- Characteristic size: 800 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space array crop; no product-specific plane or block size asserted.
-- Count: 100 per parent (10 × 10 crops of 800 µm)
-- Count evidence: This is a crop count, not a NAND plane. A die has about 2–4 planes. The name stays Plane region.
-- Repeat: grid 10 × 10, pitch 800 µm
-- Description: A selected view narrows from the die toward one repeated NAND string. The view width is not a claimed physical plane or erase-block dimension.
-- Source: [Flash memory — Wikipedia](https://en.wikipedia.org/wiki/Flash_memory)
+- Kind: part
+- Size: ~4 mm (rough; a quarter of a ~74 mm² die)
+- Characteristic size: 4 mm; drawn feature: one plane, 2 × 2 on the die.
+- Size evidence: Rough: 74.09 mm² ÷ 4 ≈ 18.5 mm² per plane including periphery, ≈4.3 mm square; the 2 × 2 layout is assumed.
+- Count: 4 per parent
+- Count evidence: All four 128L 512 Gb TLC dies in the TechInsights table (Samsung, Micron, SK hynix, YMTC) use 4 planes.
+- Repeat: grid 2 × 2, pitch 4 mm
+- Description: One of four independent arrays on the die, each with its own page buffer. The controller can program or read all four at once.
+- Source: [TechInsights — YMTC 128L Xtacking 2.0 (128L 512 Gb comparison table)](https://www.techinsights.com/blog/memory/ymtc-128l-3d-xtacking-20-tlc-nand)
 
-### Block region (view) (`nand-block-region`)
+### Block group (view) (`nand-block-region`)
 - Parent: `nand-plane-region`
 - Status: planned
 - Kind: view
-- Size: 80 µm (rough)
-- Characteristic size: 80 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space array crop; no product-specific plane or block size asserted.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 80 µm covers the 800 µm crop.
-- Repeat: grid 10 × 10, pitch 80 µm
+- Size: 500 µm (crop; rough)
+- Characteristic size: 500 µm; drawn feature: 1/8 × 1/8 crop of a plane.
+- Size evidence: Exact tiling of the 4 mm working plane.
+- Count: 64 per parent (8 × 8)
+- Count evidence: Crop tiling. Real blocks are ~4 mm × ~6 µm stripes (≈680 per plane, derived), so a block cannot be a 3–30× child of a square crop; this view shows parts of ~85 blocks.
+- Repeat: grid 8 × 8, pitch 500 µm
 - Description: A selected view narrows from the die toward one repeated NAND string. The view width is not a claimed physical plane or erase-block dimension.
 - Source: [Flash memory — Wikipedia](https://en.wikipedia.org/wiki/Flash_memory)
 
@@ -2173,12 +2248,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `nand-block-region`
 - Status: planned
 - Kind: view
-- Size: 8 µm (rough)
-- Characteristic size: 8 µm; drawn feature: selected array-region width.
-- Size evidence: Chosen physical-space array crop; no product-specific plane or block size asserted.
-- Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 8 µm covers the 80 µm crop.
-- Repeat: grid 10 × 10, pitch 8 µm
+- Size: 25 µm (crop; rough)
+- Characteristic size: 25 µm; drawn feature: 25 µm square of the string array.
+- Size evidence: Exact tiling: 20 × 25 µm = 500 µm.
+- Count: 400 per parent (20 × 20)
+- Count evidence: Crop tiling.
+- Repeat: grid 20 × 20, pitch 25 µm
 - Description: A selected view narrows from the die toward one repeated NAND string. The view width is not a claimed physical plane or erase-block dimension.
 - Source: [Flash memory — Wikipedia](https://en.wikipedia.org/wiki/Flash_memory)
 
@@ -2186,24 +2261,25 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `nand-string-region`
 - Status: planned
 - Kind: part
-- Size: ~1–20 µm vertical or lateral span (rough; architecture-dependent)
-- Characteristic size: 2 µm; drawn feature: selected string section height, not full-stack specification.
-- Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 100 per parent (rough 10 × 10)
-- Count evidence: Illustrative. Samsung cites about 670 million channel holes per 256 Gb die, but the die area is not given, so the pitch is unknown. The string’s 2 µm size is its height, while the parent crop is a width.
-- Repeat: grid 10 × 10, pitch 0.8 µm
+- Size: ~6.2 µm tall (136-gate string, Samsung 128L V-NAND); ~0.1 µm across
+- Characteristic size: 6.23 µm; drawn feature: string height (channel-hole height).
+- Size evidence: Channel hole height 6.23 µm, 136 total gates (TechInsights, Samsung 128L 512 Gb). Cross-check: 136 × 44 nm word-line pitch = 5.98 µm (derived).
+- Count: 13924 per parent (118 × 118)
+- Count evidence: Derived effective hole pitch 25 µm ÷ 118 = 0.2119 µm (one string per 0.0449 µm²). Cross-check: 4 planes × 64 × 400 × 13,924 = 1.43 × 10⁹ strings per die = 512 Gib-bit ÷ 3 bits ÷ 128 layers (−0.4%). Blocks: ≈680 per plane (derived: a 16 KB page = 131,072 bit lines; 4 strings per bit line per block is assumed).
+- Repeat: grid 118 × 118, pitch 0.2119 µm
 - Description: Many memory transistors connect in a series string. Three-dimensional NAND folds this idea into a tall stack.
-- Source: [Sixth-generation V-NAND — Samsung](https://news.samsung.com/global/samsung-electronics-takes-3d-memory-to-new-heights-with-sixth-generation-v-nand-ssds-for-client-computing)
+- Source: [TechInsights — YMTC 128L Xtacking 2.0 (128L 512 Gb comparison table)](https://www.techinsights.com/blog/memory/ymtc-128l-3d-xtacking-20-tlc-nand)
 
-### NAND string detail 200 nm (view) (`nand-string-scale-window-1`)
+### NAND string detail 704 nm (view) (`nand-string-scale-window-1`)
 - Parent: `nand-string`
 - Status: planned
 - Kind: view
-- Size: 200 nm selected field of view
-- Characteristic size: 200 nm; drawn feature: selected physical-space crop width.
-- Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
-- Count: 1 selected view; not a repeated component and not a multiplier.
-- Count evidence: Representative-instance convention; no absolute product inventory asserted.
+- Size: 704 nm (16 word-line layers)
+- Characteristic size: 704 nm; drawn feature: 16 layers of the string.
+- Size evidence: Derived: 16 × 44 nm word-line pitch (Samsung 128L, TechInsights).
+- Count: 8 per parent (8 × 16 = 128 active layers)
+- Count evidence: 128 active word-line layers per string; the other 8 of 136 gates are select and dummy gates (derived from TechInsights: 128 active layers, 136 total gates).
+- Repeat: rows, pitch 704 nm, no stagger
 - Description: A selected 200 nm window around NAND memory cell. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Sixth-generation V-NAND — Samsung](https://news.samsung.com/global/samsung-electronics-takes-3d-memory-to-new-heights-with-sixth-generation-v-nand-ssds-for-client-computing)
 
@@ -2211,14 +2287,14 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `nand-string-scale-window-1`
 - Status: planned
 - Kind: part
-- Size: ~20–200 nm local device scale (rough; generation-dependent)
-- Characteristic size: 50 nm; drawn feature: local cell cross-section span.
-- Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 4 per parent in the 200 nm window
-- Count evidence: 50 nm working pitch. A full string is about 136 cells in a 136-layer stack, not 4; 4 is this window only. 136 × 50 nm would be 6.8 µm against the 2 µm string, and the real layer pitch is not sourced.
-- Repeat: rows, pitch 50 nm
+- Size: ~44 nm tall (one word-line layer); ~0.1 µm across
+- Characteristic size: 44 nm; drawn feature: word-line pitch (cell height).
+- Size evidence: Word-line pitch 44 nm, bit-line pitch 38 nm (Samsung 128L, TechInsights 2022).
+- Count: 16 per parent
+- Count evidence: Per 704 nm section; 128 data cells per string.
+- Repeat: rows, pitch 44 nm, no stagger
 - Description: A memory transistor remembers a threshold shift caused by stored electrons. This branch illustrates charge-trap NAND; older designs often use a conductive floating gate instead.
-- Source: [Charge trap flash — Wikipedia](https://en.wikipedia.org/wiki/Charge_trap_flash)
+- Source: [TechInsights — Comparison of latest 3D NAND products](https://www.techinsights.com/blog/comparison-latest-3d-nand-products-ymtc-samsung-sk-hynix-and-micron)
 
 ### Control gate (`nand-control-gate`)
 - Parent: `nand-cell`
@@ -2431,12 +2507,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `sensor-die`
 - Status: planned
 - Kind: view
-- Size: 640 µm (rough)
-- Characteristic size: 640 µm; drawn feature: selected square array-crop width.
-- Size evidence: Chosen 800 × 0.8 µm width, derived from Sony’s published pitch.
-- Count: 80 per parent (10 × 8 tiles)
-- Count evidence: The active array is 6.4 × 4.8 mm, which is 10 × 7.5 tiles of 640 µm (75 tiles). 7.5 is not an integer grid, so the drawing uses 10 × 8. The chain is 80 × 100 × 100 × 64 = 51.2 million, against 48 million effective pixels. 8 × 640 µm = 5.12 mm, inside the 5.659 mm chip height.
-- Repeat: grid 10 × 8, pitch 640 µm
+- Size: 800 µm (1,000 pixels)
+- Characteristic size: 800 µm; drawn feature: 1,000 × 1,000-pixel crop.
+- Size evidence: Derived: 1,000 × 0.8 µm.
+- Count: 48 per parent (8 × 6 tiles)
+- Count evidence: 8 × 1,000 by 6 × 1,000 = 8,000 × 6,000 = 48,000,000 effective pixels; array 6.4 × 4.8 mm on a 7.504 × 5.659 mm die.
+- Repeat: grid 8 × 6, pitch 800 µm
 - Description: A selected patch spans 800 pixel pitches on each side in the IMX586 reference. This is one zoom window, not 640,000 new content nodes.
 - Source: [IMX586 announcement and specifications — Sony](https://www.sony.com/en/SonyInfo/News/Press/201807/18-060E/)
 
@@ -2444,12 +2520,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `sensor-array-region`
 - Status: planned
 - Kind: view
-- Size: 64 µm (rough)
-- Characteristic size: 64 µm; drawn feature: selected square array-crop width.
-- Size evidence: Chosen 80 × 0.8 µm width, derived from Sony’s published pitch.
+- Size: 80 µm (100 pixels)
+- Characteristic size: 80 µm; drawn feature: 100 × 100-pixel crop.
+- Size evidence: Derived: 100 × 0.8 µm.
 - Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 64 µm covers the 640 µm region.
-- Repeat: grid 10 × 10, pitch 64 µm
+- Count evidence: Exact tiling.
+- Repeat: grid 10 × 10, pitch 80 µm
 - Description: A selected patch spans 80 pixel pitches on each side in the IMX586 reference. This is one zoom window, not 6,400 new content nodes.
 - Source: [IMX586 announcement and specifications — Sony](https://www.sony.com/en/SonyInfo/News/Press/201807/18-060E/)
 
@@ -2457,12 +2533,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `sensor-array-tile`
 - Status: planned
 - Kind: view
-- Size: 6.4 µm (rough)
-- Characteristic size: 6.4 µm; drawn feature: selected square array-crop width.
-- Size evidence: Chosen 8 × 0.8 µm width, derived from Sony’s published pitch.
+- Size: 8 µm (10 pixels)
+- Characteristic size: 8 µm; drawn feature: 10 × 10 pixels.
+- Size evidence: Derived: 10 × 0.8 µm.
 - Count: 100 per parent (10 × 10)
-- Count evidence: Tile view. 10 × 6.4 µm covers the 64 µm tile.
-- Repeat: grid 10 × 10, pitch 6.4 µm
+- Count evidence: Exact tiling.
+- Repeat: grid 10 × 10, pitch 8 µm
 - Description: A selected patch spans 8 pixel pitches on each side in the IMX586 reference. This is one zoom window, not 64 new content nodes.
 - Source: [IMX586 announcement and specifications — Sony](https://www.sony.com/en/SonyInfo/News/Press/201807/18-060E/)
 
@@ -2473,9 +2549,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: 0.8 µm pixel pitch (Sony IMX586 reference)
 - Characteristic size: 800 nm; drawn feature: pixel pitch.
 - Size evidence: Published manufacturer pixel pitch.
-- Count: 64 per parent (8 × 8)
-- Count evidence: Per group, not per sensor. The IMX586 reference is 48 million effective pixels, 8000 × 6000. The integer 10 × 8 region grid makes the chain 51.2 million.
-- Repeat: grid 8 × 8, pitch 800 nm
+- Count: 100 per parent (10 × 10)
+- Count evidence: Per group. Chain: 48 × 100 × 100 × 100 = 48,000,000 = 8,000 × 6,000.
+- Repeat: grid 10 × 10, pitch 800 nm
 - Description: A microlens funnels light through a colour filter toward a photodiode. The reading records light at one site, not a ready-made full-colour picture.
 - Source: [IMX586 announcement and specifications — Sony](https://www.sony.com/en/SonyInfo/News/Press/201807/18-060E/)
 
@@ -2621,10 +2697,10 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 500 µm window around Copper winding. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 500 µm window around Winding turn. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Electrodynamic speaker driver — Wikipedia](https://en.wikipedia.org/wiki/Electrodynamic_speaker_driver)
 
-### Copper winding (`speaker-copper-wire`)
+### Winding turn (`speaker-copper-wire`)
 - Parent: `voice-coil-scale-window-1`
 - Status: planned
 - Kind: part
@@ -2862,10 +2938,10 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size evidence: Deliberate drawing-window width = parent characteristic size ÷ 10; not an independently measured product dimension.
 - Count: 1 selected view; not a repeated component and not a multiplier.
 - Count evidence: Representative-instance convention; no absolute product inventory asserted.
-- Description: A selected 4.5 mm window around Copper turns, Ferrite backing. This is a view through the parent, not another physical part or a claimed natural repeat size.
+- Description: A selected 4.5 mm window around Copper turn, Ferrite backing. This is a view through the parent, not another physical part or a claimed natural repeat size.
 - Source: [Inductive charging — Wikipedia](https://en.wikipedia.org/wiki/Inductive_charging)
 
-### Copper turns (`charging-copper`)
+### Copper turn (`charging-copper`)
 - Parent: `wireless-charging-coil-scale-window-1`
 - Status: planned
 - Kind: part
@@ -2920,29 +2996,44 @@ No new 404s were introduced in this revision. The previous revision’s rejected
 - `https://www.sony-semicon.com/en/products/is/mobile/pixel.html` — HTTP 404; replaced by the checked Sony IMX586 release and general sensor explainers.
 
 
-Repeated counts are copies inside one parent copy. A sourced grid that is not an integer rectangle is drawn as the nearest integer grid: display regions 9 × 4 rather than about 33 partial tiles, sensor regions 10 × 8 rather than 10 × 7.5, solder-ball regions 4 × 4 rather than about 18, SRAM bitcells 7 × 7 rather than about 47. PenTile half-pixels, lithium occupancy and dopant sites are not copy multipliers. DRAM and NAND products of the crop ladders are not the published cell inventories.
+Repeated counts are copies inside one parent copy. Display regions are 13 × 6, tiles 13 × 13, neighbourhoods 5 × 5 and pixels 3 × 3 (2,965,950, +0.12% on 2,532 × 1,170). Sensor regions are 8 × 6 and the three crops under them are 10 × 10 (48,000,000). Solder-ball regions stay 4 × 4 rather than about 18, and SRAM bitcells stay 7 × 7 rather than about 47. PenTile half-pixels, lithium occupancy and dopant sites are not copy multipliers. DRAM’s ladder is 2 × 16 × 128 × 32 × 512 × 512 cells (2^35). NAND’s ladder counts the raw 2 × 512 Gb dies; blocks are in the counts only.
 
 ## Flagged renames
 
-None applied to tree labels. Previous proposals remain:
-- Smartphone (front view) → Smartphone.
-- Pixel (red, green and blue subpixels) → Display pixel.
-- Pixel (microlens, colour filter, photodiode) → Sensor pixel.
-- Lithium ions (particle level) → Lithium ions.
-- Image stabiliser (OIS) → Optical stabiliser.
-- Haptic motor → Haptic actuator.
-
-Additional display-label proposals, not applied to the tree:
-- Aluminium atoms → Aluminium atomic site.
+Applied to the tree labels. Every id is unchanged:
+- Bank region → DRAM bank. Kind view → part.
+- Subarray region → DRAM subarray. Kind view → part.
+- Plane region → NAND plane. Kind view → part. The id stays `nand-plane-region`.
+- Block region → Block group.
+- NAND string detail 200 nm → NAND string detail 704 nm.
+- CPU performance core detail 100 µm → Logic detail 100 µm.
+- CPU performance core detail 10 µm → Logic detail 10 µm.
+- CPU performance core detail 1 µm → Logic detail 1 µm.
+- Buttons → Button.
+- Antenna bands → Antenna band.
+- Aluminium atoms → Aluminium atom.
+- Transparent electrodes → Touch electrode.
+- MOSFET switches → Protection MOSFET.
 - Silicon sites → Silicon site.
 - Oxygen bridges → Oxygen bridge.
 - Potassium ions → Potassium ion.
 - Sodium ions → Sodium ion.
-- Lithium ions (particle level) → Lithium ion (singular alternative to the earlier proposal).
+- Lithium ions → Lithium ion.
 - Cobalt sites → Cobalt site.
 - Oxygen sites → Oxygen site.
-- CPU and GPU cores → CPU performance core. Applied with the split into efficiency cores and GPU cores. The singular renames below were not applied.
-- MOSFET switches → Protection MOSFET (the drawing shows one switch type; actual circuit inventory unknown).
-- Subpixel electrodes → Subpixel electrode pair (distinct anode/cathode contacts, not repeated identical copies).
+- Electrolyte-filled pores → Pore.
+- Copper winding → Winding turn.
+- Copper turns → Copper turn.
 
-Plural legacy labels are retained. Multiplicity is the Repeat line on that node, not a set of numbered sibling ids. Singular renames (Button, Antenna band, and the rest) stay flagged and were not applied. Lithium sites were removed by merging them into Lithium ions.
+Not applied. These differ from the count-fix names, or they would change an id:
+- Smartphone (front view) → Smartphone. The bullet still says Smartphone (front view); the heading is already Smartphone.
+- Pixel (red, green and blue subpixels) → Display pixel. The heading is already Display pixel.
+- Pixel (microlens, colour filter, photodiode) → Sensor pixel. The heading is already Sensor pixel.
+- Image stabiliser (OIS) → Optical stabiliser.
+- Haptic motor → Haptic actuator.
+- Aluminium atoms → Aluminium atomic site. Applied as Aluminium atom.
+- Subpixel electrodes → Subpixel electrode pair.
+- `cpu-gpu-cores` → `cpu-performance-core`. The id stays, and the heading is already CPU performance core.
+- `nand-plane-region` → `nand-plane`. The id stays.
+
+Multiplicity is the Repeat line on that node, not a set of numbered sibling ids. Lithium sites were removed by merging them into Lithium ion.

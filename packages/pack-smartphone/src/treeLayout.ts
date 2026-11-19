@@ -485,7 +485,9 @@ function clearPoint(
 ): { x: number; y: number } {
   const radius = Math.hypot(x, y);
   const min = Math.min(frame.width, frame.height) * 0.04;
-  const angle = radius < 1e-9 ? (32 * Math.PI) / 180 : nudgeOffAxes(Math.atan2(y, x));
+  // Relative to the frame. An absolute nanometre cutoff treats every atom
+  // in a nanometre parent as the centre and stacks their labels on one ray.
+  const angle = radius < min * 0.05 ? (32 * Math.PI) / 180 : nudgeOffAxes(Math.atan2(y, x));
   const reach = Math.max(radius, min);
   return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
 }
@@ -588,7 +590,12 @@ function placeLabel(
   const preferred = contentFrame(space, 'labels', policies);
   const parent = { width: space.width, height: space.height };
   // Out along the node's own ray, so sibling leaders do not cross.
-  const angle = nudgeOffAxes(Math.hypot(node.x, node.y) < 1e-9 ? (32 * Math.PI) / 180 : Math.atan2(node.y, node.x));
+  // The centre test is a fraction of this space. A fixed 1 nm would call
+  // every child of a nanometre parent centred and give them the same angle.
+  const centre = Math.min(space.width, space.height) * 0.002;
+  const angle = nudgeOffAxes(
+    Math.hypot(node.x, node.y) < centre ? (32 * Math.PI) / 180 : Math.atan2(node.y, node.x),
+  );
   // 18px down to 16px. Below that the face is no longer readable at the level.
   const scales = [1, 16 / 18];
   for (const frame of [preferred, parent]) {

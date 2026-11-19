@@ -191,13 +191,22 @@ function roundedSize(value: number): number {
 }
 
 /**
+ * Thousands separators are part of the number. `13,924` is 13924, not 13.
+ * A comma counts only when it groups digits by threes, so `1,024` is not a lone 1.
+ */
+function normalizeCount(count: string): string {
+  return count.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+}
+
+/**
  * Label suffix from a Count line.
  * `~15 billion …` stays `×~15 billion`. A plain integer (`4 per parent`) is `×4`.
  * A lone `1`, or the representative phrases, stay unmarked.
  */
 export function countMark(count: string): string | null {
-  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(count)) return null;
-  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(count);
+  const text = normalizeCount(count);
+  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(text)) return null;
+  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(text);
   if (!leading?.[2]) return null;
   const approx = leading[1] ?? '';
   const num = leading[2];
@@ -209,8 +218,9 @@ export function countMark(count: string): string | null {
 
 /** Leading number on a Count line, in copies per parent. Magnitudes scale the number. */
 export function perParentCount(count: string): number | null {
-  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(count)) return null;
-  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(count);
+  const text = normalizeCount(count);
+  if (/^(?:1\b|Not applicable|One representative|Typically one)/i.test(text)) return null;
+  const leading = /^(~?)([0-9]+(?:\.[0-9]+)?)(?:\s+(billion|million|thousand))?\b/i.exec(text);
   if (!leading?.[2]) return null;
   const value = Number(leading[2]);
   if (!Number.isFinite(value)) return null;
@@ -331,7 +341,6 @@ function presentFile(
 function readNodes(): HierarchyNode[] {
   const markdown = readFileSync(join(root, 'smartphone-hierarchy.md'), 'utf8');
   const nodes = parseHierarchy(markdown);
-  if (nodes.length !== 200) throw new Error(`expected 200 nodes, parsed ${nodes.length}`);
   const ids = new Set<string>();
   for (const node of nodes) {
     if (ids.has(node.id)) throw new Error(`duplicate id ${node.id}`);
@@ -384,18 +393,17 @@ function place(
   });
   const objects = [...built, ...laidOut.objects];
   stampRepeats(objects, labeled);
-  // The carbon disc is smaller than its bond, so its fit sits on the camera
-  // ceiling. The band has to extend past that ceiling or the fade ends exactly
-  // where the camera stops and the atom is invisible.
-  extendBand(objects, 'graphite-carbon-atom');
+  // A node whose fit sits on the camera ceiling is invisible: the fade ends
+  // exactly where the camera stops. The carbon disc is smaller than its bond,
+  // and the die-wide transistor ladder now puts silicon and hafnia there too.
+  extendCeiling(objects);
   return { objects, report: laidOut, nodes: labeled };
 }
 
-function extendBand(objects: CanvasObject[], id: string): void {
+function extendCeiling(objects: CanvasObject[]): void {
   const cap = MAX_SCALE * 1.35;
-  for (const target of [id, `${id}-label`, `${id}-link`]) {
-    const object = objects.find((entry) => entry.id === target);
-    if (!object || object.visibility.maxScale < MAX_SCALE) continue;
+  for (const object of objects) {
+    if (object.visibility.maxScale < MAX_SCALE) continue;
     object.visibility = { ...object.visibility, maxScale: Math.max(object.visibility.maxScale, cap) };
   }
 }

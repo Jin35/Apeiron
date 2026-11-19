@@ -49,7 +49,7 @@ const siliconPath = [
   'logic-board',
   'system-on-chip',
   'soc-die',
-  'cpu-gpu-cores',
+  'logic-tile',
   'cpu-gpu-cores-scale-window-1',
   'cpu-gpu-cores-scale-window-2',
   'cpu-gpu-cores-scale-window-3',
@@ -65,7 +65,7 @@ const hafniaPath = [
   'logic-board',
   'system-on-chip',
   'soc-die',
-  'cpu-gpu-cores',
+  'logic-tile',
   'cpu-gpu-cores-scale-window-1',
   'cpu-gpu-cores-scale-window-2',
   'cpu-gpu-cores-scale-window-3',
@@ -81,7 +81,7 @@ describe('smartphone deep zoom', () => {
   const opening = frameOn(smartphoneObjects, 'phone', view.width, view.height);
 
   it('places every hierarchy node and keeps the hand-authored parts', () => {
-    expect(hierarchyNodes).toHaveLength(200);
+    expect(hierarchyNodes).toHaveLength(205);
     expect(smartphoneLayoutReport.unplaced).toEqual([]);
     const ids = new Set(smartphoneObjects.map((object) => object.id));
     for (const node of hierarchyNodes) {
@@ -91,7 +91,14 @@ describe('smartphone deep zoom', () => {
       expect(ids.has(`${node.id}-link`), node.id).toBe(true);
     }
     const transistor = smartphoneObjects.find((object) => object.id === 'transistor-label');
-    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×~240 million' });
+    expect(transistor?.payload).toMatchObject({ type: 'text', text: 'Transistor ×~11.52 billion' });
+    expect(labelText('dram-cell')).toBe('DRAM cell ×~34.36 billion');
+    expect(labelText('nand-cell')).toBe('NAND memory cell ×~365.01 billion');
+    expect(labelText('sram-bitcell')).toBe('SRAM bitcell ×~397.88 million');
+    expect(labelText('display-pixel')).toBe('Display pixel ×~2.97 million');
+    expect(labelText('sensor-pixel')).toBe('Sensor pixel ×~48 million');
+    // Logic transistors plus six per SRAM bit cell. The die target is 15 billion.
+    expect(96 * 100 * 100 * 100 * 30 * 4 + 6 * 100 * 100 * 812 * 49).toBe(13907280000);
     const device = smartphoneObjects.find((object) => object.id === 'transistor');
     expect(device?.repeat?.count).toBe(4);
     expect(device?.repeat?.pattern).toMatchObject({ kind: 'rows' });
@@ -112,9 +119,9 @@ describe('smartphone deep zoom', () => {
     const pixel = smartphoneObjects.find((object) => object.id === 'display-pixel');
     expect(pixel?.repeat).toMatchObject({ count: 9, pattern: { kind: 'grid', cols: 3, rows: 3 } });
     const sensor = smartphoneObjects.find((object) => object.id === 'sensor-pixel');
-    expect(sensor?.repeat).toMatchObject({ count: 64, pattern: { kind: 'grid', cols: 8, rows: 8 } });
+    expect(sensor?.repeat).toMatchObject({ count: 100, pattern: { kind: 'grid', cols: 10, rows: 10 } });
     const dram = smartphoneObjects.find((object) => object.id === 'dram-cell');
-    expect(dram?.repeat).toMatchObject({ count: 100, pattern: { kind: 'grid', cols: 10, rows: 10 } });
+    expect(dram?.repeat).toMatchObject({ count: 64, pattern: { kind: 'grid', cols: 8, rows: 8 } });
     expect(hierarchyNodes.some((node) => node.id === 'lco-lithium-site')).toBe(false);
     const art = [
       'display',
@@ -181,6 +188,11 @@ describe('smartphone deep zoom', () => {
     }
   });
 });
+
+function labelText(id: string): string | undefined {
+  const label = smartphoneObjects.find((object) => object.id === `${id}-label`);
+  return label?.payload.type === 'text' ? label.payload.text : undefined;
+}
 
 function axisClearance(from: { x: number; y: number }, to: { x: number; y: number }): number {
   const degrees = Math.abs(Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI));
