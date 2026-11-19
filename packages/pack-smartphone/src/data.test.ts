@@ -17,6 +17,11 @@ describe('smartphone data', () => {
     expect(perParentCount('~15 billion transistors/chip')).toBe(1.5e10);
     expect(countMark('4 per parent (2-input NAND)')).toBe('×4');
     expect(perParentCount('4 per parent (2-input NAND)')).toBe(4);
+    expect(countMark('13,924 per parent')).toBe('×13924');
+    expect(perParentCount('13,924 per parent')).toBe(13924);
+    expect(perParentCount('2,965,950 per parent')).toBe(2965950);
+    expect(perParentCount('1,024 per parent')).toBe(1024);
+    expect(perParentCount('1 per parent')).toBeNull();
     expect(countMark('1 representative item')).toBeNull();
     expect(parseRepeat('grid 2 × 2, pitch 51 nm')).toEqual({
       kind: 'grid',
