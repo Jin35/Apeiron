@@ -6,11 +6,13 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  MAX_SCALE,
   formatRepeatCount,
-  gridMatchesCount,
+  latticeBasis,
   patternBounds,
   repeatTotal,
   type CanvasObject,
+  type LatticeKind,
   type NodeRepeat,
   type RepeatPattern,
   type ZoomFade,
@@ -113,11 +115,31 @@ export function parseHierarchy(markdown: string): HierarchyNode[] {
     const pattern = repeatLine ? parseRepeat(repeatLine) : null;
     if (repeatLine && !pattern) throw new Error(`${id} has an unreadable Repeat line`);
     if (pattern && perParent === null) throw new Error(`${id} has Repeat but no per-parent count`);
-    if (pattern && perParent !== null && !gridMatchesCount(asGrid(pattern), perParent)) {
-      throw new Error(`${id} grid ${pattern.kind === 'grid' ? `${pattern.cols}×${pattern.rows}` : ''} is not count ${perParent}`);
+    if (pattern && perParent !== null && !repeatMatchesCount(pattern, perParent)) {
+      const shape =
+        pattern.kind === 'grid'
+          ? `${pattern.cols}×${pattern.rows}`
+          : pattern.kind === 'lattice'
+            ? `${pattern.cols}×${pattern.rows}×${pattern.basis ?? latticeBasis(pattern.lattice)}`
+            : pattern.kind;
+      throw new Error(`${id} ${pattern.kind} ${shape} is not count ${perParent}`);
+    }
+    const opacity = readUnit(chunk, id, 'Opacity');
+    const occupancy = readUnit(chunk, id, 'Occupancy');
+    const seed = readSeed(chunk, id);
+    if ((opacity !== undefined || occupancy !== undefined || seed !== undefined) && !pattern) {
+      throw new Error(`${id} sets opacity, occupancy, or seed without a Repeat`);
     }
     const repeat: HierarchyRepeat | null =
-      pattern && perParent !== null ? { count: perParent, pattern } : null;
+      pattern && perParent !== null
+        ? {
+            count: perParent,
+            pattern,
+            ...(opacity !== undefined ? { opacity } : {}),
+            ...(occupancy !== undefined ? { occupancy } : {}),
+            ...(seed !== undefined ? { seed } : {}),
+          }
+        : null;
     return {
       id,
       name,
@@ -132,13 +154,34 @@ export function parseHierarchy(markdown: string): HierarchyNode[] {
   });
 }
 
-/** A grid pattern in the shape `gridMatchesCount` checks. Rows and scatter always pass. */
-function asGrid(pattern: HierarchyPattern): RepeatPattern {
-  if (pattern.kind === 'grid') {
-    return { kind: 'grid', cols: pattern.cols, rows: pattern.rows, pitchX: pattern.pitchXMm, pitchY: pattern.pitchYMm };
+/** A grid's cols×rows, or a lattice's cells×basis, must equal the per-parent count. */
+function repeatMatchesCount(pattern: HierarchyPattern, count: number): boolean {
+  if (pattern.kind === 'grid') return pattern.cols * pattern.rows === count;
+  if (pattern.kind === 'lattice') {
+    const basis = pattern.basis ?? latticeBasis(pattern.lattice);
+    return pattern.cols * pattern.rows * basis === count;
   }
-  if (pattern.kind === 'rows') return { kind: 'rows', pitch: pattern.pitchMm };
-  return { kind: 'scatter', seed: pattern.seed, density: pattern.densityPerMm2 };
+  return true;
+}
+
+function readUnit(chunk: string, id: string, label: string): number | undefined {
+  const text = optionalField(chunk, label);
+  if (text === null) return undefined;
+  const match = /^([0-9]+(?:\.[0-9]+)?)/.exec(text);
+  const value = match?.[1] ? Number(match[1]) : Number.NaN;
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(`${id} ${label} must be between 0 and 1`);
+  }
+  return value;
+}
+
+function readSeed(chunk: string, id: string): number | undefined {
+  const text = optionalField(chunk, 'Seed');
+  if (text === null) return undefined;
+  const match = /^([0-9]+)/.exec(text);
+  const value = match?.[1] ? Number(match[1]) : Number.NaN;
+  if (!Number.isInteger(value) || value < 0) throw new Error(`${id} seed must be a non-negative integer`);
+  return value;
 }
 
 /** Twelve significant figures, matching the sizes the layout has always packed. */
@@ -177,10 +220,13 @@ export function perParentCount(count: string): number | null {
 }
 
 /**
- * `Repeat:` line. Pitches come back in millimetres.
- * `grid C×R pitch P`, `rows pitch P` with an optional stagger, or `scatter` with a density.
+ * `Repeat:` line. Pitches and lattice constants come back in millimetres.
+ * `grid C×R pitch P`, `rows pitch P` with an optional stagger, `scatter` with a density,
+ * or `lattice honeycomb|hex|diamond|square, a L, C×R` with an optional basis.
  */
 export function parseRepeat(line: string): HierarchyPattern | null {
+  const lattice = parseLattice(line);
+  if (lattice) return lattice;
   const grid =
     /grid\s+([0-9]+(?:\.[0-9]+)?)\s*[×x]\s*([0-9]+(?:\.[0-9]+)?)\s*,?\s*pitch\s+([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm)(?:\s*[×x]\s*([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm))?/i.exec(
       line,
@@ -221,6 +267,28 @@ export function parseRepeat(line: string): HierarchyPattern | null {
     return { kind: 'scatter', seed, densityPerMm2 };
   }
   return null;
+}
+
+function parseLattice(line: string): HierarchyPattern | null {
+  const header = /^\s*lattice\s+(hex|honeycomb|diamond|square)\b/i.exec(line);
+  const name = header?.[1]?.toLowerCase();
+  if (name !== 'hex' && name !== 'honeycomb' && name !== 'diamond' && name !== 'square') return null;
+  const constant = /\ba\s+([0-9]+(?:\.[0-9]+)?)\s*(mm|µm|um|nm|pm)/i.exec(line);
+  if (!constant?.[1] || !constant[2]) return null;
+  const unit = UNIT_IN_MM[constant[2]];
+  const aMm = Number(constant[1]) * (unit ?? Number.NaN);
+  if (!(aMm > 0)) return null;
+  const cells = /([0-9]+)\s*[×x]\s*([0-9]+)/.exec(line);
+  if (!cells?.[1] || !cells[2]) return null;
+  const cols = Number(cells[1]);
+  const rows = Number(cells[2]);
+  if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) return null;
+  const basisMatch = /basis\s+([0-9]+)/i.exec(line);
+  const basis = basisMatch?.[1] ? Number(basisMatch[1]) : undefined;
+  if (basis !== undefined && (!Number.isInteger(basis) || basis < 1)) return null;
+  const lattice: LatticeKind = name;
+  if (basis !== undefined && basis !== latticeBasis(lattice)) return null;
+  return { kind: 'lattice', lattice, aMm, cols, rows, ...(basis !== undefined ? { basis } : {}) };
 }
 
 function optionalField(chunk: string, label: string): string | null {
@@ -316,7 +384,20 @@ function place(
   });
   const objects = [...built, ...laidOut.objects];
   stampRepeats(objects, labeled);
+  // The carbon disc is smaller than its bond, so its fit sits on the camera
+  // ceiling. The band has to extend past that ceiling or the fade ends exactly
+  // where the camera stops and the atom is invisible.
+  extendBand(objects, 'graphite-carbon-atom');
   return { objects, report: laidOut, nodes: labeled };
+}
+
+function extendBand(objects: CanvasObject[], id: string): void {
+  const cap = MAX_SCALE * 1.35;
+  for (const target of [id, `${id}-label`, `${id}-link`]) {
+    const object = objects.find((entry) => entry.id === target);
+    if (!object || object.visibility.maxScale < MAX_SCALE) continue;
+    object.visibility = { ...object.visibility, maxScale: Math.max(object.visibility.maxScale, cap) };
+  }
 }
 
 /**
@@ -331,7 +412,13 @@ function applyChainLabels(nodes: readonly HierarchyNode[]): HierarchyNode[] {
     y: 0,
     visibility: { minScale: 0, maxScale: 1 },
     ...(node.repeat
-      ? { repeat: { count: node.repeat.count, pattern: { kind: 'rows', pitch: 1 } } }
+      ? {
+          repeat: {
+            count: node.repeat.count,
+            pattern: { kind: 'rows' as const, pitch: 1 },
+            ...(node.repeat.occupancy !== undefined ? { occupancy: node.repeat.occupancy } : {}),
+          },
+        }
       : {}),
     payload: { type: 'group' },
   }));
@@ -357,7 +444,7 @@ function stampRepeats(objects: CanvasObject[], nodes: readonly HierarchyNode[]):
     const xScale = payload.width / node.sizeMm;
     const yScale = payload.height / node.sizeMm;
     const pattern = localPattern(node.repeat.pattern, xScale, yScale);
-    const repeat: NodeRepeat = { count: node.repeat.count, pattern };
+    const repeat: NodeRepeat = { count: node.repeat.count, pattern, ...repeatStyle(node) };
     // Scatter has no pitch. The region is the square whose area is count ÷ density,
     // centred on the placed copy, so the drawn points match the per-parent count.
     if (pattern.kind === 'scatter' && node.repeat.pattern.kind === 'scatter') {
@@ -389,7 +476,28 @@ function stampRepeats(objects: CanvasObject[], nodes: readonly HierarchyNode[]):
   }
 }
 
+/** Repeated views are faint unless the hierarchy names an opacity. Parts stay opaque. */
+function repeatStyle(node: HierarchyNode): Pick<NodeRepeat, 'opacity' | 'occupancy' | 'seed'> {
+  const opacity = node.repeat?.opacity ?? (node.kind === 'view' ? 0.25 : undefined);
+  return {
+    ...(opacity !== undefined ? { opacity } : {}),
+    ...(node.repeat?.occupancy !== undefined ? { occupancy: node.repeat.occupancy } : {}),
+    ...(node.repeat?.seed !== undefined ? { seed: node.repeat.seed } : {}),
+  };
+}
+
 function localPattern(pattern: HierarchyPattern, xScale: number, yScale: number): RepeatPattern {
+  if (pattern.kind === 'lattice') {
+    const scale = Math.max(xScale, yScale);
+    return {
+      kind: 'lattice',
+      lattice: pattern.lattice,
+      a: pattern.aMm * scale,
+      cols: pattern.cols,
+      rows: pattern.rows,
+      ...(pattern.basis !== undefined ? { basis: pattern.basis } : {}),
+    };
+  }
   if (pattern.kind === 'grid') {
     return {
       kind: 'grid',

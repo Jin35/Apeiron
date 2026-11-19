@@ -282,6 +282,9 @@ function holdInCentreCopy(parent: HierarchyNode, space: Space, boxes: Box[]): Bo
     limitY = (pattern.pitchYMm / parent.sizeMm) * space.height * 0.45;
   } else if (pattern.kind === 'rows') {
     limitY = (pattern.pitchMm / parent.sizeMm) * space.height * 0.45;
+  } else if (pattern.kind === 'lattice') {
+    limitX = (pattern.aMm / parent.sizeMm) * space.width * 0.45;
+    limitY = (pattern.aMm / parent.sizeMm) * space.height * 0.45;
   } else {
     return boxes;
   }

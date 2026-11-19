@@ -83,14 +83,41 @@ export type LinkStyle = {
 };
 
 /**
+ * 2D Bravais pattern. `a` is the crystallographic lattice constant, in the
+ * parent's local units. Honeycomb is graphene: the neighbour distance is the
+ * bond `a / √3`. Diamond is the [110] projection of the diamond-cubic cell:
+ * an in-plane neighbour sits at the bond `a · √3 / 4`. Hex and square place
+ * one site per cell, a neighbour apart by `a`.
+ * `cols` and `rows` count unit cells. The copy count is cells times `basis`.
+ */
+export type LatticeKind = 'hex' | 'honeycomb' | 'diamond' | 'square';
+
+/**
  * Where copies of one node sit, in the parent's local coordinates.
  * `count` is not on the pattern: it is copies per parent copy, and a grid's
- * `cols * rows` is that same number. The pattern is the geometry that is drawn.
+ * `cols * rows` is that same number. A lattice's count is unit cells times
+ * its basis. The pattern is the geometry that is drawn. A picture of a whole
+ * cell can still use `grid`; a lattice is the sites themselves.
  */
 export type RepeatPattern =
   | { kind: 'grid'; cols: number; rows: number; pitchX: number; pitchY: number }
   | { kind: 'rows'; pitch: number; stagger?: number }
-  | { kind: 'scatter'; seed: number; density: number };
+  | { kind: 'scatter'; seed: number; density: number }
+  | {
+      kind: 'lattice';
+      lattice: LatticeKind;
+      /** Crystallographic lattice constant, parent-local units. */
+      a: number;
+      /** Unit cells along the first lattice axis. */
+      cols: number;
+      /** Unit cells along the second lattice axis. */
+      rows: number;
+      /**
+       * Sites per cell. Omit for the lattice's own basis:
+       * hex 1, honeycomb 2, diamond 4 ([110] columns), square 1.
+       */
+      basis?: number;
+    };
 
 /**
  * Axis-aligned area in the parent's local coordinates. `x` and `y` are the centre.
@@ -114,6 +141,20 @@ export type NodeRepeat = {
   count: number;
   pattern: RepeatPattern;
   region?: RepeatRegion;
+  /**
+   * 0..1 paint of every copy, including the placeholder and the image, and of
+   * the region fill used when copies are too small or too many. Omit for
+   * opaque. A repeated view with no value is drawn faint (0.25).
+   */
+  opacity?: number;
+  /**
+   * 0..1. Copy `i` is drawn only when `hash(seed, i)` is below this.
+   * Omit to draw every copy. The label total and the region-fill alpha
+   * multiply by it. Empty sites are not hits and are not zoom targets.
+   */
+  occupancy?: number;
+  /** Seed for `occupancy`. Omit for 1. The same seed and index always agree. */
+  seed?: number;
 };
 
 /**

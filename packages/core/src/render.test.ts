@@ -50,6 +50,8 @@ type RecordedContext = CanvasRenderingContext2D & {
   fillTexts: TextCall[];
   strokeRects: RectCall[];
   fillRects: RectCall[];
+  fillRectAlphas: number[];
+  fillAlphas: number[];
   drawImages: number[];
   gradients: number;
   strokes: StrokeCall[];
@@ -86,6 +88,8 @@ function recordingContext(options?: {
   const fillTexts: TextCall[] = [];
   const strokeRects: RectCall[] = [];
   const fillRects: RectCall[] = [];
+  const fillRectAlphas: number[] = [];
+  const fillAlphas: number[] = [];
   const drawImages: number[] = [];
   const gradients = { n: 0 };
   const strokes: StrokeCall[] = [];
@@ -103,6 +107,8 @@ function recordingContext(options?: {
       if (prop === 'fillTexts') return fillTexts;
       if (prop === 'strokeRects') return strokeRects;
       if (prop === 'fillRects') return fillRects;
+      if (prop === 'fillRectAlphas') return fillRectAlphas;
+      if (prop === 'fillAlphas') return fillAlphas;
       if (prop === 'drawImages') return drawImages;
       if (prop === 'gradients') return gradients.n;
       if (prop === 'strokes') return strokes;
@@ -166,6 +172,12 @@ function recordingContext(options?: {
       if (prop === 'fillRect') {
         return (x: number, y: number, w: number, h: number) => {
           fillRects.push({ x, y, w, h });
+          fillRectAlphas.push(state.globalAlpha);
+        };
+      }
+      if (prop === 'fill') {
+        return () => {
+          fillAlphas.push(state.globalAlpha);
         };
       }
       if (prop === 'drawImage') {
@@ -1129,6 +1141,98 @@ describe('createRenderer', () => {
       objects: [node],
     });
     expect(far.fillRects).toHaveLength(2);
+  });
+
+  it('paints repeated copies at the repeat opacity, and the region fill no higher', () => {
+    const plain: Theme = {
+      background: '#ffffff',
+      ink: '#111111',
+      accent: '#111111',
+      ui: '#111111',
+      displayFont: 'sans-serif',
+      bodyFont: 'sans-serif',
+    };
+    const band = { minScale: 0.01, maxScale: 100 };
+    const view: CanvasObject = {
+      id: 'tile',
+      x: 0,
+      y: 0,
+      visibility: band,
+      repeat: { count: 3, pattern: { kind: 'grid', cols: 3, rows: 1, pitchX: 30, pitchY: 30 } },
+      payload: { type: 'shape', kind: 'view', width: 10, height: 10 },
+    };
+    const close = recordingContext();
+    createRenderer(canvasFor(close), () => {}).draw({
+      camera: { x: 15, y: 0, scale: 1 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(view, 1)],
+      objects: [view],
+    });
+    expect(close.fillAlphas.length).toBeGreaterThan(0);
+    expect(close.fillAlphas.every((alpha) => alpha === 0.25)).toBe(true);
+
+    const authored: CanvasObject = {
+      ...view,
+      repeat: { ...view.repeat!, opacity: 0.4 },
+    };
+    const overridden = recordingContext();
+    createRenderer(canvasFor(overridden), () => {}).draw({
+      camera: { x: 15, y: 0, scale: 1 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(authored, 1)],
+      objects: [authored],
+    });
+    expect(overridden.fillAlphas.every((alpha) => alpha === 0.4)).toBe(true);
+
+    const picture: CanvasObject = {
+      id: 'cell',
+      x: 0,
+      y: 0,
+      visibility: band,
+      repeat: {
+        count: 3,
+        opacity: 0.4,
+        occupancy: 0.5,
+        pattern: { kind: 'grid', cols: 3, rows: 1, pitchX: 30, pitchY: 30 },
+      },
+      payload: { type: 'image', src: 'images/cell.svg', width: 10, height: 10, frame: false },
+    };
+    const copies = recordingContext();
+    const pictureRenderer = createRenderer(canvasFor(copies), () => {});
+    const pictureFrame = {
+      camera: { x: 15, y: 0, scale: 1 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(picture, 1)],
+      objects: [picture],
+    };
+    pictureRenderer.draw(pictureFrame);
+    for (const image of images) {
+      image.complete = true;
+      image.naturalWidth = 8;
+      image.naturalHeight = 8;
+    }
+    pictureRenderer.draw(pictureFrame);
+    expect(copies.drawImages.length).toBeGreaterThan(0);
+    expect(copies.drawImages.every((alpha) => alpha === 0.4)).toBe(true);
+
+    const far = recordingContext();
+    createRenderer(canvasFor(far), () => {}).draw({
+      camera: { x: 15, y: 0, scale: 0.2 },
+      width: 200,
+      height: 200,
+      theme: plain,
+      visible: [visible(picture, 1)],
+      objects: [picture],
+    });
+    const region = far.fillRectAlphas.at(-1);
+    expect(region).toBeCloseTo(0.4 * 0.5);
+    expect(region ?? 1).toBeLessThanOrEqual(0.4);
   });
 });
 

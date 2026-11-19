@@ -1,5 +1,5 @@
 import type { ViewBounds } from './camera';
-import type { CanvasObject, NodeRepeat, RepeatPattern, RepeatRegion } from './model';
+import type { CanvasObject, LatticeKind, NodeRepeat, RepeatPattern, RepeatRegion } from './model';
 import { createPlacement, type WorldPlacement } from './placement';
 
 /**
@@ -10,6 +10,21 @@ export const REPEAT_LOD_PX = 3;
 
 /** Copies drawn in one frame. Past this the region is filled instead. */
 export const MAX_REPEAT_COPIES = 2000;
+
+/**
+ * Repeated views are tile windows, not the part itself. They stay faint
+ * unless the repeat names its own opacity.
+ */
+export const VIEW_REPEAT_OPACITY = 0.25;
+
+/** How far a sparse nearest-copy search walks, in cells, before it gives up. */
+const OCCUPANCY_SEARCH = 48;
+
+/**
+ * A sparse window may be scanned while the occupied count stays under the cap.
+ * Past this many candidates the region is filled from the estimate.
+ */
+const OCCUPANCY_SCAN = MAX_REPEAT_COPIES * 8;
 
 /** Points regenerated inside one scatter tile. Keeps a tile a fixed cost. */
 const SCATTER_PER_TILE = 4;
@@ -61,8 +76,11 @@ export function repeatTotal(objects: readonly CanvasObject[], id: string): numbe
   let current: CanvasObject | undefined = node;
   while (current && !seen.has(current.id)) {
     seen.add(current.id);
-    const count = current.repeat?.count;
-    if (count !== undefined && count > 0 && Number.isFinite(count)) total *= count;
+    const repeat = current.repeat;
+    const count = repeat?.count;
+    if (repeat && count !== undefined && count > 0 && Number.isFinite(count)) {
+      total *= count * occupancyOf(repeat);
+    }
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return total;
@@ -86,6 +104,24 @@ export function formatRepeatCount(count: number): string {
 export function gridMatchesCount(pattern: RepeatPattern, count: number): boolean {
   if (pattern.kind !== 'grid') return true;
   return pattern.cols * pattern.rows === count;
+}
+
+/** Sites in one cell. Honeycomb is graphene's two-atom basis. Diamond is four [110] columns. */
+export function latticeBasis(lattice: LatticeKind): number {
+  if (lattice === 'honeycomb') return 2;
+  if (lattice === 'diamond') return 4;
+  return 1;
+}
+
+/**
+ * Distance between neighbours that the projection keeps at the real bond length.
+ * Honeycomb: `a / √3`. Diamond [110], in-plane bond: `a · √3 / 4`. Hex and square: `a`.
+ */
+export function latticeNeighbourDistance(lattice: LatticeKind, a: number): number {
+  if (!(a > 0)) return 0;
+  if (lattice === 'honeycomb') return a / Math.sqrt(3);
+  if (lattice === 'diamond') return (a * Math.sqrt(3)) / 4;
+  return a;
 }
 
 /**
@@ -114,6 +150,7 @@ export function copyLocalPosition(
     const odd = index % 2 === 1;
     return { x: originX + (odd ? stagger : 0), y: originY + index * pattern.pitch };
   }
+  if (pattern.kind === 'lattice') return latticeAt(pattern, originX, originY, index);
   const spot = scatterAt(repeat, originX, originY, index);
   return spot ? { x: spot.x, y: spot.y } : null;
 }
@@ -145,7 +182,8 @@ export function copyIndexAt(
     const y = originY + row * pitchY;
     if (!inside(localX, localY, x, y, halfW, halfH)) return null;
     if (!centerInRegion(repeat.region, x, y)) return null;
-    return row * cols + col;
+    const index = row * cols + col;
+    return isCopyOccupied(repeat, index) ? index : null;
   }
   if (pattern.kind === 'rows') {
     if (!(pattern.pitch > 0) || !(repeat.count >= 1)) return null;
@@ -156,9 +194,14 @@ export function copyIndexAt(
     const y = originY + row * pattern.pitch;
     if (!inside(localX, localY, x, y, halfW, halfH)) return null;
     if (!centerInRegion(repeat.region, x, y)) return null;
-    return row;
+    return isCopyOccupied(repeat, row) ? row : null;
   }
-  return scatterIndexAt(repeat, originX, originY, halfW, halfH, localX, localY);
+  if (pattern.kind === 'lattice') {
+    const index = latticeIndexAt(pattern, repeat.region, originX, originY, halfW, halfH, localX, localY);
+    return index !== null && isCopyOccupied(repeat, index) ? index : null;
+  }
+  const scattered = scatterIndexAt(repeat, originX, originY, halfW, halfH, localX, localY);
+  return scattered !== null && isCopyOccupied(repeat, scattered) ? scattered : null;
 }
 
 /** Nearest copy to a parent-local point. Used when opening children, not for hits. */
@@ -175,14 +218,37 @@ export function nearestCopyIndex(
     if (!(cols >= 1) || !(rows >= 1) || !(pitchX > 0) || !(pitchY > 0)) return 0;
     const col = clamp(Math.round((localX - originX) / pitchX), 0, cols - 1);
     const row = clamp(Math.round((localY - originY) / pitchY), 0, rows - 1);
-    return row * cols + col;
+    return nearestOccupied(repeat, row * cols + col, (index) => {
+      const c = index % cols;
+      const r = Math.floor(index / cols);
+      if (c < 0 || r < 0 || c >= cols || r >= rows) return null;
+      return { x: originX + c * pitchX, y: originY + r * pitchY };
+    }, (radius, visit) => {
+      for (let r = Math.max(0, row - radius); r <= Math.min(rows - 1, row + radius); r += 1) {
+        for (let c = Math.max(0, col - radius); c <= Math.min(cols - 1, col + radius); c += 1) {
+          if (Math.max(Math.abs(c - col), Math.abs(r - row)) !== radius) continue;
+          visit(r * cols + c);
+        }
+      }
+    });
   }
   if (pattern.kind === 'rows') {
     if (!(pattern.pitch > 0) || !(repeat.count >= 1)) return 0;
-    return clamp(Math.round((localY - originY) / pattern.pitch), 0, repeat.count - 1);
+    const row = clamp(Math.round((localY - originY) / pattern.pitch), 0, repeat.count - 1);
+    return nearestOccupied(repeat, row, (index) => {
+      if (index < 0 || index >= repeat.count) return null;
+      const stagger = pattern.stagger ?? 0;
+      return { x: originX + (index % 2 === 1 ? stagger : 0), y: originY + index * pattern.pitch };
+    }, (radius, visit) => {
+      if (row - radius >= 0) visit(row - radius);
+      if (radius > 0 && row + radius < repeat.count) visit(row + radius);
+    });
   }
+  if (pattern.kind === 'lattice') return nearestLattice(repeat, pattern, originX, originY, localX, localY);
   const hit = scatterNearest(repeat, originX, originY, localX, localY);
-  return hit ?? 0;
+  if (hit === null) return 0;
+  if (isCopyOccupied(repeat, hit)) return hit;
+  return hit;
 }
 
 /**
@@ -199,9 +265,15 @@ export function visibleCopies(
   view: LocalRect,
 ): VisibleCopies {
   const pattern = repeat.pattern;
-  if (pattern.kind === 'grid') return visibleGrid(pattern, repeat.region, originX, originY, footprintW, footprintH, view);
-  if (pattern.kind === 'rows') return visibleRows(repeat, originX, originY, footprintW, footprintH, view);
-  return visibleScatter(repeat, footprintW, footprintH, view);
+  const raw =
+    pattern.kind === 'grid'
+      ? visibleGrid(pattern, repeat.region, originX, originY, footprintW, footprintH, view, occupancyOf(repeat))
+      : pattern.kind === 'rows'
+        ? visibleRows(repeat, originX, originY, footprintW, footprintH, view)
+        : pattern.kind === 'lattice'
+          ? visibleLattice(repeat, originX, originY, footprintW, footprintH, view)
+          : visibleScatter(repeat, footprintW, footprintH, view);
+  return applyOccupancy(repeat, raw);
 }
 
 /** Individuals, or one fill. A copy under ~3px, or a window over the cap, fills. */
@@ -225,6 +297,7 @@ function visibleGrid(
   footprintW: number,
   footprintH: number,
   view: LocalRect,
+  occupancy: number,
 ): VisibleCopies {
   const { cols, rows, pitchX, pitchY } = pattern;
   if (!(cols >= 1) || !(rows >= 1) || !(pitchX > 0) || !(pitchY > 0)) return NONE;
@@ -232,7 +305,7 @@ function visibleGrid(
   const rowsWindow = axisWindow(originY, pitchY, rows, footprintH / 2, view.top, view.bottom, region, 'y');
   if (!colsWindow || !rowsWindow) return NONE;
   const count = (colsWindow.max - colsWindow.min + 1) * (rowsWindow.max - rowsWindow.min + 1);
-  const capped = count > MAX_REPEAT_COPIES;
+  const capped = overCap(count, occupancy);
   return {
     count,
     capped,
@@ -282,7 +355,7 @@ function visibleRows(
   };
   let count = 0;
   const span = max - min + 1;
-  if (span > MAX_REPEAT_COPIES) {
+  if (overCap(span, occupancyOf(repeat))) {
     return { count: span, capped: true, forEach() {} };
   }
   for (let index = min; index <= max; index += 1) if (fits(index)) count += 1;
@@ -535,6 +608,366 @@ function mix(n: number): number {
   return x >>> 0;
 }
 
+function occupancyOf(repeat: NodeRepeat): number {
+  const value = repeat.occupancy;
+  if (value === undefined || !Number.isFinite(value)) return 1;
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
+  return value;
+}
+
+function seedOf(repeat: NodeRepeat): number {
+  const seed = repeat.seed;
+  if (seed === undefined || !Number.isFinite(seed)) return 1;
+  return seed | 0;
+}
+
+/** Copy `index` is drawn. Occupancy 1 (the default) keeps every copy. */
+function isCopyOccupied(repeat: NodeRepeat, index: number): boolean {
+  const occupancy = occupancyOf(repeat);
+  if (!(occupancy < 1)) return true;
+  if (!(occupancy > 0)) return false;
+  if (!Number.isInteger(index) || index < 0) return false;
+  return hashUnit(seedOf(repeat), index) < occupancy;
+}
+
+function hashUnit(seed: number, index: number): number {
+  const hi = Math.floor(index / 4294967296);
+  const h = mix(Math.imul(seed, 0x9e3779b1) ^ Math.imul(index | 0, 0x85ebca6b) ^ Math.imul(hi | 0, 0xc2b2ae35));
+  return h / 4294967296;
+}
+
+function overCap(candidates: number, occupancy: number): boolean {
+  if (!(candidates > MAX_REPEAT_COPIES)) return false;
+  if (!(occupancy < 1)) return true;
+  if (candidates > OCCUPANCY_SCAN) return true;
+  return candidates * occupancy > MAX_REPEAT_COPIES;
+}
+
+function applyOccupancy(repeat: NodeRepeat, raw: VisibleCopies): VisibleCopies {
+  const occupancy = occupancyOf(repeat);
+  if (!(occupancy < 1)) return raw;
+  if (!(occupancy > 0) || !(raw.count > 0)) return NONE;
+  if (raw.capped) return { count: raw.count * occupancy, capped: true, forEach() {} };
+  const kept: VisibleCopy[] = [];
+  raw.forEach((copy) => {
+    if (isCopyOccupied(repeat, copy.index)) kept.push(copy);
+  });
+  const capped = kept.length > MAX_REPEAT_COPIES;
+  return {
+    count: kept.length,
+    capped,
+    forEach(visit) {
+      if (capped) return;
+      for (const copy of kept) visit(copy);
+    },
+  };
+}
+
+function resolveOccupiedIndex(repeat: NodeRepeat, originX: number, originY: number, index: number): number {
+  if (isCopyOccupied(repeat, index)) return index;
+  const at = copyLocalPosition(repeat, originX, originY, index);
+  if (!at) return nearestCopyIndex(repeat, originX, originY, originX, originY);
+  return nearestCopyIndex(repeat, originX, originY, at.x, at.y);
+}
+
+function nearestOccupied(
+  repeat: NodeRepeat,
+  guess: number,
+  position: (index: number) => { x: number; y: number } | null,
+  ring: (radius: number, visit: (index: number) => void) => void,
+): number {
+  if (isCopyOccupied(repeat, guess)) return guess;
+  const origin = position(guess);
+  let bestIndex = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let radius = 1; radius <= OCCUPANCY_SEARCH; radius += 1) {
+    ring(radius, (index) => {
+      if (!isCopyOccupied(repeat, index)) return;
+      const at = position(index);
+      if (!at || !origin) return;
+      const distance = (at.x - origin.x) ** 2 + (at.y - origin.y) ** 2;
+      if (distance < bestDistance) {
+        bestIndex = index;
+        bestDistance = distance;
+      }
+    });
+    if (bestIndex >= 0) return bestIndex;
+  }
+  return guess;
+}
+
+type LatticeGeom = {
+  a1: { x: number; y: number };
+  a2: { x: number; y: number };
+  sites: { x: number; y: number }[];
+};
+
+function latticeGeometry(lattice: LatticeKind, a: number): LatticeGeom | null {
+  if (!(a > 0) || !Number.isFinite(a)) return null;
+  const sqrt3 = Math.sqrt(3);
+  if (lattice === 'square') {
+    return { a1: { x: a, y: 0 }, a2: { x: 0, y: a }, sites: [{ x: 0, y: 0 }] };
+  }
+  if (lattice === 'hex') {
+    return {
+      a1: { x: a, y: 0 },
+      a2: { x: a / 2, y: (a * sqrt3) / 2 },
+      sites: [{ x: 0, y: 0 }],
+    };
+  }
+  if (lattice === 'honeycomb') {
+    const bond = a / sqrt3;
+    return {
+      a1: { x: (3 * bond) / 2, y: (bond * sqrt3) / 2 },
+      a2: { x: (3 * bond) / 2, y: -(bond * sqrt3) / 2 },
+      sites: [
+        { x: 0, y: 0 },
+        { x: bond, y: 0 },
+      ],
+    };
+  }
+  const column = a / (2 * Math.SQRT2);
+  return {
+    a1: { x: a / Math.SQRT2, y: 0 },
+    a2: { x: 0, y: a },
+    sites: [
+      { x: 0, y: 0 },
+      { x: 0, y: a / 4 },
+      { x: column, y: a / 2 },
+      { x: column, y: (3 * a) / 4 },
+    ],
+  };
+}
+
+function latticeGeom(pattern: Extract<RepeatPattern, { kind: 'lattice' }>): LatticeGeom | null {
+  const geom = latticeGeometry(pattern.lattice, pattern.a);
+  if (!geom) return null;
+  const declared = pattern.basis;
+  if (declared === undefined || declared === geom.sites.length) return geom;
+  if (Number.isInteger(declared) && declared >= 1 && declared < geom.sites.length) {
+    return { ...geom, sites: geom.sites.slice(0, declared) };
+  }
+  return geom;
+}
+
+function latticeAt(
+  pattern: Extract<RepeatPattern, { kind: 'lattice' }>,
+  originX: number,
+  originY: number,
+  index: number,
+): { x: number; y: number } | null {
+  const geom = latticeGeom(pattern);
+  if (!geom) return null;
+  const { cols, rows } = pattern;
+  if (!(cols >= 1) || !(rows >= 1)) return null;
+  const basis = geom.sites.length;
+  if (index >= cols * rows * basis) return null;
+  const cell = Math.floor(index / basis);
+  const site = geom.sites[index % basis];
+  if (!site) return null;
+  const col = cell % cols;
+  const row = Math.floor(cell / cols);
+  return {
+    x: originX + col * geom.a1.x + row * geom.a2.x + site.x,
+    y: originY + col * geom.a1.y + row * geom.a2.y + site.y,
+  };
+}
+
+function latticeCell(geom: LatticeGeom, x: number, y: number): { col: number; row: number } {
+  const det = geom.a1.x * geom.a2.y - geom.a2.x * geom.a1.y;
+  if (!(Math.abs(det) > 1e-18)) return { col: 0, row: 0 };
+  return {
+    col: (x * geom.a2.y - y * geom.a2.x) / det,
+    row: (geom.a1.x * y - geom.a1.y * x) / det,
+  };
+}
+
+function latticeIndexAt(
+  pattern: Extract<RepeatPattern, { kind: 'lattice' }>,
+  region: RepeatRegion | undefined,
+  originX: number,
+  originY: number,
+  halfW: number,
+  halfH: number,
+  localX: number,
+  localY: number,
+): number | null {
+  const geom = latticeGeom(pattern);
+  if (!geom) return null;
+  const { cols, rows } = pattern;
+  if (!(cols >= 1) || !(rows >= 1)) return null;
+  const here = latticeCell(geom, localX - originX, localY - originY);
+  const pitch = latticePitch(geom);
+  const reach = Math.max(1, Math.ceil(Math.max(halfW, halfH) / pitch) + 1);
+  const col0 = clamp(Math.floor(here.col) - reach, 0, cols - 1);
+  const col1 = clamp(Math.ceil(here.col) + reach, 0, cols - 1);
+  const row0 = clamp(Math.floor(here.row) - reach, 0, rows - 1);
+  const row1 = clamp(Math.ceil(here.row) + reach, 0, rows - 1);
+  const basis = geom.sites.length;
+  for (let row = row0; row <= row1; row += 1) {
+    for (let col = col0; col <= col1; col += 1) {
+      for (let site = 0; site < basis; site += 1) {
+        const point = geom.sites[site];
+        if (!point) continue;
+        const x = originX + col * geom.a1.x + row * geom.a2.x + point.x;
+        const y = originY + col * geom.a1.y + row * geom.a2.y + point.y;
+        if (!inside(localX, localY, x, y, halfW, halfH)) continue;
+        if (!centerInRegion(region, x, y)) continue;
+        return (row * cols + col) * basis + site;
+      }
+    }
+  }
+  return null;
+}
+
+function nearestLattice(
+  repeat: NodeRepeat,
+  pattern: Extract<RepeatPattern, { kind: 'lattice' }>,
+  originX: number,
+  originY: number,
+  localX: number,
+  localY: number,
+): number {
+  const geom = latticeGeom(pattern);
+  if (!geom) return 0;
+  const { cols, rows } = pattern;
+  if (!(cols >= 1) || !(rows >= 1)) return 0;
+  const here = latticeCell(geom, localX - originX, localY - originY);
+  const col0 = clamp(Math.round(here.col), 0, cols - 1);
+  const row0 = clamp(Math.round(here.row), 0, rows - 1);
+  const basis = geom.sites.length;
+  const pitch = latticePitch(geom);
+  const sparse = occupancyOf(repeat) < 1;
+  const limit = sparse ? OCCUPANCY_SEARCH : 1;
+  let bestIndex = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let radius = 0; radius <= limit; radius += 1) {
+    for (let row = Math.max(0, row0 - radius); row <= Math.min(rows - 1, row0 + radius); row += 1) {
+      for (let col = Math.max(0, col0 - radius); col <= Math.min(cols - 1, col0 + radius); col += 1) {
+        if (Math.max(Math.abs(col - col0), Math.abs(row - row0)) !== radius) continue;
+        for (let site = 0; site < basis; site += 1) {
+          const index = (row * cols + col) * basis + site;
+          if (!isCopyOccupied(repeat, index)) continue;
+          const point = geom.sites[site];
+          if (!point) continue;
+          const x = originX + col * geom.a1.x + row * geom.a2.x + point.x;
+          const y = originY + col * geom.a1.y + row * geom.a2.y + point.y;
+          const distance = (x - localX) ** 2 + (y - localY) ** 2;
+          if (distance < bestDistance) {
+            bestIndex = index;
+            bestDistance = distance;
+          }
+        }
+      }
+    }
+    if (bestIndex >= 0 && (!sparse || radius * pitch > Math.sqrt(bestDistance))) return bestIndex;
+  }
+  return bestIndex >= 0 ? bestIndex : row0 * cols * basis;
+}
+
+function visibleLattice(
+  repeat: NodeRepeat,
+  originX: number,
+  originY: number,
+  footprintW: number,
+  footprintH: number,
+  view: LocalRect,
+): VisibleCopies {
+  const pattern = repeat.pattern;
+  if (pattern.kind !== 'lattice') return NONE;
+  const geom = latticeGeom(pattern);
+  if (!geom) return NONE;
+  const { cols, rows } = pattern;
+  if (!(cols >= 1) || !(rows >= 1)) return NONE;
+  const halfW = footprintW / 2;
+  const halfH = footprintH / 2;
+  const pad = Math.max(halfW, halfH, ...geom.sites.map((site) => Math.hypot(site.x, site.y)));
+  const corners = [
+    latticeCell(geom, view.left - pad - originX, view.top - pad - originY),
+    latticeCell(geom, view.right + pad - originX, view.top - pad - originY),
+    latticeCell(geom, view.left - pad - originX, view.bottom + pad - originY),
+    latticeCell(geom, view.right + pad - originX, view.bottom + pad - originY),
+  ];
+  let col0 = cols;
+  let col1 = -1;
+  let row0 = rows;
+  let row1 = -1;
+  for (const corner of corners) {
+    col0 = Math.min(col0, Math.floor(corner.col) - 1);
+    col1 = Math.max(col1, Math.ceil(corner.col) + 1);
+    row0 = Math.min(row0, Math.floor(corner.row) - 1);
+    row1 = Math.max(row1, Math.ceil(corner.row) + 1);
+  }
+  col0 = clamp(col0, 0, cols - 1);
+  col1 = clamp(col1, 0, cols - 1);
+  row0 = clamp(row0, 0, rows - 1);
+  row1 = clamp(row1, 0, rows - 1);
+  if (col1 < col0 || row1 < row0) return NONE;
+  const basis = geom.sites.length;
+  const windowCount = (col1 - col0 + 1) * (row1 - row0 + 1) * basis;
+  if (overCap(windowCount, occupancyOf(repeat))) {
+    return { count: windowCount, capped: true, forEach() {} };
+  }
+  const copies: VisibleCopy[] = [];
+  for (let row = row0; row <= row1; row += 1) {
+    for (let col = col0; col <= col1; col += 1) {
+      for (let site = 0; site < basis; site += 1) {
+        const point = geom.sites[site];
+        if (!point) continue;
+        const x = originX + col * geom.a1.x + row * geom.a2.x + point.x;
+        const y = originY + col * geom.a1.y + row * geom.a2.y + point.y;
+        if (!centerInRegion(repeat.region, x, y)) continue;
+        if (!footprintHits(x, y, footprintW, footprintH, view)) continue;
+        copies.push({ index: (row * cols + col) * basis + site, x, y });
+      }
+    }
+  }
+  const capped = copies.length > MAX_REPEAT_COPIES;
+  return {
+    count: copies.length,
+    capped,
+    forEach(visit) {
+      if (capped) return;
+      for (const copy of copies) visit(copy);
+    },
+  };
+}
+
+function latticeBounds(pattern: Extract<RepeatPattern, { kind: 'lattice' }>): LocalRect | null {
+  const geom = latticeGeom(pattern);
+  if (!geom) return null;
+  const { cols, rows } = pattern;
+  if (!(cols >= 1) || !(rows >= 1)) return null;
+  let left = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  const columns = [0, Math.max(0, cols - 1)];
+  const rowEnds = [0, Math.max(0, rows - 1)];
+  for (const row of rowEnds) {
+    for (const col of columns) {
+      for (const site of geom.sites) {
+        const x = col * geom.a1.x + row * geom.a2.x + site.x;
+        const y = col * geom.a1.y + row * geom.a2.y + site.y;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+  }
+  if (!Number.isFinite(left)) return null;
+  return { left, right, top, bottom };
+}
+
+function latticePitch(geom: LatticeGeom): number {
+  const first = Math.hypot(geom.a1.x, geom.a1.y);
+  const second = Math.hypot(geom.a2.x, geom.a2.y);
+  const pitch = Math.min(first, second);
+  return pitch > 0 ? pitch : 1;
+}
+
 function trimMagnitude(value: number): string {
   const rounded = Math.round(value * 100) / 100;
   return String(rounded);
@@ -608,7 +1041,8 @@ export function createRepeatResolver(
       localMemo.set(node.id, authored);
       return authored;
     }
-    const local = copyLocalPosition(node.repeat, node.x, node.y, index) ?? authored;
+    const resolved = resolveOccupiedIndex(node.repeat, node.x, node.y, index);
+    const local = copyLocalPosition(node.repeat, node.x, node.y, resolved) ?? authored;
     localMemo.set(node.id, local);
     return local;
   }
@@ -687,7 +1121,8 @@ export function copyWorldDelta(
   const byId = indexById(objects);
   const node = byId.get(id);
   if (!node?.repeat) return { x: 0, y: 0 };
-  const local = copyLocalPosition(node.repeat, node.x, node.y, index);
+  const resolved = resolveOccupiedIndex(node.repeat, node.x, node.y, index);
+  const local = copyLocalPosition(node.repeat, node.x, node.y, resolved);
   if (!local) return { x: 0, y: 0 };
   const placed = createPlacement(objects)(node);
   if (!placed) return { x: 0, y: 0 };
@@ -739,6 +1174,17 @@ export function patternBounds(
       top: Math.min(originY, originY + last) - halfH,
       bottom: Math.max(originY, originY + last) + halfH,
     };
+  }
+  if (repeat.pattern.kind === 'lattice') {
+    const bounds = latticeBounds(repeat.pattern);
+    if (bounds) {
+      return {
+        left: originX + bounds.left - halfW,
+        right: originX + bounds.right + halfW,
+        top: originY + bounds.top - halfH,
+        bottom: originY + bounds.bottom + halfH,
+      };
+    }
   }
   return {
     left: originX - halfW,

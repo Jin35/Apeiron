@@ -856,8 +856,11 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~0.3 nm ionic diameter (rough; coordination-dependent)
 - Characteristic size: 0.3 nm; drawn feature: ionic diameter, convention-dependent.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 1 per parent in the ion-exchanged layer (rough upper end of 0–1; concentration not sourced)
-- Count evidence: Illustrative. A count of one is the single drawn ion; the concentration is unknown, so this is not a measured inventory.
+- Count: 4 per parent (candidate modifier sites in the 0.5 nm view)
+- Count evidence: Illustrative. The concentration is not sourced. Four candidate sites at occupancy 0.25 leave about one potassium in the exchanged layer.
+- Occupancy: 0.25
+- Seed: 21
+- Repeat: grid 2 × 2, pitch 0.25 nm
 - Description: Potassium enters sites previously occupied by sodium. Its larger effective size is the useful part of the swap.
 - Source: [Chemically strengthened glass — Wikipedia](https://en.wikipedia.org/wiki/Chemically_strengthened_glass)
 
@@ -868,8 +871,11 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~0.2 nm ionic diameter (rough; coordination-dependent)
 - Characteristic size: 0.2 nm; drawn feature: ionic diameter, convention-dependent.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 1 per parent in the ion-exchanged layer (rough upper end of 0–1; concentration not sourced)
-- Count evidence: Illustrative. A count of one is the single drawn ion; the concentration is unknown.
+- Count: 4 per parent (the same modifier sites)
+- Count evidence: Illustrative. Sodium has mostly left the exchanged surface, so the occupancy is lower than potassium’s. The concentration is not sourced.
+- Occupancy: 0.15
+- Seed: 22
+- Repeat: grid 2 × 2, pitch 0.25 nm
 - Description: Sodium leaves the surface region during the exchange. These ions are part of the glass chemistry, not metallic sodium trapped inside it.
 - Source: [Chemically strengthened glass — Wikipedia](https://en.wikipedia.org/wiki/Chemically_strengthened_glass)
 
@@ -1381,12 +1387,12 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Parent: `graphite-crystal`
 - Status: built
 - Kind: part
-- Size: ~0.15 nm covalent diameter (rough)
-- Characteristic size: 0.15 nm; drawn feature: covalent atomic diameter.
-- Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 4 per parent (4 carbon atoms in the cell)
-- Count evidence: Derived: 2 atoms per graphene hexagon unit, times 2 sheets. The 2 × 2 grid stands in for that hexagonal basis. The 0.15 nm drawn atom is wider than the 0.142 nm bond, so neighbours overlap.
-- Repeat: grid 2 × 2, pitch 0.123 nm
+- Size: 0.13 nm drawn diameter, under the 0.142 nm C–C bond
+- Characteristic size: 0.13 nm; drawn feature: atom diameter kept smaller than the bond.
+- Size evidence: The covalent diameter is about 0.15 nm, which is wider than the 0.142 nm bond and made neighbouring copies overlap. The drawn diameter is 0.13 nm so the discs stay apart at the bond length.
+- Count: 4 per parent (two honeycomb cells, basis 2)
+- Count evidence: Graphene’s honeycomb basis is 2. Two cells stand for the four carbons of the graphite cell (two per sheet). The in-plane lattice constant a is 0.246 nm, so the neighbour distance a/√3 is the 0.142 nm bond.
+- Repeat: lattice honeycomb, a 0.246 nm, 2 × 1
 - Description: Each carbon atom bonds to neighbours in a sheet. Its electrons take part in the bonding and electrical behaviour of graphite.
 - Source: [Carbon — Wikipedia](https://en.wikipedia.org/wiki/Carbon)
 
@@ -1409,8 +1415,11 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~0.1–0.2 nm ionic diameter (rough; environment-dependent)
 - Characteristic size: 0.15 nm; drawn feature: ionic diameter, coordination-dependent.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: Occupancy rather than a fixed copy count: up to about 0.67 lithium per cell at LiC6 full charge (1 Li per 6 C), and fewer at a lower state of charge.
-- Count evidence: The maximum is LiC6. The renderer has no occupancy fraction, so this node is not given a Repeat multiplier.
+- Count: 2 per parent (one interlayer site above each sheet)
+- Count evidence: LiC6 is one lithium per six carbons, about 0.67 per four-carbon cell. Two gap sites at occupancy 1/3 give that average. Empty sites are the state of charge, not a second part.
+- Occupancy: 0.33
+- Seed: 6
+- Repeat: rows, pitch 0.335 nm
 - Description: One representative lithium ion occupies an interlayer site during charging. The ion is the same species as lithium in the cathode, shown in a different chemical environment.
 - Source: [Graphite intercalation compound — Wikipedia](https://en.wikipedia.org/wiki/Graphite_intercalation_compound)
 
@@ -1569,7 +1578,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Characteristic size: 0.15 nm; drawn feature: ionic diameter, coordination-dependent.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
 - Count: 3 per parent at full lithiation (Z = 3), times occupancy x when the oxide is LiₓCoO₂
-- Count evidence: Three formula units per cell. The old lithium-site node was these same positions; an empty site is occupancy, not a second part. The drawn multiplier is the three sites. Rows follow the layers every c/3.
+- Count evidence: Three formula units per cell. The old lithium-site node was these same positions; an empty site is occupancy, not a second part. Occupancy 0.5 draws Li₀.₅CoO₂. Rows follow the layers every c/3.
+- Occupancy: 0.5
+- Seed: 8
 - Repeat: rows, pitch 0.464 nm
 - Description: A lithium ion is a lithium atom missing one electron. In this cathode it occupies a site between the cobalt–oxygen layers. Charging empties some of those sites, so a full cell shows three lithium positions and a charged cell shows fewer. The separate lithium-site part was the same positions and has been merged here.
 - Source: [Lithium — Wikipedia](https://en.wikipedia.org/wiki/Lithium)
@@ -1959,9 +1970,9 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~0.22 nm covalent diameter (rough)
 - Characteristic size: 0.222 nm; drawn feature: twice covalent radius.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: 8 per parent (8 atoms in the conventional cell)
-- Count evidence: Diamond cubic has 8 atoms per conventional cell. The 2 × 4 grid is a flat stand-in for that basis; the renderer has no diamond-cubic pattern.
-- Repeat: grid 2 × 4, pitch 0.2715 nm × 0.1358 nm
+- Count: 4 per parent (four [110] columns of the conventional cell)
+- Count evidence: Diamond cubic has 8 atoms per conventional cell. Along [110] they form four columns, two atoms deep, so the flat basis is 4. An in-plane neighbour is the bond length a√3/4. The lattice constant a is the 0.543099 nm cube edge.
+- Repeat: lattice diamond, a 0.543099 nm, 1 × 1
 - Description: A silicon atom has four outer electrons available for bonding. The crystal’s electronic behaviour starts with those shared bonds.
 - Source: [Silicon — Wikipedia](https://en.wikipedia.org/wiki/Silicon)
 
@@ -1985,8 +1996,11 @@ All sizes are nominal working values. See each node’s characteristic-size basi
 - Size: ~0.2–0.3 nm substitutional atomic site (rough)
 - Characteristic size: 0.25 nm; drawn feature: substitutional atomic site.
 - Size evidence: Working representative within a rough generic range; no model-specific dimension verified.
-- Count: Mostly absent in one cell. A rough doping of 10^18 to 10^20 per cm³ is about 0.0002 to 0.02 sites per cell, so the 81-cell view shows 0–2.
-- Count evidence: The doping range is a guess. Only the silicon density, from the lattice constant, is derived. This is not a Repeat multiplier.
+- Count: 4 per parent (the same [110] columns a dopant can replace)
+- Count evidence: A rough doping of 10^18 to 10^20 per cm³ is about 0.0002 to 0.02 of the silicon sites. Occupancy 0.02 is that upper end, on the same diamond columns as the silicon atoms. The 81-cell view then shows only a few dopants. The doping range is a guess; only the silicon density, from the lattice constant, is derived.
+- Occupancy: 0.02
+- Seed: 19
+- Repeat: lattice diamond, a 0.543099 nm, 1 × 1
 - Description: A small number of other atoms can replace silicon and change the available charge carriers. Dopant types and positions depend on which transistor region is being made.
 - Source: [Silicon — Wikipedia](https://en.wikipedia.org/wiki/Silicon)
 
